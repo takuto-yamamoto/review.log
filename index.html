@@ -73,14 +73,14 @@ body{
 body.pwa .navbar{
   padding-top:var(--safe-top);
 }
-.nav-inner{padding:10px 20px 10px}
-.nav-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+.nav-inner{padding:10px 20px}
+.nav-row{display:flex;align-items:center;justify-content:space-between}
 .nav-title{
   font-family:'M PLUS Rounded 1c','Outfit',sans-serif;font-size:20px;font-weight:900;
   color:var(--blue);letter-spacing:-.4px;line-height:1
 }
 .nav-date{font-size:13px;color:var(--lbl2);font-variant-numeric:tabular-nums;letter-spacing:.2px}
-.stat-row{display:flex;gap:6px;flex-wrap:wrap;min-height:26px;align-items:center}
+.stat-row{display:none}
 .chip{
   background:var(--blue-bg);border:1px solid var(--blue-bd);border-radius:100px;
   padding:4px 10px;font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;
@@ -100,7 +100,7 @@ body.pwa .navbar{
   display:none;
   /* Ensure panels don't bleed behind blur layers */
   will-change:scroll-position;
-  padding:12px calc(16px + var(--safe-right)) calc(124px + var(--safe-bottom)) calc(16px + var(--safe-left));
+  padding:12px calc(16px + var(--safe-right)) calc(110px + var(--safe-bottom)) calc(16px + var(--safe-left));
 }
 /* Animation applied via separate classes only when transitioning */
 .panel.slide-in{
@@ -128,27 +128,27 @@ button,a,input,[role="button"]{touch-action:manipulation}
 
 /* ══ Section label ═════════════════════ */
 .sec{
-  font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;
-  color:var(--lbl3);padding:0 4px;margin:20px 0 8px
+  font-size:11px;font-weight:700;letter-spacing:1.1px;text-transform:uppercase;
+  color:var(--lbl3);padding:0 4px;margin:16px 0 7px
 }
-.sec.sec-first{margin-top:2px}
+.sec.sec-first{margin-top:4px}
 
 /* ══ Hero card ═════════════════════════ */
 .hero{
   background:linear-gradient(135deg,#1740B0 0%,#2563EB 55%,#4F8EF7 100%);
-  border-radius:var(--r);padding:20px 20px 20px;margin-bottom:12px;
+  border-radius:var(--r);padding:18px 20px;margin-bottom:12px;
   position:relative;overflow:hidden;
   box-shadow:0 4px 24px rgba(37,99,235,.28)
 }
 .hero::before,.hero::after{content:'';position:absolute;border-radius:50%;pointer-events:none}
 .hero::before{width:200px;height:200px;top:-70px;right:-60px;background:rgba(255,255,255,.08)}
 .hero::after{width:120px;height:120px;bottom:-40px;left:10px;background:rgba(255,255,255,.05)}
-.hero-msg{font-size:20px;font-weight:700;color:#fff;position:relative;z-index:1;line-height:1.25}
-.hero-sub{font-size:13px;color:rgba(255,255,255,.7);margin-top:5px;position:relative;z-index:1;line-height:1.5}
+.hero-msg{font-size:18px;font-weight:700;color:#fff;position:relative;z-index:1;line-height:1.3}
+.hero-sub{font-size:13px;color:rgba(255,255,255,.8);margin-top:4px;position:relative;z-index:1;line-height:1.5}
 
 /* ══ Card wrap (swipe container) ══════ */
 .cw{
-  position:relative;border-radius:var(--r);margin-bottom:10px;
+  position:relative;border-radius:var(--r);margin-bottom:8px;
   overflow:hidden;isolation:isolate;
 }
 /* B3 fix: only animate cards marked as new, not on every render */
@@ -173,7 +173,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
 
 /* ══ Card ══════════════════════════════ */
 .card{
-  background:var(--card);border-radius:var(--r);padding:15px 16px;
+  background:var(--card);border-radius:var(--r);padding:14px 16px;
   position:relative;z-index:1;
   will-change:transform;
   transition:transform .22s cubic-bezier(.25,.46,.45,.94);
@@ -189,13 +189,13 @@ button,a,input,[role="button"]{touch-action:manipulation}
 }
 .card.flash{animation:flashGreen .4s ease}
 
-.card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:5px}
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:4px}
 .card-name{
-  font-size:16px;font-weight:700;color:var(--lbl);line-height:1.3;flex:1;
+  font-size:15px;font-weight:700;color:var(--lbl);line-height:1.35;flex:1;
   word-break:break-word;overflow-wrap:break-word;letter-spacing:-.2px
 }
 .card-when{
-  font-size:13px;color:var(--lbl2);margin-bottom:9px;
+  font-size:12px;color:var(--lbl2);margin-bottom:8px;
   display:flex;align-items:center;gap:5px;flex-wrap:wrap;letter-spacing:.1px
 }
 .card-when.over{color:var(--red);font-weight:600}
@@ -203,14 +203,14 @@ button,a,input,[role="button"]{touch-action:manipulation}
 
 
 /* U1 fix: 44px minimum touch target for buttons */
-.acts{display:flex;gap:8px}
+.acts{display:flex;gap:7px}
 .btn-ok{
   flex:1;background:var(--blue);color:#fff;border:none;border-radius:12px;
-  padding:13px 12px;min-height:46px;
-  font-size:15px;font-weight:700;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;gap:7px;
+  padding:11px 12px;min-height:44px;
+  font-size:14px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:6px;
   transition:opacity .12s,transform .1s;font-family:inherit;
-  box-shadow:0 2px 12px rgba(37,99,235,.35),0 1px 3px rgba(37,99,235,.18);
+  box-shadow:0 2px 10px rgba(37,99,235,.3),0 1px 3px rgba(37,99,235,.15);
   letter-spacing:.1px
 }
 .btn-ok:active{opacity:.78;transform:scale(.97)}
@@ -218,18 +218,18 @@ button,a,input,[role="button"]{touch-action:manipulation}
 
 .btn-start{
   background:var(--blue-bg);color:var(--blue);border:1.5px solid var(--blue-bd);border-radius:12px;
-  padding:13px 12px;min-height:46px;
+  padding:11px 12px;min-height:44px;
   font-size:13px;font-weight:700;cursor:pointer;
   display:flex;align-items:center;justify-content:center;gap:5px;
   transition:opacity .12s,background .12s;font-family:inherit;white-space:nowrap;flex-shrink:0
 }
 .btn-start:active{background:var(--blue);color:#fff}
 .btn-snooze{
-  background:var(--fill);color:var(--lbl2);border:none;border-radius:12px;
-  padding:13px 14px;min-height:46px;
+  background:var(--fill);color:var(--lbl3);border:none;border-radius:12px;
+  padding:11px 13px;min-height:44px;
   font-size:13px;font-weight:600;cursor:pointer;
-  white-space:nowrap;display:flex;align-items:center;gap:6px;
-  transition:opacity .12s,background .12s;font-family:inherit
+  white-space:nowrap;display:flex;align-items:center;gap:5px;
+  transition:opacity .12s,background .12s;font-family:inherit;flex-shrink:0
 }
 .btn-snooze:active{opacity:.6;background:var(--sep)}
 
@@ -320,23 +320,24 @@ button,a,input,[role="button"]{touch-action:manipulation}
   box-shadow:var(--shadow-sm)
 }
 /* ── チャット風 勉強ログ ── */
-.chat-thread{display:flex;flex-direction:column-reverse;gap:6px;margin-bottom:4px}
+.chat-thread{display:flex;flex-direction:column;gap:6px;margin-bottom:4px}
 .chat-msg{display:flex;align-items:center;gap:10px;padding:2px 0}
 .chat-avatar{width:40px;height:40px;border-radius:50%;overflow:hidden;background:var(--blue-bg);border:2px solid var(--blue-bd);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
 .chat-avatar img{width:100%;height:100%;object-fit:cover}
 .chat-bubble{
-  background:var(--blue);color:#fff;
+  background:var(--card);color:var(--lbl);
   border-radius:16px 16px 16px 4px;
+  border-left:3px solid #7C3AED;
   padding:11px 14px;
   width:calc(100% - 90px);
   min-height:64px;
-  box-shadow:0 2px 8px rgba(37,99,235,.2);
+  box-shadow:var(--shadow-sm);
   display:flex;flex-direction:column;justify-content:center;
 }
-.chat-bubble-title{font-size:14px;font-weight:700;line-height:1.35;word-break:break-word;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.chat-bubble-meta{font-size:11px;color:rgba(255,255,255,.8);margin-top:5px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.chat-bubble-title{font-size:14px;font-weight:700;line-height:1.35;word-break:break-word;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:var(--lbl)}
+.chat-bubble-meta{font-size:11px;color:#7C3AED;font-weight:700;margin-top:5px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
 .chat-bubble-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
-.chat-tag{background:rgba(255,255,255,.2);border-radius:100px;padding:2px 8px;font-size:11px;font-weight:600;color:#fff}
+.chat-tag{background:rgba(124,58,237,.12);border-radius:100px;padding:2px 8px;font-size:11px;font-weight:600;color:#7C3AED}
 .chat-time{font-size:10px;color:var(--lbl3);flex-shrink:0;padding-bottom:3px;white-space:nowrap}
 .chat-del{background:none;border:none;cursor:pointer;color:var(--lbl3);min-width:36px;min-height:36px;display:flex;align-items:center;justify-content:center;border-radius:50%;flex-shrink:0;transition:color .12s}
 .chat-del:active{color:var(--red)}
@@ -579,8 +580,6 @@ button,a,input,[role="button"]{touch-action:manipulation}
 /* Fix7: stronger visual for due/over states */
 .card.due .card-when{ color:var(--blue); }
 .card.over .card-when{ color:var(--red); }
-.card.due{ background:linear-gradient(105deg,#EFF6FF 0%,#fff 50%); }
-.card.over{ background:linear-gradient(105deg,#FFF1F0 0%,#fff 50%); }
 
 /* ══ Upcoming schedule accordion ═══════ */
 .sched-toggle{
@@ -783,7 +782,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .pwa-overlay.on{opacity:1;pointer-events:all}
 
 /* ══ Step dots ══════════════════════════ */
-.step-dots{display:flex;align-items:center;gap:6px;margin-bottom:13px;flex-wrap:wrap}
+.step-dots{display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap}
 .step-dot{
   width:8px;height:8px;border-radius:50%;background:var(--sep);
   transition:background .25s,transform .15s;flex-shrink:0
@@ -1609,6 +1608,69 @@ button,a,input,[role="button"]{touch-action:manipulation}
   padding:13px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;
   box-shadow:0 2px 8px rgba(255,59,48,.3)
 }
+
+/* ══════════════════════════════════════
+   📱 MOBILE UX OPTIMIZATIONS
+   ══════════════════════════════════════ */
+
+/* ── Touch targets: all interactive elements ≥44px ── */
+.btn-edit{
+  min-width:44px;min-height:44px;padding:0 8px;
+  display:flex;align-items:center;justify-content:center;margin-top:0;
+}
+.chat-del{min-width:44px;min-height:44px}
+.tag-list-del{min-width:44px;min-height:44px}
+.tag-add-btn{min-height:44px;padding:11px 18px}
+.tag-filter-btn{min-height:40px;padding:7px 14px}
+.cal-nav-btn{width:44px;height:44px;border-radius:12px}
+.dense-shift-btn{min-height:44px;padding:8px 13px}
+.search-clear{width:32px;height:32px}
+
+/* ── Active press feedback ── */
+.cw{-webkit-user-select:none;user-select:none}
+.card{-webkit-user-select:none;user-select:none}
+.btn-start:active{transform:scale(.96)}
+.btn-snooze:active{transform:scale(.96)}
+.tag-filter-btn{transition:all .12s}
+.tag-filter-btn:active{transform:scale(.94);opacity:.75}
+.cal-toggle:active{transform:scale(.99)}
+.tag-prog-header:active{transform:scale(.99)}
+.snooze-opt:active{transform:scale(.98)}
+.chat-del:active{transform:scale(.86)}
+.done-del:active{transform:scale(.86)}
+.dense-shift-btn:active{transform:scale(.94)}
+
+/* ── Card: slightly more breathing room ── */
+.card{padding:15px 17px}
+.cw{margin-bottom:10px}
+
+/* ── Section labels ── */
+.sec{font-size:12px;letter-spacing:.8px}
+.tab-lbl{font-size:11px;letter-spacing:.1px}
+
+/* ── All inputs ≥16px to prevent iOS auto-zoom ── */
+.sheet-inp,.date-inp,.edit-modal-inp{font-size:16px}
+.tag-add-inp{font-size:16px}
+
+/* ── Seg buttons: easier tap ── */
+.seg-btn{padding:11px 6px;min-height:42px}
+
+/* ── Snooze / action sheets: more tap-friendly ── */
+.snooze-opt{padding:16px 18px;min-height:56px}
+.snooze-cancel{min-height:52px;border-radius:14px}
+
+/* ── Calendar cells ── */
+.cal-cell{min-height:42px}
+
+/* ── Pull handles: wider drag area ── */
+.sheet-pull,.dense-sheet-pull,.snooze-pick-pull,.edit-modal-pull{height:36px}
+
+/* ── Done rows: comfortable spacing ── */
+.done-row{padding:15px 16px;gap:14px}
+
+/* ── Acts row: bigger gap for fat fingers ── */
+.acts{gap:9px}
+
 </style>
 </head>
 <body>
@@ -1626,15 +1688,11 @@ button,a,input,[role="button"]{touch-action:manipulation}
         </div>
         <div style="display:flex;align-items:center;gap:10px">
           <div class="nav-date" id="nav-date"></div>
-          <button onclick="openTagMgr()" aria-label="タグ管理" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--lbl3);display:flex;align-items:center;border-radius:8px;transition:color .12s" id="tag-mgr-btn">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-          </button>
           <button onclick="openBackupSheet()" aria-label="バックアップ" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--lbl3);display:flex;align-items:center;border-radius:8px;transition:color .12s" id="backup-btn">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           </button>
         </div>
       </div>
-      <div class="stat-row" id="stat-row"></div>
     </div>
   </div>
 
@@ -1749,8 +1807,8 @@ button,a,input,[role="button"]{touch-action:manipulation}
    B5 fix: define proper large/small variants, no string.replace() hacks
 ══════════════════════════════════════════ */
 /* ══ App version ════════════════════════ */
-const APP_VERSION = 'v2.0.0';
-const APP_BUILD   = '2026-06-27';
+const APP_VERSION = 'v2.1.0';
+const APP_BUILD   = '2026-06-28';
 
 const IC = {
   check:      `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
@@ -1831,8 +1889,10 @@ function _updateNavIcon(){
   }
 }
 
+let _studyLogIdSeq = 0;
 function addStudyLog(entry){
-  const log = {id: Date.now().toString(), ...entry};
+  const id = Date.now().toString(36) + '_' + (++_studyLogIdSeq).toString(36);
+  const log = {id, ...entry};
   STUDY_LOGS.unshift(log);
   saveStudyLogs();
   return log;
@@ -2776,7 +2836,7 @@ function initSwipe(wrap){
     card.style.transition='transform .22s ease';
     if(dir===1){
       // Right swipe threshold: 60px
-      if(cx>=22){
+      if(cx>=26){
         card.style.transform='';
         cx=0; openWrap=null;
         const id=wrap.dataset.id;
@@ -2857,12 +2917,7 @@ function render(){
   const doneL =U.filter(u=>u.done).sort((a,b)=>(b.completedAt||0)-(a.completedAt||0));
   const over  =todayL.filter(u=>diff(u.nextDate)<0).length;
 
-  const streak = getStreak();
-  let chips='';
-  if(over>0) chips+=`<div class="chip warn">${IC.alertSm} 超過 ${over}件</div>`;
-  if(streak>0) chips+=`<div class="streak">🔥 ${streak}日連続</div>`;
-  if(!chips) chips=`<div style="height:22px"></div>`;
-  document.getElementById('stat-row').innerHTML=chips;
+  const _sr=document.getElementById('stat-row'); if(_sr) _sr.innerHTML='';
 
   const tb=document.getElementById('tbadge');
   if(todayL.length>0){ tb.textContent=todayL.length; tb.classList.remove('h'); }
@@ -2961,44 +3016,25 @@ function rToday(list, hasActive, allDone){
   // P4 fix: separate overdue from due-today
   const overdue = list.filter(u=>diff(u.nextDate)<0);
   const dueToday = list.filter(u=>diff(u.nextDate)===0);
-  const over = overdue.length;
-  const sub = over>0 ? `うち <b>${over}</b> 件が期限超過` : `全件、今日が期限です`;
+  const overSub = overdue.length > 0 ? `<div class="hero-sub" style="margin-top:6px">うち ${overdue.length} 件が期限超過</div>` : '';
   let html=bannerHtml+`
     <div class="hero">
       <div class="hero-msg">${list.length} 件の復習があります</div>
-      <div class="hero-sub" style="margin-top:6px">${sub}</div>
+      ${overSub}
     </div>`;
-  // Tag filter for today
-  const todayTagIds=[...new Set(list.flatMap(u=>u.tags||[]))].filter(id=>TAGS.find(t=>t.id===id));
-  if(todayTagIds.length){
-    const tfHtml=`<div class="tag-filter-bar" style="margin-bottom:4px">
-      <button class="tag-filter-btn tag-filter-btn-all${activeTagFilter===null?' on':''}"
-        onclick="setTodayTagFilter(null)">すべて</button>
-      ${todayTagIds.map(id=>{const t=TAGS.find(x=>x.id===id);if(!t)return'';
-        const on=activeTagFilter===id;
-        return `<button class="tag-filter-btn${on?' on':''}"
-          style="${on?`background:${t.color};border-color:${t.color}`:''}"
-          onclick="setTodayTagFilter('${id}')">
-          <span class="tag-dot" style="background:${on?'#fff':t.color}"></span>${esc(t.name)}
-        </button>`}).join('')}
-    </div>`;
-    html=bannerHtml+`<div class="hero"><div class="hero-msg">${list.length} 件の復習があります</div><div class="hero-sub" style="margin-top:6px">${sub}</div></div>`+tfHtml;
-  }
-  const filteredOverdue=activeTagFilter?overdue.filter(u=>(u.tags||[]).includes(activeTagFilter)):overdue;
-  const filteredDueToday=activeTagFilter?dueToday.filter(u=>(u.tags||[]).includes(activeTagFilter)):dueToday;
+  const filteredOverdue=overdue;
+  const filteredDueToday=dueToday;
 
   if(!filteredOverdue.length && !filteredDueToday.length){
-    const ft=TAGS.find(x=>x.id===activeTagFilter);
-    html+=`<div class="empty" style="padding:28px 0"><div class="empty-icon">${IC.searchLg}</div><h3>該当する単元がありません</h3><p>${ft?`「${esc(ft.name)}」タグの`:''}今日の復習はありません</p></div>`;
+    html+=`<div class="empty" style="padding:28px 0"><div class="empty-icon">${IC.searchLg}</div><h3>該当する単元がありません</h3><p>今日の復習はありません</p></div>`;
     html += todayDoneAccHtml();
     el.innerHTML=html; return;
   }
   if(filteredOverdue.length){
-    html+=`<div class="sec sec-first" style="color:#DC2626">${IC.alertSm} 期限超過 (${filteredOverdue.length})</div>`;
     html+=filteredOverdue.map(u=>cHtml(u)).join('');
   }
   if(filteredDueToday.length){
-    html+=`<div class="sec${filteredOverdue.length?'':' sec-first'}">今日が期限 (${filteredDueToday.length})</div>`;
+    html+=`<div class="sec${filteredOverdue.length?'':' sec-first'}">今日が期限 · ${filteredDueToday.length}件</div>`;
     html+=filteredDueToday.map(u=>cHtml(u)).join('');
   }
   html += todayDoneAccHtml();
@@ -3038,20 +3074,6 @@ function rUpcoming(list){
     <div id="cal-grid" class="cal-grid">${_buildCalGridHtml(_calYear, _calMonth)}</div>
   </div>`;
 
-  // Tag filter bar
-  const usedTagIds=[...new Set(list.flatMap(u=>u.tags||[]))].filter(id=>TAGS.find(t=>t.id===id));
-  const tagFilterHtml=usedTagIds.length?`<div class="tag-filter-bar">
-    <button class="tag-filter-btn tag-filter-btn-all${activeTagFilterUp===null?' on':''}"
-      onclick="setTagFilter(null)">すべて</button>
-    ${usedTagIds.map(id=>{const t=TAGS.find(x=>x.id===id);if(!t)return'';
-      const on=activeTagFilterUp===id;
-      return `<button class="tag-filter-btn${on?' on':''}"
-        style="${on?`background:${t.color};border-color:${t.color}`:''}"
-        onclick="setTagFilter('${id}')">
-        <span class="tag-dot" style="background:${on?'#fff':t.color}"></span>${esc(t.name)}
-      </button>`}).join('')}
-  </div>`:'';
-
   const barHtml=calHtml+`<div class="search-wrap">
     <div class="search-box">
       <span style="opacity:.4;display:flex;flex-shrink:0">${IC.search}</span>
@@ -3060,8 +3082,7 @@ function rUpcoming(list){
       ${searchQ?`<button class="search-clear" id="search-clear">✕</button>`:''}
     </div>
     ${searchQ?`<div class="search-cnt" id="search-cnt"></div>`:''}
-  </div>
-  ${tagFilterHtml}`;
+  </div>`;
 
   if(!list.length){
     el.innerHTML=barHtml+adjHtml+`<div class="empty">
@@ -3073,23 +3094,21 @@ function rUpcoming(list){
   }
 
   const q=searchQ.trim().toLowerCase();
-  let filtered=activeTagFilterUp?list.filter(u=>(u.tags||[]).includes(activeTagFilterUp)):list;
+  let filtered=list;
   if(q) filtered=filtered.filter(u=>u.name.toLowerCase().includes(q));
   let cardsHtml='',lastG='',isFirst=true;
   if(filtered.length){
     filtered.forEach(u=>{
       const d=diff(u.nextDate);
       const g=d<=7?'今週':d<=14?'来週':'2週間以降';
-      // グループヘッダーは検索・タグフィルターなしのときのみ表示
-      if(!q&&!activeTagFilterUp&&g!==lastG){ cardsHtml+=`<div class="sec${isFirst?' sec-first':''}">${g}</div>`; lastG=g; isFirst=false; }
+      // グループヘッダーは検索なしのときのみ表示
+      if(!q&&g!==lastG){ cardsHtml+=`<div class="sec${isFirst?' sec-first':''}">${g}</div>`; lastG=g; isFirst=false; }
       cardsHtml+=cHtmlUpcoming(u);
     });
   } else {
     const _emptyMsg = searchQ
       ? `「${esc(searchQ)}」に一致する単元は<br>見つかりませんでした`
-      : activeTagFilterUp
-        ? `選択中のタグに一致する単元はありません`
-        : `該当する単元はありません`;
+      : `該当する単元はありません`;
     cardsHtml=`<div class="empty" style="padding:28px 0">
       <div class="empty-icon">${IC.searchLg}</div>
       <h3>該当する単元がありません</h3>
@@ -3136,11 +3155,11 @@ function rStudy(){
         <div style="font-size:28px;font-weight:800;color:#fff;font-family:'Outfit',sans-serif;line-height:1.1;margin-top:4px">${fmtMinutes(todayMins)}</div>
       </div>
     </div>
-    ${streak>0 ? `<div class="hero-sub" style="margin-top:10px">🔥 ${streak}日連続学習中！</div>` : ''}
+
   </div>`;
 
   // 新規勉強記録ボタン
-  html += `<button onclick="openNewStudySheet()" class="btn-ok" style="width:100%;border-radius:14px;padding:15px;font-size:16px;margin-bottom:12px;justify-content:center;gap:8px">
+  html += `<button onclick="openNewStudySheet()" class="btn-ok" style="width:100%;border-radius:14px;padding:15px;font-size:16px;margin-bottom:12px;justify-content:center;gap:8px;background:#0EA874;box-shadow:0 2px 10px rgba(14,168,116,.3)">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     新しく勉強したことを記録
   </button>`;
@@ -3151,12 +3170,12 @@ function rStudy(){
   // タグ別内訳
   html += _studyTagBreakdownHtml();
 
-  // 全記録をチャット風で表示（新→古、古いほど下）
+  // 全記録をチャット風で表示（新→古）
   if(STUDY_LOGS.length){
     html += `<div class="sec" style="margin-top:16px">勉強の記録（${STUDY_LOGS.length}件）</div>`;
     html += `<div class="chat-thread" id="chat-log-thread">`;
-    // column-reverseのため、セパレータはグループの「最後」(DOM末尾)に置くと視覚的に上に来る
-    const logs = STUDY_LOGS.slice(0,50);
+    // 新しい順にソート（idはDate.now()文字列なので降順）
+    const logs = STUDY_LOGS.slice().sort((a,b)=>b.id.localeCompare(a.id)).slice(0,50);
     // 日付でグループ化
     const groups = [];
     let curDate = null, curGroup = [];
@@ -3169,12 +3188,12 @@ function rStudy(){
       }
     });
     if(curGroup.length) groups.push({date: curDate, logs: curGroup});
-    // DOM順：新しいグループ → 古いグループ。各グループ内: バブル群 + セパレータ（末尾）
+    // DOM順：新しいグループ → 古いグループ。セパレータはグループ先頭
     groups.forEach(g => {
-      g.logs.forEach(l => { html += _studyLogRowHtml(l); });
       const d = new Date(g.date+'T00:00:00');
       const label = g.date===t ? '今日' : `${d.getMonth()+1}月${d.getDate()}日（${DOW[d.getDay()]}）`;
       html += `<div class="chat-date-sep">${label}</div>`;
+      g.logs.forEach(l => { html += _studyLogRowHtml(l); });
     });
     html += `</div>`;
   } else {
@@ -3237,7 +3256,7 @@ function _studyLogRowHtml(l){
     <div class="chat-bubble">
       <div class="chat-bubble-title">${esc(titleDisp)}</div>
       <div class="chat-bubble-meta">
-        <span style="font-family:'Outfit',sans-serif;font-weight:800;font-size:13px;color:#fff">⏱ ${fmtMinutes(l.minutes)}</span>
+        <span style="font-family:'Outfit',sans-serif;font-weight:800;font-size:13px;color:#7C3AED">⏱ ${fmtMinutes(l.minutes)}</span>
         ${l.note ? `<span>・${esc(l.note)}</span>` : ''}
       </div>
       ${tagChips ? `<div class="chat-bubble-tags">${tagChips}</div>` : ''}
@@ -3497,10 +3516,12 @@ function _restoreTimerState(){
 }
 let _studySheetMode='review'; // 'review' or 'new'
 let _studySheetTags=[];
+let _studySheetDate=null; // null = today
 
 function openStudyTimer(unitId){
   _timerUnitId=unitId;
   _studySheetMode='review';
+  _studySheetDate=null;
   const u=U.find(x=>x.id===unitId);
   _studySheetTags=(u&&u.tags&&u.tags.length)?[...u.tags]:[];
   _renderStudySheet();
@@ -3516,6 +3537,7 @@ function openNewStudySheet(){
   _timerUnitId=null;
   _studySheetMode='new';
   _studySheetTags=[];
+  _studySheetDate=null;
   _renderStudySheet();
   document.getElementById('overlay').classList.add('on');
   document.getElementById('study-sheet').classList.add('on');
@@ -3556,7 +3578,7 @@ function _renderStudySheet(){
       <div style="font-size:12px;color:var(--lbl3);margin-top:4px" id="study-timer-state">タップで計測開始</div>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:14px">
-      <button id="study-timer-btn" onclick="toggleStudyTimer()" style="flex:1;background:var(--blue);color:#fff;border:none;border-radius:12px;padding:14px;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 2px 10px rgba(37,99,235,.3)">
+      <button id="study-timer-btn" onclick="toggleStudyTimer()" style="flex:1;background:#0EA874;color:#fff;border:none;border-radius:12px;padding:14px;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 2px 10px rgba(14,168,116,.3)">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
         計測開始
       </button>
@@ -3564,10 +3586,18 @@ function _renderStudySheet(){
     </div>
     <div style="text-align:center;color:var(--lbl3);font-size:12px;margin-bottom:10px">— または手動で入力 —</div>
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
-      <input type="number" id="study-manual-inp" min="1" max="600" placeholder="分数" style="flex:1;background:var(--fill);border:none;border-radius:12px;padding:13px 14px;font-family:'Outfit',inherit;font-size:18px;font-weight:700;color:var(--lbl);outline:none;text-align:center">
+      <input type="number" id="study-manual-inp" min="1" max="600" placeholder="例：30" style="flex:1;background:var(--fill);border:none;border-radius:12px;padding:13px 14px;font-family:'Outfit',inherit;font-size:18px;font-weight:700;color:var(--lbl);outline:none;text-align:center">
       <span style="color:var(--lbl2);font-size:14px;font-weight:600;flex-shrink:0">分</span>
     </div>
-    <input type="text" id="study-note-inp" placeholder="メモ（任意）" maxlength="60" autocomplete="off" style="width:100%;background:var(--fill);border:none;border-radius:12px;padding:12px 14px;font-family:inherit;font-size:15px;color:var(--lbl);outline:none;margin-bottom:14px">
+    <input type="text" id="study-note-inp" placeholder="メモ（任意）" maxlength="60" autocomplete="off" style="width:100%;background:var(--fill);border:none;border-radius:12px;padding:12px 14px;font-family:inherit;font-size:16px;color:var(--lbl);outline:none;margin-bottom:14px">
+    <div style="margin-bottom:16px">
+      <div style="font-size:13px;font-weight:600;color:var(--lbl2);margin-bottom:8px">📅 記録する日付</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap" id="study-date-btns">
+        ${[['today','今日'],['yesterday','昨日'],['dayb4','一昨日'],['custom','日付指定']].map(([val,lbl])=>`
+        <button onclick="setStudyDate('${val}')" id="sddate-${val}" style="border:1.5px solid ${_studySheetDate===val||(!_studySheetDate&&val==='today')?'var(--blue)':'var(--sep)'};background:${_studySheetDate===val||(!_studySheetDate&&val==='today')?'var(--blue-bg)':'var(--card)'};color:${_studySheetDate===val||(!_studySheetDate&&val==='today')?'var(--blue)':'var(--lbl2)'};border-radius:100px;padding:7px 14px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;white-space:nowrap;transition:all .15s">${lbl}</button>`).join('')}
+      </div>
+      <input type="date" id="study-date-custom-inp" max="${td()}" style="display:${_studySheetDate==='custom'?'block':'none'};margin-top:10px;width:100%;background:var(--fill);border:none;border-radius:12px;padding:12px 14px;font-family:inherit;font-size:16px;color:var(--lbl);outline:none;-webkit-appearance:none">
+    </div>
     <div style="display:flex;gap:8px">
       <button onclick="closeStudySheet()" style="background:var(--fill);color:var(--lbl2);border:none;border-radius:12px;padding:14px 18px;font-size:16px;font-weight:500;font-family:inherit;cursor:pointer">キャンセル</button>
       <button onclick="saveStudyRecord()" style="flex:1;background:linear-gradient(145deg,#4F8EF7,#1D4ED8);color:#fff;border:none;border-radius:12px;padding:14px;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 2px 10px rgba(37,99,235,.3)">記録する</button>
@@ -3633,6 +3663,37 @@ function clearStudyTimer(){
   if(btn) btn.innerHTML=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg> 計測開始`;
 }
 
+function setStudyDate(val){
+  _studySheetDate=val;
+  // Update button styles
+  ['today','yesterday','dayb4','custom'].forEach(v=>{
+    const btn=document.getElementById('sddate-'+v);
+    if(!btn) return;
+    const active=v===val;
+    btn.style.borderColor=active?'var(--blue)':'var(--sep)';
+    btn.style.background=active?'var(--blue-bg)':'var(--card)';
+    btn.style.color=active?'var(--blue)':'var(--lbl2)';
+  });
+  const customInp=document.getElementById('study-date-custom-inp');
+  if(customInp) customInp.style.display=val==='custom'?'block':'none';
+  haptic();
+}
+
+function _resolveStudyDate(){
+  const val=_studySheetDate||'today';
+  if(val==='today') return td();
+  if(val==='yesterday') return addD(td(),-1);
+  if(val==='dayb4') return addD(td(),-2);
+  if(val==='custom'){
+    const inp=document.getElementById('study-date-custom-inp');
+    const v=inp?.value||'';
+    if(!v) return null; // caller should validate
+    if(v>td()) return null; // future date not allowed
+    return v;
+  }
+  return td();
+}
+
 function saveStudyRecord(){
   if(_timerInterval){ clearInterval(_timerInterval); _timerInterval=null; }
   const manualInp=document.getElementById('study-manual-inp');
@@ -3656,9 +3717,14 @@ function saveStudyRecord(){
   } else {
     title=titleInp?.value.trim()||'';
   }
+  const resolvedDate=_resolveStudyDate();
+  if(!resolvedDate){
+    toast(IC.alert,'日付を選択してください');
+    haptic('medium'); return;
+  }
   const _savedUnitId=_timerUnitId;
   addStudyLog({
-    date:td(),
+    date:resolvedDate,
     unitId:_savedUnitId||null,
     title:title||null,
     tagIds:[..._studySheetTags],
@@ -3666,13 +3732,14 @@ function saveStudyRecord(){
     note:note||null
   });
   closeStudySheet();
-  if(_savedUnitId) complete(_savedUnitId);
-  // 今日タブ stat 更新
-  render();
-  // 勉強タブが開いていれば更新
-  const activeTab=document.querySelector('.tab-btn.on');
-  if(activeTab&&activeTab.dataset.tab==='study') rStudy();
-  if(!_savedUnitId) toast(IC.checkCircle, fmtMinutes(minutes)+'を記録しました ✅');
+  if(_savedUnitId){
+    complete(_savedUnitId); // complete() calls render() internally
+  } else {
+    render();
+    const activeTab=document.querySelector('.tab-btn.on');
+    if(activeTab&&activeTab.dataset.tab==='study') rStudy();
+    toast(IC.checkCircle, fmtMinutes(minutes)+'を記録しました ✅');
+  }
   haptic('medium');
 }
 
@@ -4774,19 +4841,8 @@ async function sendTestNotification(){
 /* ══ Settings panel renderer ════════════ */
 function renderSettings(){
   const el = document.getElementById('p-settings'); if(!el) return;
-  const s = loadNotifSettings();
-  const perm = ('Notification' in window) ? Notification.permission : 'unsupported';
-  const permLabel = perm === 'granted' ? '✓ 許可済み' : perm === 'denied' ? '✕ 拒否済み' : perm === 'unsupported' ? '非対応' : '未設定';
-  const permCls   = perm === 'granted' ? 'granted' : perm === 'denied' ? 'denied' : 'default';
-  const timeVal   = `${String(s.hour).padStart(2,'0')}:${String(s.minute).padStart(2,'0')}`;
-  const notifSupported = 'Notification' in window && 'serviceWorker' in navigator;
 
   el.innerHTML = `
-    <div class="settings-hero">
-      <div class="settings-hero-title">⚙️ 設定</div>
-      <div class="settings-hero-sub">通知やアプリの動作をカスタマイズできます</div>
-    </div>
-
     <div class="sec sec-first">アイコン</div>
     <div class="settings-section" style="margin-bottom:12px">
       <div class="settings-row" style="cursor:pointer" onclick="document.getElementById('icon-file-input').click()">
@@ -4799,54 +4855,8 @@ function renderSettings(){
         </div>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--lbl3)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
-      ${APP_ICON ? `<div class="settings-row" style="cursor:pointer" onclick="saveAppIcon(null);renderSettings()">
-        <div class="settings-row-icon" style="background:#FEF2F2"><span style="font-size:18px">🗑️</span></div>
-        <div class="settings-row-body"><div class="settings-row-title" style="color:var(--red)">アイコンを削除</div></div>
-      </div>` : ''}
-    </div>
 
-    <div class="sec">通知</div>
-    <div class="settings-section">
-      <div class="settings-row">
-        <div class="settings-row-icon" style="background:#EFF6FF">🔔</div>
-        <div class="settings-row-body">
-          <div class="settings-row-title">毎朝の復習リマインダー</div>
-          <div class="settings-row-sub">
-            設定した時刻に通知でお知らせします。アプリをホーム画面に追加して使用することを推奨します。
-            ${notifSupported ? `<br><span class="notif-status-badge ${permCls}">${permLabel}</span>` : '<br><span class="notif-status-badge default">このブラウザは非対応です</span>'}
-          </div>
-        </div>
-        <div class="toggle-wrap">
-          <button class="toggle${s.enabled ? ' on' : ''}" id="notif-toggle"
-            onclick="toggleNotification(${!s.enabled})"
-            ${!notifSupported ? 'disabled style="opacity:.4;pointer-events:none"' : ''}
-            aria-label="通知のオン/オフ"></button>
-        </div>
-      </div>
-      ${s.enabled ? `
-      <div class="notif-time-row">
-        <div style="flex:1">
-          <div style="font-size:13px;font-weight:600;color:var(--lbl2);margin-bottom:6px">通知時刻</div>
-          <input class="notif-time-inp" type="time" value="${timeVal}"
-            onchange="updateNotifTime(this.value)" oninput="updateNotifTime(this.value)"
-            style="width:120px">
-        </div>
-        <div style="display:flex;flex-direction:column;justify-content:flex-end;flex-shrink:0">
-          <div style="font-size:13px;font-weight:600;color:var(--lbl2);margin-bottom:6px;visibility:hidden">dummy</div>
-          <button class="notif-test-btn" onclick="sendTestNotification()"
-            ${perm !== 'granted' ? 'disabled' : ''}>テスト送信</button>
-        </div>
-      </div>` : ''}
     </div>
-
-    ${perm === 'denied' ? `
-    <div style="background:#FEF2F2;border:1px solid rgba(255,59,48,.2);border-radius:12px;padding:14px 16px;margin-bottom:12px">
-      <div style="font-size:13px;font-weight:700;color:#991B1B;margin-bottom:4px">⚠️ 通知がブロックされています</div>
-      <div style="font-size:12px;color:#B91C1C;line-height:1.6">
-        iOSの場合：設定 → Safari → 通知 で許可してください。<br>
-        Androidの場合：ブラウザの設定から通知を許可してください。
-      </div>
-    </div>` : ''}
 
     <div class="sec">データ管理</div>
     <div class="settings-section">
@@ -5299,18 +5309,7 @@ const OB_STEPS = [
     next: '次へ',
     skip: 'スキップ',
   },
-  // step 4: settings tab
-  {
-    type: 'spot',
-    target: '[data-tab="settings"]',
-    arrowDir: 'up',
-    emoji: '🔔',
-    title: '通知設定',
-    body: '「設定」タブで<strong>毎朝のリマインダー通知</strong>をオンにできます。<br>通知をオンにすると、復習忘れを防げます。',
-    next: '次へ',
-    skip: 'スキップ',
-  },
-  // step 5: PWA recommendation
+  // step 4: PWA recommendation
   {
     type: 'pwa',
     emoji: '📲',
