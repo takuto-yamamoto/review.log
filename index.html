@@ -3307,7 +3307,7 @@ function _studyWeekHtml(){
 }
 
 function _studyTagBreakdownHtml(){
-  const allLogs = STUDY_LOGS;
+  const allLogs = STUDY_LOGS.filter(l=>l.date===td());
   if(!allLogs.length) return '';
 
   // Sum minutes per tag
@@ -3346,7 +3346,7 @@ function _studyTagBreakdownHtml(){
     const noneTotal=uncatTagMins+noTagMins;
     if(!entries.length && !noneTotal) return '';
 
-    let html=`<div class="sec sec-first">カテゴリー別の合計</div>`;
+    let html=`<div class="sec sec-first">今日のカテゴリー別合計</div>`;
 
     entries.forEach(({cat,total,tags})=>{
       const pct=Math.round(total/totalMins*100);
@@ -3415,7 +3415,7 @@ function _studyTagBreakdownHtml(){
   const entries=Object.entries(tagMins).sort((a,b)=>b[1]-a[1]);
   if(!entries.length && !noTagMins) return '';
 
-  let html=`<div class="sec sec-first">タグ別の合計</div>`;
+  let html=`<div class="sec sec-first">今日のタグ別合計</div>`;
   entries.forEach(([id,m])=>{
     const tag=getTag(id); if(!tag) return;
     const pct=Math.round(m/totalMins*100);
