@@ -1733,7 +1733,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
 </button>
 
 <!-- Overlay -->
-<div class="overlay" id="overlay" onclick="closeSheet()"></div>
+<div class="overlay" id="overlay" onclick="(document.getElementById('study-sheet').classList.contains('on')?closeStudySheet:closeSheet)()"></div>
 
 <!-- Bottom sheet -->
 <div class="sheet" id="sheet">
@@ -3175,7 +3175,11 @@ function rStudy(){
     html += `<div class="sec" style="margin-top:16px">勉強の記録（${STUDY_LOGS.length}件）</div>`;
     html += `<div class="chat-thread" id="chat-log-thread">`;
     // 新しい順にソート（idはDate.now()文字列なので降順）
-    const logs = STUDY_LOGS.slice().sort((a,b)=>b.id.localeCompare(a.id)).slice(0,50);
+    const logs = STUDY_LOGS.slice().sort((a,b)=>{
+      // 日付降順、同日はid降順（追加が新しい順）
+      if(b.date !== a.date) return b.date.localeCompare(a.date);
+      return b.id.localeCompare(a.id);
+    }).slice(0,50);
     // 日付でグループ化
     const groups = [];
     let curDate = null, curGroup = [];
@@ -3496,10 +3500,11 @@ function studyCalNav(delta){
 
 /* ══ Study timer sheet ══════════════════ */
 let _timerUnitId=null, _timerStart=null, _timerInterval=null;
+let _timerElapsed=0; // 累積経過秒数（一時停止時に保持）
 const TIMER_KEY='fukushu_timer_v1';
 function _saveTimerState(){
-  if(_timerStart){
-    try{ localStorage.setItem(TIMER_KEY, JSON.stringify({start:_timerStart, unitId:_timerUnitId})); }catch(_){}
+  if(_timerStart || _timerElapsed>0){
+    try{ localStorage.setItem(TIMER_KEY, JSON.stringify({start:_timerStart, elapsed:_timerElapsed, unitId:_timerUnitId})); }catch(_){}
   } else {
     try{ localStorage.removeItem(TIMER_KEY); }catch(_){}
   }
@@ -3508,9 +3513,9 @@ function _restoreTimerState(){
   try{
     const s=localStorage.getItem(TIMER_KEY);
     if(!s) return;
-    const {start, unitId}=JSON.parse(s);
-    if(!start) return;
-    _timerStart=start;
+    const {start, elapsed, unitId}=JSON.parse(s);
+    _timerElapsed=elapsed||0;
+    if(start){ _timerStart=start; }
     _timerUnitId=unitId||null;
   }catch(_){}
 }
@@ -3519,14 +3524,21 @@ let _studySheetTags=[];
 let _studySheetDate=null; // null = today
 
 function openStudyTimer(unitId){
+  // 別ユニット用に開く場合は前回の計測をリセット
+  if(_timerUnitId !== unitId){
+    if(_timerInterval){ clearInterval(_timerInterval); _timerInterval=null; }
+    _timerStart=null;
+    _timerElapsed=0;
+    _saveTimerState();
+  }
   _timerUnitId=unitId;
   _studySheetMode='review';
   _studySheetDate=null;
   const u=U.find(x=>x.id===unitId);
   _studySheetTags=(u&&u.tags&&u.tags.length)?[...u.tags]:[];
   _renderStudySheet();
-  // タイマー動作中ならUIを復元
-  if(_timerStart) _restoreTimerUI();
+  // タイマー動作中 or 一時停止中ならUIを復元
+  if(_timerStart || _timerElapsed>0) _restoreTimerUI();
   document.getElementById('overlay').classList.add('on');
   document.getElementById('study-sheet').classList.add('on');
   setFabHidden(true);
@@ -3534,6 +3546,10 @@ function openStudyTimer(unitId){
 }
 
 function openNewStudySheet(){
+  if(_timerInterval){ clearInterval(_timerInterval); _timerInterval=null; }
+  _timerStart=null;
+  _timerElapsed=0;
+  _saveTimerState();
   _timerUnitId=null;
   _studySheetMode='new';
   _studySheetTags=[];
@@ -3549,6 +3565,7 @@ function openNewStudySheet(){
 function closeStudySheet(){
   if(_timerInterval){ clearInterval(_timerInterval); _timerInterval=null; }
   _timerStart=null;
+  _timerElapsed=0;
   _saveTimerState(); // タイマー動作中にキャンセルしてもlocalStorageをクリア
   document.getElementById('overlay').classList.remove('on');
   document.getElementById('study-sheet').classList.remove('on');
@@ -3607,23 +3624,41 @@ function _renderStudySheet(){
 
 function toggleStudyTag(id){
   _studySheetTags=_studySheetTags.includes(id)?_studySheetTags.filter(x=>x!==id):[..._studySheetTags,id];
-  _renderStudySheet();
+  // シート全体を再描画するとタイマーがリセットされるため、タグボタンのみ差分更新する
+  const t = TAGS.find(x=>x.id===id); if(!t) return;
+  document.querySelectorAll('#study-sheet .tag-sel-btn').forEach(btn=>{
+    const btnId = btn.getAttribute('onclick')?.match(/toggleStudyTag\('([^']+)'\)/)?.[1];
+    if(!btnId) return;
+    const on = _studySheetTags.includes(btnId);
+    const tag = TAGS.find(x=>x.id===btnId); if(!tag) return;
+    btn.className = 'tag-sel-btn' + (on ? ' on' : '');
+    btn.style.cssText = on ? `background:${tag.color};border-color:${tag.color}` : '';
+    const dot = btn.querySelector('.tag-dot');
+    if(dot) dot.style.background = on ? '#fff' : tag.color;
+  });
   haptic();
 }
 
 function _restoreTimerUI(){
   _updateTimerDisplay();
   const btn=document.getElementById('study-timer-btn');
-  if(btn) btn.innerHTML=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> 一時停止`;
   const stateEl=document.getElementById('study-timer-state');
-  if(stateEl) stateEl.textContent='計測中…';
-  if(_timerInterval) clearInterval(_timerInterval);
-  _timerInterval=setInterval(_updateTimerDisplay,1000);
+  if(_timerStart){
+    // 計測中の状態を復元
+    if(btn) btn.innerHTML=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> 一時停止`;
+    if(stateEl) stateEl.textContent='計測中…';
+    if(_timerInterval) clearInterval(_timerInterval);
+    _timerInterval=setInterval(_updateTimerDisplay,1000);
+  } else if(_timerElapsed>0) {
+    // 一時停止中の状態を復元
+    if(btn) btn.innerHTML=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg> 再開`;
+    if(stateEl) stateEl.textContent='一時停止中';
+  }
 }
 
 function toggleStudyTimer(){
   if(!_timerStart){
-    // Start
+    // Start / Resume: _timerElapsed には一時停止までの累積秒数が入っている
     _timerStart=Date.now();
     _saveTimerState();
     const btn=document.getElementById('study-timer-btn');
@@ -3633,23 +3668,28 @@ function toggleStudyTimer(){
     _timerInterval=setInterval(_updateTimerDisplay,1000);
     haptic('medium');
   } else {
-    // Pause: fill manual input with elapsed minutes
+    // Pause: 現在までの経過秒数を累積に加算して保持
     clearInterval(_timerInterval); _timerInterval=null;
-    const elapsed=Math.round((Date.now()-_timerStart)/60000);
+    _timerElapsed += Math.floor((Date.now()-_timerStart)/1000);
     _timerStart=null;
     _saveTimerState();
+    // 手動入力欄に累積分数を反映
+    const elapsedMin=Math.round(_timerElapsed/60);
     const inp=document.getElementById('study-manual-inp');
-    if(inp&&elapsed>0) inp.value=elapsed;
+    if(inp&&elapsedMin>0) inp.value=elapsedMin;
+    // 表示は累積時間のまま維持
+    _updateTimerDisplay();
     const btn=document.getElementById('study-timer-btn');
-    if(btn) btn.innerHTML=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg> 計測開始`;
+    if(btn) btn.innerHTML=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg> 再開`;
     const stateEl=document.getElementById('study-timer-state');
-    if(stateEl) stateEl.textContent='タップで計測開始';
+    if(stateEl) stateEl.textContent='一時停止中';
     haptic();
   }
 }
 function _updateTimerDisplay(){
-  if(!_timerStart) return;
-  const sec=Math.floor((Date.now()-_timerStart)/1000);
+  // 累積秒数 + 現在の計測秒数（一時停止中は_timerStartがnullなので累積のみ）
+  const currentSec=_timerStart ? Math.floor((Date.now()-_timerStart)/1000) : 0;
+  const sec=_timerElapsed + currentSec;
   const m=Math.floor(sec/60), s=sec%60;
   const el=document.getElementById('study-timer-num');
   if(el) el.textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
@@ -3657,8 +3697,11 @@ function _updateTimerDisplay(){
 function clearStudyTimer(){
   if(_timerInterval){ clearInterval(_timerInterval); _timerInterval=null; }
   _timerStart=null;
+  _timerElapsed=0;
   _saveTimerState();
   const el=document.getElementById('study-timer-num'); if(el) el.textContent='00:00';
+  const stateEl=document.getElementById('study-timer-state');
+  if(stateEl) stateEl.textContent='タップで計測開始';
   const btn=document.getElementById('study-timer-btn');
   if(btn) btn.innerHTML=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg> 計測開始`;
 }
@@ -3698,9 +3741,13 @@ function saveStudyRecord(){
   if(_timerInterval){ clearInterval(_timerInterval); _timerInterval=null; }
   const manualInp=document.getElementById('study-manual-inp');
   let minutes=parseInt(manualInp?.value)||0;
-  if(_timerStart&&!minutes){
-    minutes=Math.max(1,Math.round((Date.now()-_timerStart)/60000));
+  if(!minutes){
+    // タイマーの累積秒数（一時停止中分 + 最後に動いていた分）を使う
+    const currentSec=_timerStart ? Math.floor((Date.now()-_timerStart)/1000) : 0;
+    const totalSec=_timerElapsed + currentSec;
+    if(totalSec>0) minutes=Math.max(1,Math.round(totalSec/60));
     _timerStart=null;
+    _timerElapsed=0;
     _saveTimerState();
   }
   if(minutes<=0){
@@ -4960,8 +5007,8 @@ function handleIconFile(e){
   let _lastActiveDate = td();
   document.addEventListener('visibilitychange', ()=>{
     if(document.visibilityState !== 'visible') return;
-    // バックグラウンドから復帰したらタイマー表示を即時同期
-    if(_timerStart) _updateTimerDisplay();
+    // バックグラウンドから復帰したらタイマー表示を即時同期（計測中・一時停止中どちらも）
+    if(_timerStart || _timerElapsed>0) _updateTimerDisplay();
     const today = td();
     if(today !== _lastActiveDate){
       _lastActiveDate = today;
