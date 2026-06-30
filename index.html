@@ -123,6 +123,55 @@ body.pwa .navbar{
   to{opacity:1;transform:translateX(0)}
 }
 
+/* ══ Icon crop modal ═══════════════════ */
+.icrop-overlay{
+  position:fixed;inset:0;z-index:200;
+  background:rgba(0,0,0,0);pointer-events:none;transition:background .25s;
+  display:flex;align-items:center;justify-content:center;
+}
+.icrop-overlay.on{background:rgba(0,0,0,.55);pointer-events:all}
+.icrop-modal{
+  background:var(--card);border-radius:20px;
+  width:min(360px, calc(100vw - 40px));
+  padding:18px 18px calc(18px + var(--safe-bottom));
+  transform:scale(.92);opacity:0;transition:transform .25s cubic-bezier(.32,.72,0,1),opacity .2s;
+  box-shadow:0 20px 60px rgba(0,0,0,.3);
+}
+.icrop-overlay.on .icrop-modal{transform:scale(1);opacity:1}
+.icrop-ttl{font-size:16px;font-weight:700;text-align:center;margin-bottom:4px}
+.icrop-sub{font-size:12px;color:var(--lbl2);text-align:center;margin-bottom:14px}
+.icrop-viewport{
+  position:relative;width:240px;height:240px;margin:0 auto 16px;
+  border-radius:22px;overflow:hidden;background:#000;
+  touch-action:none;cursor:grab;
+  box-shadow:0 0 0 3px var(--card),0 0 0 4px var(--blue-bd);
+}
+.icrop-viewport:active{cursor:grabbing}
+.icrop-viewport img{
+  position:absolute;left:0;top:0;
+  transform-origin:0 0;
+  will-change:transform;
+  user-select:none;-webkit-user-drag:none;pointer-events:none;
+  max-width:none;
+}
+.icrop-zoom-row{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.icrop-zoom-row svg{flex-shrink:0;color:var(--lbl3)}
+.icrop-zoom-row input[type=range]{
+  flex:1;-webkit-appearance:none;appearance:none;height:4px;border-radius:3px;
+  background:var(--fill);outline:none;
+}
+.icrop-zoom-row input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:20px;height:20px;border-radius:50%;
+  background:var(--blue);cursor:pointer;box-shadow:0 1px 4px rgba(37,99,235,.4);
+}
+.icrop-actions{display:flex;gap:10px}
+.icrop-btn{
+  flex:1;border:none;border-radius:12px;padding:12px;min-height:46px;
+  font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;
+}
+.icrop-btn-cancel{background:var(--fill);color:var(--lbl)}
+.icrop-btn-ok{background:var(--blue);color:#fff;box-shadow:0 2px 10px rgba(37,99,235,.3)}
+
 /* ══ Touch: remove 300ms tap delay on all interactive elements ══ */
 button,a,input,[role="button"]{touch-action:manipulation}
 
@@ -1162,23 +1211,6 @@ button,a,input,[role="button"]{touch-action:manipulation}
 }
 .dense-close-btn:active{opacity:.7}
 
-/* Tag filter bar */
-.tag-filter-bar{
-  display:flex;gap:6px;overflow-x:auto;padding:0 0 8px;
-  scrollbar-width:none;-webkit-overflow-scrolling:touch;flex-shrink:0
-}
-.tag-filter-bar::-webkit-scrollbar{display:none}
-.tag-filter-btn{
-  display:flex;align-items:center;gap:5px;
-  border:1.5px solid var(--sep);border-radius:100px;
-  padding:5px 12px;font-size:12px;font-weight:600;
-  background:var(--card);color:var(--lbl2);cursor:pointer;
-  white-space:nowrap;transition:all .15s;flex-shrink:0
-}
-.tag-filter-btn.on{color:#fff;border-color:transparent}
-.tag-filter-btn-all{background:var(--fill)}
-.tag-filter-btn-all.on{background:var(--blue);color:#fff;border-color:transparent}
-
 /* Tag manager sheet */
 .tag-mgr-sheet{
   position:fixed;bottom:0;left:0;right:0;z-index:110;
@@ -1621,7 +1653,6 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .chat-del{min-width:44px;min-height:44px}
 .tag-list-del{min-width:44px;min-height:44px}
 .tag-add-btn{min-height:44px;padding:11px 18px}
-.tag-filter-btn{min-height:40px;padding:7px 14px}
 .cal-nav-btn{width:44px;height:44px;border-radius:12px}
 .dense-shift-btn{min-height:44px;padding:8px 13px}
 .search-clear{width:32px;height:32px}
@@ -1631,8 +1662,6 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .card{-webkit-user-select:none;user-select:none}
 .btn-start:active{transform:scale(.96)}
 .btn-snooze:active{transform:scale(.96)}
-.tag-filter-btn{transition:all .12s}
-.tag-filter-btn:active{transform:scale(.94);opacity:.75}
 .cal-toggle:active{transform:scale(.99)}
 .tag-prog-header:active{transform:scale(.99)}
 .snooze-opt:active{transform:scale(.98)}
@@ -1687,6 +1716,9 @@ button,a,input,[role="button"]{touch-action:manipulation}
           <div class="nav-title" id="nav-title">今日のタスク</div>
         </div>
         <div style="display:flex;align-items:center;gap:10px">
+          <button onclick="openNewStudySheet()" aria-label="勉強時間を記録" id="study-quick-btn" style="background:var(--blue-bg);border:none;cursor:pointer;width:30px;height:30px;border-radius:50%;color:var(--blue);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+          </button>
           <div class="nav-date" id="nav-date"></div>
           <button onclick="openBackupSheet()" aria-label="バックアップ" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--lbl3);display:flex;align-items:center;border-radius:8px;transition:color .12s" id="backup-btn">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -1807,8 +1839,8 @@ button,a,input,[role="button"]{touch-action:manipulation}
    B5 fix: define proper large/small variants, no string.replace() hacks
 ══════════════════════════════════════════ */
 /* ══ App version ════════════════════════ */
-const APP_VERSION = 'v2.1.0';
-const APP_BUILD   = '2026-06-28';
+const APP_VERSION = 'v2.2.0';
+const APP_BUILD   = '2026-06-30';
 
 const IC = {
   check:      `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
@@ -1844,6 +1876,32 @@ const IC = {
 const STEPS = ['1回目','2回目','3回目','4回目','5回目','6回目','7回目','8回目'];
 const INTS  = [1,3,7,13,25,40,40,40];
 const MAX_STEP = STEPS.length; // 8
+
+/* ══ Developer settings: custom review intervals (global / per-tag) ══
+   新規作成される単元にのみ適用され、既存の単元には遡及適用しない。 */
+const DEV_SETTINGS_KEY = 'fukushu_dev_settings_v1';
+let DEV_SETTINGS = (() => {
+  try {
+    const s = JSON.parse(localStorage.getItem(DEV_SETTINGS_KEY));
+    if(s && typeof s === 'object'){
+      return { global: Array.isArray(s.global) && s.global.length===MAX_STEP ? s.global : null,
+               byTag: (s.byTag && typeof s.byTag === 'object') ? s.byTag : {} };
+    }
+  } catch(_){}
+  return { global: null, byTag: {} };
+})();
+function saveDevSettings(){ try{ localStorage.setItem(DEV_SETTINGS_KEY, JSON.stringify(DEV_SETTINGS)); }catch(_){} }
+// 単元作成時点のタグから有効な復習間隔を解決する（タグ指定 > 全体指定 > デフォルト）
+function resolveIntervals(tagIds){
+  if(Array.isArray(tagIds)){
+    for(const tid of tagIds){
+      const ov = DEV_SETTINGS.byTag && DEV_SETTINGS.byTag[tid];
+      if(Array.isArray(ov) && ov.length===MAX_STEP) return ov.slice();
+    }
+  }
+  if(Array.isArray(DEV_SETTINGS.global) && DEV_SETTINGS.global.length===MAX_STEP) return DEV_SETTINGS.global.slice();
+  return INTS.slice();
+}
 const KEY   = 'fukushu-v6';
 const STUDY_KEY = 'fukushu-study-v1';
 const ICON_KEY  = 'fukushu-icon-v1';
@@ -1975,6 +2033,126 @@ let _catEditingId = null; // id of category whose color picker is open
 function openCatColorEdit(id){
   _catEditingId = _catEditingId===id ? null : id;
   renderTagMgr();
+}
+
+/* ══ Developer: review interval settings sheet ══ */
+let _intervalTarget = 'global'; // 'global' or a tag id
+
+function openIntervalSettings(){
+  _intervalTarget = 'global';
+  renderIntervalSettings();
+  document.getElementById('interval-overlay').classList.add('on');
+  document.getElementById('interval-settings-sheet').classList.add('on');
+  setFabHidden(true);
+  haptic();
+}
+function closeIntervalSettings(){
+  document.getElementById('interval-overlay').classList.remove('on');
+  document.getElementById('interval-settings-sheet').classList.remove('on');
+  setFabHidden(false);
+}
+function selectIntervalTarget(target){
+  _intervalTarget = target;
+  renderIntervalSettings();
+  haptic();
+}
+function renderIntervalSettings(){
+  const wrap = document.getElementById('interval-settings-wrap');
+  if(!wrap) return;
+  const isTag = _intervalTarget !== 'global';
+  const current = isTag ? DEV_SETTINGS.byTag[_intervalTarget] : DEV_SETTINGS.global;
+  const useCustom = Array.isArray(current) && current.length===MAX_STEP;
+  const vals = useCustom ? current : INTS;
+
+  const targetChips = `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+    <button onclick="selectIntervalTarget('global')" style="padding:7px 14px;border-radius:100px;border:1.5px solid ${!isTag?'var(--blue)':'var(--sep)'};background:${!isTag?'var(--blue-bg)':'transparent'};color:${!isTag?'var(--blue)':'var(--lbl2)'};font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">全体（デフォルト）</button>
+    ${TAGS.map(t=>{
+      const on = _intervalTarget===t.id;
+      const hasOv = Array.isArray(DEV_SETTINGS.byTag[t.id]);
+      return `<button onclick="selectIntervalTarget('${t.id}')" style="padding:7px 14px;border-radius:100px;border:1.5px solid ${on?t.color:'var(--sep)'};background:${on?t.color+'22':'transparent'};color:${on?t.color:'var(--lbl2)'};font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">${esc(t.name)}${hasOv?' ●':''}</button>`;
+    }).join('')}
+  </div>`;
+
+  if(!TAGS.length && isTag){ _intervalTarget='global'; }
+
+  const toggleLabel = isTag ? `このタグだけ個別の復習間隔を使う` : `デフォルトの復習間隔を上書きする`;
+
+  const inputsHtml = `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0">
+    ${STEPS.map((s,i)=>`
+      <div>
+        <div style="font-size:11px;color:var(--lbl3);margin-bottom:4px;text-align:center">${s}</div>
+        <input type="number" min="0" max="999" inputmode="numeric" value="${vals[i]}" ${useCustom?'':'disabled'}
+          onchange="updateIntervalDraft(${i},this.value)"
+          style="width:100%;text-align:center;border:1.5px solid var(--sep);border-radius:10px;padding:8px 4px;font-size:14px;font-weight:700;font-family:inherit;color:var(--lbl);background:${useCustom?'#fff':'var(--fill)'}">
+      </div>`).join('')}
+  </div>`;
+
+  wrap.innerHTML = `
+    ${TAGS.length?targetChips:''}
+    <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--lbl2);cursor:pointer">
+      <input type="checkbox" ${useCustom?'checked':''} onchange="toggleIntervalCustom(this.checked)" style="width:18px;height:18px">
+      ${toggleLabel}
+    </label>
+    <div style="font-size:12px;color:var(--lbl3);margin-top:4px">数字は「復習日」からの経過日数です。例：1回目=1日後、2回目=3日後…</div>
+    ${inputsHtml}
+    <div style="font-size:11px;color:var(--lbl3);line-height:1.6;background:var(--fill);border-radius:10px;padding:10px 12px;margin-top:6px">⚠️ ここでの変更は、<strong>新しく追加する単元</strong>には自動的に適用されます。既存の単元に適用したい場合は、下の「既存の単元にも反映する」を使ってください。${isTag?'':'タグを複数付けた単元は、設定済みのタグのうち先に追加したタグの間隔が優先されます。'}</div>
+    ${useCustom?`
+    <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;font-weight:600;color:var(--lbl2);cursor:pointer;margin-top:14px;padding-top:14px;border-top:1px solid var(--sep)">
+      <input type="checkbox" id="interval-retro-chk" style="width:18px;height:18px;margin-top:1px">
+      <span>既存の単元にも反映する（さかのぼって適用）<br><span style="font-weight:400;color:var(--lbl3);font-size:11px">チェックを入れて「反映する」を押すと、${isTag?'このタグが付いた':'対象となる'}既存の単元の今後の復習日にも、この間隔が再計算されて適用されます。</span></span>
+    </label>
+    <button onclick="applyIntervalRetroactive()" style="width:100%;margin-top:10px;background:#F97316;color:#fff;border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 2px 10px rgba(249,115,22,.3)">実行する</button>
+    `:''}
+  `;
+}
+function applyIntervalRetroactive(){
+  const chk = document.getElementById('interval-retro-chk');
+  if(!chk || !chk.checked){ toast(IC.alert, '上のチェックボックスをオンにしてください'); return; }
+  const isTag = _intervalTarget !== 'global';
+  const newInts = isTag ? DEV_SETTINGS.byTag[_intervalTarget] : DEV_SETTINGS.global;
+  if(!Array.isArray(newInts) || newInts.length!==MAX_STEP){ toast(IC.alert,'先に間隔を設定してください'); return; }
+  const targetsDesc = isTag ? `「${getTag(_intervalTarget)?.name||''}」タグが付いた単元` : '対象の単元';
+  if(!confirm(`${targetsDesc}の今後の復習日を、新しい間隔で再計算します。よろしいですか？`)) return;
+  let count=0;
+  U.forEach(u=>{
+    if(u.done) return;
+    if(isTag){
+      if(!(u.tags||[]).includes(_intervalTarget)) return;
+    } else {
+      // 全体設定の場合、個別のタグ設定を持つ単元は対象外（タグ設定が優先されるため）
+      const hasTagOverride = (u.tags||[]).some(tid => Array.isArray(DEV_SETTINGS.byTag[tid]));
+      if(hasTagOverride) return;
+    }
+    const oldInts = u.ints || INTS;
+    const delta = newInts[u.step] - oldInts[u.step];
+    u.ints = newInts.slice();
+    u.nextDate = addD(u.nextDate, delta);
+    count++;
+  });
+  save();
+  adjDismissed=false;
+  try { localStorage.removeItem(ADJ_DISMISSED_KEY); } catch(_){}
+  render();
+  toast(IC.checkCircle, `${count}件の単元に反映しました`);
+  chk.checked=false;
+}
+function toggleIntervalCustom(on){
+  if(_intervalTarget==='global'){
+    DEV_SETTINGS.global = on ? INTS.slice() : null;
+  } else {
+    if(on) DEV_SETTINGS.byTag[_intervalTarget] = INTS.slice();
+    else delete DEV_SETTINGS.byTag[_intervalTarget];
+  }
+  saveDevSettings();
+  renderIntervalSettings();
+}
+function updateIntervalDraft(idx, val){
+  let n = parseInt(val,10); if(isNaN(n)||n<0) n=0; if(n>999) n=999;
+  const arr = _intervalTarget==='global' ? DEV_SETTINGS.global : DEV_SETTINGS.byTag[_intervalTarget];
+  if(!arr) return;
+  arr[idx]=n;
+  saveDevSettings();
+  renderIntervalSettings();
 }
 
 function openTagMgr(){
@@ -2163,8 +2341,6 @@ function deleteTag(id){
   TAGS=TAGS.filter(t=>t.id!==id);
   // Remove tag from all units
   U.forEach(u=>{ if(u.tags) u.tags=u.tags.filter(tid=>tid!==id); });
-  if(activeTagFilter===id) activeTagFilter=null; // reset stale filter
-  if(activeTagFilterUp===id) activeTagFilterUp=null;
   save(); saveTags(); _tagsMutated=true;
   renderTagMgr();
   renderSheetTagSel();
@@ -2235,10 +2411,6 @@ function toggleEditTag(id){
   renderEditTagSel();
   haptic();
 }
-
-/* Tag filter state — today と upcoming で独立管理 */
-let activeTagFilter     = null; // 今日タブ用
-let activeTagFilterUp   = null; // 予定タブ用
 
 // 旧バージョンからのデータ移行（v4→v6, v5→v6）
 (()=>{ try {
@@ -2386,7 +2558,7 @@ function selectDateSeg(btn){
 
 function updateSheetInfo(){
   if(!document.getElementById('sheet').classList.contains('on')) return;
-  const date=getSheetDate(), first=addD(date,INTS[0]);
+  const date=getSheetDate(), ints=resolveIntervals(_sheetTags), first=addD(date,ints[0]);
   document.getElementById('sheet-info').innerHTML=
     `<div class="sheet-info-row">${IC.calendar} 学習日：${fmtFull(date)}</div>
      <div class="sheet-info-row">${IC.clock} 1回目の復習：${fmtShortText(first)}</div>`;
@@ -2411,10 +2583,12 @@ function addUnit(){
     haptic('medium'); inp.focus(); return;
   }
   const learnDate=getSheetDate();
+  // 単元作成時点のタグから復習間隔を解決し、以後この単元はこの間隔を使い続ける（設定変更を遡及適用しない）
+  const ints=resolveIntervals(_sheetTags);
   // 1回目の復習は学習日の翌日。安全策：nextDate が learnDate 以前にはならないことを保証
-  const rawNext=addD(learnDate,INTS[0]);
+  const rawNext=addD(learnDate,ints[0]);
   const firstNext=rawNext>learnDate?rawNext:addD(learnDate,1);
-  U.unshift({id:Date.now().toString(),name,addedDate:learnDate,step:0,nextDate:firstNext,done:false,isNew:true,tags:[..._sheetTags]});
+  U.unshift({id:Date.now().toString(),name,addedDate:learnDate,step:0,nextDate:firstNext,done:false,isNew:true,tags:[..._sheetTags],ints});
   _sheetTags=[]; save(); inp.value=''; closeSheet();
   adjDismissed=false;
   try { localStorage.removeItem(ADJ_DISMISSED_KEY); } catch(_){}
@@ -2449,7 +2623,7 @@ function complete(id){
     setTimeout(()=>celebrate(u.name), 320);
     toast(IC.checkCircle, esc(u.name)+'の全復習が完了！');
   } else {
-    u.nextDate=addD(td(),INTS[u.step]);
+    u.nextDate=addD(td(),(u.ints||INTS)[u.step]);
     u.lastDoneDate = td(); // track that a step was done today
     bumpStreak();
     save();
@@ -3257,7 +3431,7 @@ function _studyLogRowHtml(l){
     : `<span>📚</span>`;
   return `<div class="chat-msg" id="sl-${l.id}">
     <div class="chat-avatar">${avatarHtml}</div>
-    <div class="chat-bubble">
+    <div class="chat-bubble" onclick="openEditStudyLog('${l.id}')" style="cursor:pointer">
       <div class="chat-bubble-title">${esc(titleDisp)}</div>
       <div class="chat-bubble-meta">
         <span style="font-family:'Outfit',sans-serif;font-weight:800;font-size:13px;color:#7C3AED">⏱ ${fmtMinutes(l.minutes)}</span>
@@ -3265,8 +3439,47 @@ function _studyLogRowHtml(l){
       </div>
       ${tagChips ? `<div class="chat-bubble-tags">${tagChips}</div>` : ''}
     </div>
+    <button class="chat-del" onclick="openEditStudyLog('${l.id}')" aria-label="編集" style="color:var(--lbl3)">${IC.pencil}</button>
     <button class="chat-del" onclick="delStudyLogAndRefresh('${l.id}')" aria-label="削除">${IC.trash}</button>
   </div>`;
+}
+
+let _editLogId = null;
+function openEditStudyLog(id){
+  const l = STUDY_LOGS.find(x=>x.id===id); if(!l) return;
+  _editLogId = id;
+  document.getElementById('edit-log-minutes').value = l.minutes;
+  document.getElementById('edit-log-note').value = l.note || '';
+  document.getElementById('edit-log-overlay').classList.add('on');
+  document.getElementById('edit-log-sheet').classList.add('on');
+  haptic();
+}
+function closeEditStudyLog(){
+  document.getElementById('edit-log-overlay').classList.remove('on');
+  document.getElementById('edit-log-sheet').classList.remove('on');
+  document.getElementById('edit-log-minutes').blur();
+  document.getElementById('edit-log-note').blur();
+  _editLogId = null;
+}
+function saveEditStudyLog(){
+  if(!_editLogId) return;
+  const l = STUDY_LOGS.find(x=>x.id===_editLogId); if(!l) return;
+  const minInp = document.getElementById('edit-log-minutes');
+  let minutes = parseInt(minInp.value) || 0;
+  if(minutes<=0){
+    minInp.classList.add('shake');
+    setTimeout(()=>minInp.classList.remove('shake'),350);
+    haptic('warn');
+    return;
+  }
+  minutes = Math.min(999, minutes);
+  l.minutes = minutes;
+  l.note = document.getElementById('edit-log-note').value.trim().slice(0,60);
+  saveStudyLogs();
+  closeEditStudyLog();
+  rStudy();
+  haptic('medium');
+  toast(IC.checkCircle, '記録を更新しました');
 }
 
 function delStudyLogAndRefresh(id){
@@ -3575,12 +3788,19 @@ function closeStudySheet(){
 function _renderStudySheet(){
   const sh=document.getElementById('study-sheet'); if(!sh) return;
   const u=_timerUnitId?U.find(x=>x.id===_timerUnitId):null;
-  const tagSelHtml=TAGS.length?`<div style="margin-bottom:14px">
+  const tagSelHtml = _studySheetMode==='review'
+    ? (_studySheetTags.length ? `<div style="margin-bottom:14px">
+        <div style="font-size:13px;font-weight:600;color:var(--lbl2);margin-bottom:8px">タグ</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">${_studySheetTags.map(id=>{
+          const t=TAGS.find(x=>x.id===id); if(!t) return '';
+          return `<span class="tag-sel-btn on" style="background:${t.color};border-color:${t.color};cursor:default"><span class="tag-dot" style="background:#fff"></span>${esc(t.name)}</span>`;
+        }).join('')}</div></div>` : '')
+    : (TAGS.length?`<div style="margin-bottom:14px">
     <div style="font-size:13px;font-weight:600;color:var(--lbl2);margin-bottom:8px">タグ</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">${TAGS.map(t=>{
       const on=_studySheetTags.includes(t.id);
       return `<button class="tag-sel-btn${on?' on':''}" style="${on?`background:${t.color};border-color:${t.color}`:''}" onclick="toggleStudyTag('${t.id}')"><span class="tag-dot" style="background:${on?'#fff':t.color}"></span>${esc(t.name)}</button>`;
-    }).join('')}</div></div>`:'';
+    }).join('')}</div></div>`:'');
 
   sh.querySelector('.sheet-body').innerHTML=`
     <div class="sheet-ttl">${_studySheetMode==='review'&&u?'復習時間を記録':'勉強時間を記録'}</div>
@@ -3599,7 +3819,7 @@ function _renderStudySheet(){
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
         計測開始
       </button>
-      <button onclick="clearStudyTimer()" style="background:var(--fill);color:var(--lbl2);border:none;border-radius:12px;padding:14px 16px;font-size:14px;font-weight:500;font-family:inherit;cursor:pointer">リセット</button>
+      ${_studySheetMode==='new'?`<button onclick="clearStudyTimer()" style="background:var(--fill);color:var(--lbl2);border:none;border-radius:12px;padding:14px 16px;font-size:14px;font-weight:500;font-family:inherit;cursor:pointer">リセット</button>`:''}
     </div>
     <div style="text-align:center;color:var(--lbl3);font-size:12px;margin-bottom:10px">— または手動で入力 —</div>
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
@@ -4070,9 +4290,8 @@ function calJumpToDate(dateStr){
   if(sub)  sub.textContent = 'タップして展開';
   haptic();
 
-  // 2. タグフィルター・検索クリア（対象カードがDOMに存在するよう保証）
-  const needRebuild = activeTagFilterUp !== null || searchQ !== '';
-  if(activeTagFilterUp !== null) activeTagFilterUp = null;
+  // 2. 検索クリア（対象カードがDOMに存在するよう保証）
+  const needRebuild = searchQ !== '';
   if(searchQ !== '') searchQ = '';
   if(needRebuild) render();
 
@@ -4114,8 +4333,9 @@ function futureSchedule(u){
   // For subsequent steps, base each one off today (as complete() does), not
   // off nextDate, so a 1-day spread shift doesn't cascade into all future steps.
   let baseDate = today;
+  const ints = u.ints || INTS;
   for(let s = u.step + 1; s < MAX_STEP; s++){
-    baseDate = addD(baseDate, INTS[s]);
+    baseDate = addD(baseDate, ints[s]);
     result.push({ stepIdx: s, date: baseDate, daysFromNow: diff(baseDate) });
   }
   return result;
@@ -4210,24 +4430,6 @@ function cHtmlUpcoming(u){
     </div>
   </div>`;
 }
-function setTodayTagFilter(id){
-  activeTagFilter=id;
-  const t=td();
-  const active=U.filter(u=>!u.done).sort((a,b)=>a.nextDate.localeCompare(b.nextDate));
-  const todayL=active.filter(u=>u.nextDate<=t);
-  const doneL=U.filter(u=>u.done).sort((a,b)=>(b.completedAt||0)-(a.completedAt||0));
-  rToday(todayL, active.length>0, doneL);
-  document.querySelectorAll('#p-today .cw[data-id]').forEach(w=>initSwipe(w));
-  haptic();
-}
-
-function setTagFilter(id){
-  activeTagFilterUp=id;
-  const upL=U.filter(u=>!u.done&&u.nextDate>td()).sort((a,b)=>a.nextDate.localeCompare(b.nextDate));
-  rUpcoming(upL);
-  haptic();
-}
-
 function bindSearch(el){
   const inp=el.querySelector('#search-inp'); if(!inp) return;
   if(searchQ && document.activeElement !== document.body){
@@ -4295,15 +4497,15 @@ function switchTab(btn){
   const backupBtn = document.getElementById('backup-btn');
   if(tagBtn)    tagBtn.style.display    = id === 'settings' ? 'none' : '';
   if(backupBtn) backupBtn.style.display = id === 'settings' ? 'none' : '';
+  const studyQuickBtn = document.getElementById('study-quick-btn');
+  if(studyQuickBtn) studyQuickBtn.style.display = id === 'today' ? '' : 'none';
   currentTabIdx=newIdx;
 
   // Hide FAB on settings tab
   setFabHidden(id === 'settings' || id === 'study');
 
-  // Clear tag filter and search only when leaving the relevant tab
+  // Clear search only when leaving the relevant tab
   let needRender = false;
-  if(prevTab === 'today'    && activeTagFilter   !== null){ activeTagFilter   = null; needRender = true; }
-  if(prevTab === 'upcoming' && activeTagFilterUp !== null){ activeTagFilterUp = null; needRender = true; }
   if(prevTab === 'upcoming' && searchQ){ searchQ = ''; needRender = true; }
   if(id === 'study'){
     rStudy();
@@ -4661,10 +4863,11 @@ function handleImportFile(e){
         const step  = Math.max(0, Math.min(MAX_STEP, parseInt(u.step)  || 0));
         const done  = Boolean(u.done);
         const tags  = Array.isArray(u.tags) ? u.tags.filter(t => typeof t === 'string') : [];
+        const ints  = (Array.isArray(u.ints) && u.ints.length===MAX_STEP && u.ints.every(n=>typeof n==='number' && n>=0)) ? u.ints : null;
         return { id, name, addedDate, nextDate, step, done,
                  ...(done ? {completedAt: u.completedAt || Date.now()} : {}),
                  ...(u.lastDoneDate && DATE_RE.test(u.lastDoneDate) ? {lastDoneDate: u.lastDoneDate} : {}),
-                 tags };
+                 tags, ...(ints ? {ints} : {}) };
       });
       // Validate studyLogs
       if(Array.isArray(data.studyLogs)){
@@ -4925,6 +5128,18 @@ function renderSettings(){
       </div>
     </div>
 
+    <div class="sec">開発者向け</div>
+    <div class="settings-section" style="margin-bottom:12px">
+      <div class="settings-row" onclick="openIntervalSettings()" style="cursor:pointer">
+        <div class="settings-row-icon" style="background:#FEF3C7">🛠️</div>
+        <div class="settings-row-body">
+          <div class="settings-row-title">復習間隔の詳細設定</div>
+          <div class="settings-row-sub">全体・タグごとに復習間隔を変更（既存の単元には影響しません）</div>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--lbl3)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>
+
     <div class="sec">アプリについて</div>
     <div class="settings-section">
       <div class="settings-row">
@@ -4949,15 +5164,211 @@ function renderSettings(){
 
 function handleIconFile(e){
   const file=e.target.files[0]; if(!file) return;
-  if(file.size>2*1024*1024){ toast(IC.alert,'画像は2MB以内にしてください'); return; }
+  if(file.size>8*1024*1024){ toast(IC.alert,'画像は8MB以内にしてください'); return; }
   const reader=new FileReader();
   reader.onload=ev=>{
-    saveAppIcon(ev.target.result);
-    renderSettings();
-    toast(IC.checkCircle,'アイコンを設定しました');
-    haptic('medium');
+    openIconCrop(ev.target.result);
   };
   reader.readAsDataURL(file);
+  e.target.value=''; // 同じファイルを再選択できるようにリセット
+}
+
+/* ══ Icon crop ═════════════════════════
+   画像をアップロード後、ズーム・ドラッグで好きな部分を正方形アイコンに切り抜く */
+const ICROP_OUT = 512;     // 出力画像サイズ(px)
+const ICROP_VP  = 240;     // ビューポート表示サイズ(px, CSSと一致させる)
+let _icrop = null;         // {natW,natH,baseScale,minScale,maxScale,scale,x,y}
+
+function openIconCrop(dataUrl){
+  const overlay = document.getElementById('icrop-overlay');
+  const imgEl   = document.getElementById('icrop-img');
+  const zoomEl  = document.getElementById('icrop-zoom');
+
+  imgEl.onload = ()=>{
+    const natW = imgEl.naturalWidth, natH = imgEl.naturalHeight;
+    // 画像の短辺がビューポートを覆うベーススケール
+    const baseScale = ICROP_VP / Math.min(natW, natH);
+    _icrop = {
+      natW, natH,
+      baseScale,
+      minScale: baseScale,
+      maxScale: baseScale * 4,
+      scale: baseScale,
+      x: (ICROP_VP - natW*baseScale)/2,
+      y: (ICROP_VP - natH*baseScale)/2
+    };
+    zoomEl.value = 0;
+    _icropApply();
+    overlay.classList.add('on');
+    _icropBindEvents();
+  };
+  imgEl.src = dataUrl;
+}
+
+function closeIconCrop(){
+  document.getElementById('icrop-overlay').classList.remove('on');
+  _icropUnbindEvents();
+  _icrop = null;
+}
+
+function _icropClamp(){
+  if(!_icrop) return;
+  const c = _icrop;
+  c.scale = Math.min(c.maxScale, Math.max(c.minScale, c.scale));
+  const w = c.natW*c.scale, h = c.natH*c.scale;
+  // ビューポートが常に画像で覆われるよう、はみ出し過ぎないように制限
+  const minX = ICROP_VP - w, maxX = 0;
+  const minY = ICROP_VP - h, maxY = 0;
+  c.x = Math.min(maxX, Math.max(minX, c.x));
+  c.y = Math.min(maxY, Math.max(minY, c.y));
+}
+
+function _icropApply(){
+  if(!_icrop) return;
+  _icropClamp();
+  const imgEl = document.getElementById('icrop-img');
+  imgEl.style.transform = `translate(${_icrop.x}px,${_icrop.y}px) scale(${_icrop.scale})`;
+  imgEl.style.width  = _icrop.natW + 'px';
+  imgEl.style.height = _icrop.natH + 'px';
+}
+
+function icropOnZoom(val){
+  if(!_icrop) return;
+  const t = val/100; // 0..1
+  const prevScale = _icrop.scale;
+  const newScale = _icrop.minScale + (_icrop.maxScale - _icrop.minScale)*t;
+  // ビューポート中心を基準に拡大縮小する
+  const cx = ICROP_VP/2, cy = ICROP_VP/2;
+  const ratio = newScale/prevScale;
+  _icrop.x = cx - (cx - _icrop.x)*ratio;
+  _icrop.y = cy - (cy - _icrop.y)*ratio;
+  _icrop.scale = newScale;
+  _icropApply();
+}
+
+function _icropSyncSlider(){
+  if(!_icrop) return;
+  const zoomEl = document.getElementById('icrop-zoom');
+  const t = (_icrop.scale - _icrop.minScale) / (_icrop.maxScale - _icrop.minScale || 1);
+  zoomEl.value = Math.round(t*100);
+}
+
+/* ── ドラッグ & ピンチ操作 ── */
+let _icropDrag = null; // {startX,startY,origX,origY} (single) or pinch state
+function _icropBindEvents(){
+  const vp = document.getElementById('icrop-viewport');
+  vp.addEventListener('pointerdown', _icropPointerDown);
+  window.addEventListener('pointermove', _icropPointerMove);
+  window.addEventListener('pointerup', _icropPointerUp);
+  vp.addEventListener('wheel', _icropWheel, {passive:false});
+  vp.addEventListener('touchstart', _icropTouchStart, {passive:false});
+  vp.addEventListener('touchmove', _icropTouchMove, {passive:false});
+  vp.addEventListener('touchend', _icropTouchEnd);
+}
+function _icropUnbindEvents(){
+  const vp = document.getElementById('icrop-viewport');
+  vp.removeEventListener('pointerdown', _icropPointerDown);
+  window.removeEventListener('pointermove', _icropPointerMove);
+  window.removeEventListener('pointerup', _icropPointerUp);
+  vp.removeEventListener('wheel', _icropWheel);
+  vp.removeEventListener('touchstart', _icropTouchStart);
+  vp.removeEventListener('touchmove', _icropTouchMove);
+  vp.removeEventListener('touchend', _icropTouchEnd);
+}
+function _icropPointerDown(e){
+  if(!_icrop) return;
+  if(e.pointerType==='touch') return; // タッチはtouch系イベントで処理（ピンチ対応のため）
+  _icropDrag = {startX:e.clientX, startY:e.clientY, origX:_icrop.x, origY:_icrop.y};
+}
+function _icropPointerMove(e){
+  if(!_icropDrag || !_icrop) return;
+  _icrop.x = _icropDrag.origX + (e.clientX - _icropDrag.startX);
+  _icrop.y = _icropDrag.origY + (e.clientY - _icropDrag.startY);
+  _icropApply();
+}
+function _icropPointerUp(){ _icropDrag = null; }
+function _icropWheel(e){
+  if(!_icrop) return;
+  e.preventDefault();
+  const delta = -e.deltaY * 0.0015;
+  const prevScale = _icrop.scale;
+  const newScale = Math.min(_icrop.maxScale, Math.max(_icrop.minScale, prevScale*(1+delta)));
+  const rect = document.getElementById('icrop-viewport').getBoundingClientRect();
+  const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+  const ratio = newScale/prevScale;
+  _icrop.x = cx - (cx - _icrop.x)*ratio;
+  _icrop.y = cy - (cy - _icrop.y)*ratio;
+  _icrop.scale = newScale;
+  _icropApply();
+  _icropSyncSlider();
+}
+
+let _icropTouch = null; // {mode:'pan'|'pinch', ...}
+function _icropTouchStart(e){
+  if(!_icrop) return;
+  e.preventDefault();
+  if(e.touches.length===1){
+    const t=e.touches[0];
+    _icropTouch = {mode:'pan', startX:t.clientX, startY:t.clientY, origX:_icrop.x, origY:_icrop.y};
+  } else if(e.touches.length>=2){
+    const [t1,t2]=e.touches;
+    const dist = Math.hypot(t2.clientX-t1.clientX, t2.clientY-t1.clientY);
+    const rect = document.getElementById('icrop-viewport').getBoundingClientRect();
+    const midX = (t1.clientX+t2.clientX)/2 - rect.left;
+    const midY = (t1.clientY+t2.clientY)/2 - rect.top;
+    _icropTouch = {mode:'pinch', startDist:dist, startScale:_icrop.scale, midX, midY, origX:_icrop.x, origY:_icrop.y};
+  }
+}
+function _icropTouchMove(e){
+  if(!_icrop || !_icropTouch) return;
+  e.preventDefault();
+  if(_icropTouch.mode==='pan' && e.touches.length===1){
+    const t=e.touches[0];
+    _icrop.x = _icropTouch.origX + (t.clientX - _icropTouch.startX);
+    _icrop.y = _icropTouch.origY + (t.clientY - _icropTouch.startY);
+    _icropApply();
+  } else if(_icropTouch.mode==='pinch' && e.touches.length>=2){
+    const [t1,t2]=e.touches;
+    const dist = Math.hypot(t2.clientX-t1.clientX, t2.clientY-t1.clientY);
+    const ratio = dist / _icropTouch.startDist;
+    const newScale = Math.min(_icrop.maxScale, Math.max(_icrop.minScale, _icropTouch.startScale*ratio));
+    const scaleRatio = newScale / _icropTouch.startScale;
+    _icrop.x = _icropTouch.midX - (_icropTouch.midX - _icropTouch.origX)*scaleRatio;
+    _icrop.y = _icropTouch.midY - (_icropTouch.midY - _icropTouch.origY)*scaleRatio;
+    _icrop.scale = newScale;
+    _icropApply();
+    _icropSyncSlider();
+  }
+}
+function _icropTouchEnd(e){
+  if(e.touches.length===0) _icropTouch = null;
+  else if(e.touches.length===1){
+    const t=e.touches[0];
+    _icropTouch = {mode:'pan', startX:t.clientX, startY:t.clientY, origX:_icrop.x, origY:_icrop.y};
+  }
+}
+
+function confirmIconCrop(){
+  if(!_icrop) return;
+  const imgEl = document.getElementById('icrop-img');
+  const canvas = document.createElement('canvas');
+  canvas.width = ICROP_OUT; canvas.height = ICROP_OUT;
+  const ctx = canvas.getContext('2d');
+  // ビューポート座標(0..ICROP_VP) → 出力座標(0..ICROP_OUT) への倍率
+  const k = ICROP_OUT / ICROP_VP;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(
+    imgEl,
+    0,0,_icrop.natW,_icrop.natH,
+    _icrop.x*k, _icrop.y*k, _icrop.natW*_icrop.scale*k, _icrop.natH*_icrop.scale*k
+  );
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+  saveAppIcon(dataUrl);
+  renderSettings();
+  closeIconCrop();
+  toast(IC.checkCircle,'アイコンを設定しました');
+  haptic('medium');
 }
 
 /* ══ Init ══════════════════════════════ */
@@ -5079,6 +5490,17 @@ self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWi
   </div>
 </div>
 
+<!-- Interval (review schedule) developer settings sheet -->
+<div class="overlay" id="interval-overlay" onclick="closeIntervalSettings()" style="z-index:109"></div>
+<div class="tag-mgr-sheet" id="interval-settings-sheet">
+  <div class="sheet-pull"></div>
+  <div class="tag-mgr-body">
+    <div class="tag-mgr-ttl">復習間隔の詳細設定</div>
+    <div id="interval-settings-wrap"></div>
+    <button onclick="closeIntervalSettings()" style="width:100%;margin-top:16px;background:linear-gradient(145deg,#4F8EF7,#1D4ED8);color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 2px 10px rgba(37,99,235,.3)">閉じる</button>
+  </div>
+</div>
+
 <!-- Backup sheet -->
 <div class="overlay" id="backup-overlay" onclick="closeBackupSheet()" style="z-index:109"></div>
 <div class="backup-sheet" id="backup-sheet">
@@ -5127,10 +5549,44 @@ self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWi
 <!-- Icon file picker (hidden) -->
 <input type="file" id="icon-file-input" accept="image/*" style="display:none" onchange="handleIconFile(event)">
 
+<!-- Icon crop modal -->
+<div class="icrop-overlay" id="icrop-overlay">
+  <div class="icrop-modal">
+    <div class="icrop-ttl">アイコンを調整</div>
+    <div class="icrop-sub">ドラッグで位置を調整、スライダーでズーム</div>
+    <div class="icrop-viewport" id="icrop-viewport">
+      <img id="icrop-img" src="" alt="">
+    </div>
+    <div class="icrop-zoom-row">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+      <input type="range" id="icrop-zoom" min="0" max="100" value="0" oninput="icropOnZoom(this.value)">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+    </div>
+    <div class="icrop-actions">
+      <button class="icrop-btn icrop-btn-cancel" onclick="closeIconCrop()">キャンセル</button>
+      <button class="icrop-btn icrop-btn-ok" onclick="confirmIconCrop()">設定する</button>
+    </div>
+  </div>
+</div>
+
 <!-- Study sheet -->
 <div class="sheet" id="study-sheet">
   <div class="sheet-pull"></div>
   <div class="sheet-body"></div>
+</div>
+
+<!-- Study log edit sheet（メモ・時間のみ変更） -->
+<div class="overlay" id="edit-log-overlay" onclick="closeEditStudyLog()" style="z-index:109"></div>
+<div class="sheet" id="edit-log-sheet" style="z-index:110">
+  <div class="sheet-pull"></div>
+  <div class="sheet-body">
+    <div class="sheet-ttl">記録を編集</div>
+    <div class="date-label">勉強時間（分）</div>
+    <input class="sheet-inp" id="edit-log-minutes" type="number" inputmode="numeric" min="1" max="999" placeholder="例：30">
+    <div class="date-label" style="margin-top:2px">メモ</div>
+    <input class="sheet-inp" id="edit-log-note" type="text" placeholder="メモ（任意）" maxlength="60" autocomplete="off" autocorrect="off">
+    <button class="sheet-ok" onclick="saveEditStudyLog()">保存する</button>
+  </div>
 </div>
 
 <!-- Swipe-to-close for all bottom sheets (bound here so DOM is ready) -->
