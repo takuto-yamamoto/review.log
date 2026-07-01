@@ -1765,7 +1765,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
 </button>
 
 <!-- Overlay -->
-<div class="overlay" id="overlay" onclick="(document.getElementById('study-sheet').classList.contains('on')?closeStudySheet:closeSheet)()"></div>
+<div class="overlay" id="overlay" onclick="(document.getElementById('study-sheet').classList.contains('on')?requestCloseStudySheet:closeSheet)()"></div>
 
 <!-- Bottom sheet -->
 <div class="sheet" id="sheet">
@@ -3448,6 +3448,8 @@ let _editLogId = null;
 function openEditStudyLog(id){
   const l = STUDY_LOGS.find(x=>x.id===id); if(!l) return;
   _editLogId = id;
+  const unitName = l.unitId ? (U.find(u=>u.id===l.unitId)?.name||'') : '';
+  document.getElementById('edit-log-title').value = l.title || unitName || '';
   document.getElementById('edit-log-minutes').value = l.minutes;
   document.getElementById('edit-log-note').value = l.note || '';
   document.getElementById('edit-log-overlay').classList.add('on');
@@ -3457,6 +3459,7 @@ function openEditStudyLog(id){
 function closeEditStudyLog(){
   document.getElementById('edit-log-overlay').classList.remove('on');
   document.getElementById('edit-log-sheet').classList.remove('on');
+  document.getElementById('edit-log-title').blur();
   document.getElementById('edit-log-minutes').blur();
   document.getElementById('edit-log-note').blur();
   _editLogId = null;
@@ -3474,6 +3477,8 @@ function saveEditStudyLog(){
   }
   minutes = Math.min(999, minutes);
   l.minutes = minutes;
+  const title = document.getElementById('edit-log-title').value.trim().slice(0,40);
+  l.title = title || null;
   l.note = document.getElementById('edit-log-note').value.trim().slice(0,60);
   saveStudyLogs();
   closeEditStudyLog();
@@ -3785,6 +3790,17 @@ function closeStudySheet(){
   setFabHidden(false);
 }
 
+// オーバーレイタップ／スワイプ／キャンセルボタンなど、ユーザーが自分の意思で
+// シートを閉じようとした場合に限り、計測中・一時停止中の時間が
+// 気づかないうちに破棄されないよう確認する（保存後のclose呼び出しはこれを経由しない）
+function requestCloseStudySheet(){
+  const hasUnsavedTime = (_timerStart || _timerElapsed>0);
+  if(hasUnsavedTime){
+    if(!confirm('計測中の時間がまだ記録されていません。閉じると破棄されますが、よろしいですか？')) return;
+  }
+  closeStudySheet();
+}
+
 function _renderStudySheet(){
   const sh=document.getElementById('study-sheet'); if(!sh) return;
   const u=_timerUnitId?U.find(x=>x.id===_timerUnitId):null;
@@ -3836,7 +3852,7 @@ function _renderStudySheet(){
       <input type="date" id="study-date-custom-inp" max="${td()}" style="display:${_studySheetDate==='custom'?'block':'none'};margin-top:10px;width:100%;background:var(--fill);border:none;border-radius:12px;padding:12px 14px;font-family:inherit;font-size:16px;color:var(--lbl);outline:none;-webkit-appearance:none">
     </div>
     <div style="display:flex;gap:8px">
-      <button onclick="closeStudySheet()" style="background:var(--fill);color:var(--lbl2);border:none;border-radius:12px;padding:14px 18px;font-size:16px;font-weight:500;font-family:inherit;cursor:pointer">キャンセル</button>
+      <button onclick="requestCloseStudySheet()" style="background:var(--fill);color:var(--lbl2);border:none;border-radius:12px;padding:14px 18px;font-size:16px;font-weight:500;font-family:inherit;cursor:pointer">キャンセル</button>
       <button onclick="saveStudyRecord()" style="flex:1;background:linear-gradient(145deg,#4F8EF7,#1D4ED8);color:#fff;border:none;border-radius:12px;padding:14px;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 2px 10px rgba(37,99,235,.3)">記録する</button>
     </div>
   `;
@@ -3894,7 +3910,7 @@ function toggleStudyTimer(){
     _timerStart=null;
     _saveTimerState();
     // 手動入力欄に累積分数を反映
-    const elapsedMin=Math.round(_timerElapsed/60);
+    const elapsedMin=Math.ceil(_timerElapsed/60);
     const inp=document.getElementById('study-manual-inp');
     if(inp&&elapsedMin>0) inp.value=elapsedMin;
     // 表示は累積時間のまま維持
@@ -3965,7 +3981,7 @@ function saveStudyRecord(){
     // タイマーの累積秒数（一時停止中分 + 最後に動いていた分）を使う
     const currentSec=_timerStart ? Math.floor((Date.now()-_timerStart)/1000) : 0;
     const totalSec=_timerElapsed + currentSec;
-    if(totalSec>0) minutes=Math.max(1,Math.round(totalSec/60));
+    if(totalSec>0) minutes=Math.max(1,Math.ceil(totalSec/60));
     _timerStart=null;
     _timerElapsed=0;
     _saveTimerState();
@@ -4295,9 +4311,16 @@ function calJumpToDate(dateStr){
   if(searchQ !== '') searchQ = '';
   if(needRebuild) render();
 
-  // 3. 対象カードを探してスクロール（cal-wrap のmax-heightトランジション完了後に実行）
+  // 3. 期限切れのタスクは「今日のタスク」タブに表示されるため、そちらへ切り替える
+  //    （切り替えないと p-upcoming にはカードが存在せず、タイトルが表示できない）
+  const todayTabBtn = document.querySelector('.tab-btn[data-tab="today"]');
+  if(todayTabBtn && !todayTabBtn.classList.contains('on')){
+    switchTab(todayTabBtn);
+  }
+
+  // 4. 対象カードを探してスクロール（タブ切替・cal-wrap のトランジション完了後に実行）
   setTimeout(() => {
-    const panel = document.getElementById('p-upcoming');
+    const panel = document.getElementById('p-today');
     if(!panel) return;
     // 同日に複数ユニットある場合も全件ハイライトし、先頭へスクロール
     const targets = U.filter(u => !u.done && u.nextDate === dateStr);
@@ -5575,13 +5598,15 @@ self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWi
   <div class="sheet-body"></div>
 </div>
 
-<!-- Study log edit sheet（メモ・時間のみ変更） -->
+<!-- Study log edit sheet（タイトル・メモ・時間を変更） -->
 <div class="overlay" id="edit-log-overlay" onclick="closeEditStudyLog()" style="z-index:109"></div>
 <div class="sheet" id="edit-log-sheet" style="z-index:110">
   <div class="sheet-pull"></div>
   <div class="sheet-body">
     <div class="sheet-ttl">記録を編集</div>
-    <div class="date-label">勉強時間（分）</div>
+    <div class="date-label">内容</div>
+    <input class="sheet-inp" id="edit-log-title" type="text" placeholder="内容（例：英単語、数学B）" maxlength="40" autocomplete="off" autocorrect="off">
+    <div class="date-label" style="margin-top:2px">勉強時間（分）</div>
     <input class="sheet-inp" id="edit-log-minutes" type="number" inputmode="numeric" min="1" max="999" placeholder="例：30">
     <div class="date-label" style="margin-top:2px">メモ</div>
     <input class="sheet-inp" id="edit-log-note" type="text" placeholder="メモ（任意）" maxlength="60" autocomplete="off" autocorrect="off">
@@ -5598,7 +5623,14 @@ self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWi
   const studySheet = document.getElementById('study-sheet');
   if(studySheet){
     const p = studySheet.querySelector('.sheet-pull');
-    if(p) bindPullToClose(studySheet, p, closeStudySheet);
+    if(p) bindPullToClose(studySheet, p, requestCloseStudySheet);
+  }
+
+  // edit-log-sheet（勉強記録の編集）
+  const editLogSheet = document.getElementById('edit-log-sheet');
+  if(editLogSheet){
+    const p = editLogSheet.querySelector('.sheet-pull');
+    if(p) bindPullToClose(editLogSheet, p, closeEditStudyLog);
   }
 
   const editBox = document.querySelector('.edit-modal-box');
