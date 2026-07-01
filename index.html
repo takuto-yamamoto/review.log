@@ -626,6 +626,16 @@ button,a,input,[role="button"]{touch-action:manipulation}
 }
 .btn-edit:active{background:var(--fill);color:var(--blue)}
 
+.btn-del{
+  background:none;border:none;cursor:pointer;
+  padding:4px 6px;color:var(--lbl3);
+  display:flex;align-items:center;
+  border-radius:6px;transition:background .12s,color .12s;
+  flex-shrink:0;margin-top:1px;
+}
+.btn-del:active{background:#FFF1F0;color:var(--red)}
+
+
 /* Fix7: stronger visual for due/over states */
 .card.due .card-when{ color:var(--blue); }
 .card.over .card-when{ color:var(--red); }
@@ -4396,7 +4406,10 @@ function cHtml(u){
     <div class="card${over?' over':due?' due':''}" id="c-${u.id}">
       <div class="card-top">
         <div class="card-name">${esc(u.name)}</div>
-        <button class="btn-edit" onclick="openEdit('${u.id}')" aria-label="編集">${IC.pencil}</button>
+        <div style="display:flex;gap:2px;flex-shrink:0">
+          <button class="btn-edit" onclick="openEdit('${u.id}')" aria-label="編集">${IC.pencil}</button>
+          <button class="btn-del" onclick="del('${u.id}')" aria-label="削除">${IC.trash}</button>
+        </div>
       </div>
       ${(u.tags&&u.tags.length)?`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">${u.tags.map(tid=>tagHtml(tid)).join('')}</div>`:''}
       ${when}
@@ -4437,7 +4450,10 @@ function cHtmlUpcoming(u){
     <div class="card" id="c-${u.id}">
       <div class="card-top">
         <div class="card-name">${esc(u.name)}</div>
-        <button class="btn-edit" onclick="openEdit('${u.id}')" aria-label="編集">${IC.pencil}</button>
+        <div style="display:flex;gap:2px;flex-shrink:0">
+          <button class="btn-edit" onclick="openEdit('${u.id}')" aria-label="編集">${IC.pencil}</button>
+          <button class="btn-del" onclick="del('${u.id}')" aria-label="削除">${IC.trash}</button>
+        </div>
       </div>
       ${(u.tags&&u.tags.length)?`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">${u.tags.map(tid=>tagHtml(tid)).join('')}</div>`:''}
       <div class="card-when">${IC.calendar} ${fmtShort(u.nextDate)}<span style="color:var(--lbl3);font-size:12px;margin-left:2px">· ${d}日後</span></div>
