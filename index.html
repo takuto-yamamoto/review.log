@@ -3524,7 +3524,7 @@ function _studyWeekHtml(){
     const barH=maxM===0?0:(m===0?0:Math.max(Math.round(m/maxM*BAR_MAX_H),4));
     const dayLabel=DOW[date.getDay()];
     return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1">
-      <div style="font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;color:${m>0?'var(--blue)':'var(--lbl3)'};min-height:14px">${m>0?fmtMinutes(m):''}</div>
+      <div style="font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;line-height:1.25;color:${m>0?'var(--blue)':'var(--lbl3)'};min-height:26px;display:flex;align-items:flex-end;justify-content:center;text-align:center">${m>0?fmtMinutes(m):''}</div>
       <div style="width:100%;height:${BAR_MAX_H}px;display:flex;align-items:flex-end">
         <div style="width:100%;height:${barH}px;background:${isToday?'var(--blue)':'var(--blue-bg)'};border-radius:4px 4px 0 0;border:${isToday||m===0?'none':'1.5px solid var(--blue-bd)'};transition:height .3s"></div>
       </div>
@@ -3535,7 +3535,7 @@ function _studyWeekHtml(){
   const weekTotal = bars.reduce((s,b)=>s+b.m,0);
   return `<div class="settings-section" style="margin-bottom:10px;padding:16px 16px 12px">
     <div style="font-size:15px;font-weight:700;color:var(--lbl);margin-bottom:12px">今週の合計</div>
-    <div style="display:flex;gap:6px;align-items:flex-end;height:96px">${barHtml}</div>
+    <div style="display:flex;gap:6px;align-items:flex-end">${barHtml}</div>
   </div>`;
 }
 
