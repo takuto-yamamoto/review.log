@@ -504,6 +504,29 @@ button,a,input,[role="button"]{touch-action:manipulation}
 }
 .search-cnt{font-size:12px;color:var(--lbl2);padding:0 4px;margin-top:5px}
 
+/* ══ Tag filter bar (予定タブ) ══════════ */
+.tagf-wrap{
+  position:sticky;top:0;z-index:10;
+  padding:10px 0 8px;background:var(--bg)
+}
+.tagf-scroll{
+  display:flex;gap:6px;overflow-x:auto;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;
+  padding:1px 1px 3px;
+}
+.tagf-scroll::-webkit-scrollbar{display:none}
+.tagf-chip{
+  display:inline-flex;align-items:center;gap:5px;flex-shrink:0;
+  border:1.5px solid var(--sep);background:var(--card);
+  border-radius:100px;padding:6px 13px;font-family:inherit;
+  font-size:13px;font-weight:700;color:var(--lbl2);
+  cursor:pointer;white-space:nowrap;transition:background .12s,border-color .12s,color .12s;
+  -webkit-tap-highlight-color:transparent;
+}
+.tagf-chip:active{transform:scale(.96)}
+.tagf-chip.all.active{background:var(--blue);border-color:var(--blue);color:#fff}
+.tagf-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+
 /* ══ Overlay ═══════════════════════════ */
 .overlay{
   position:fixed;inset:0;z-index:100;
@@ -2524,6 +2547,7 @@ function getStreak(){
 const ADJ_DISMISSED_KEY = 'fukushu-adj-dismissed';
 let adjDismissed = (() => { try { return localStorage.getItem(ADJ_DISMISSED_KEY) === '1'; } catch { return false; } })();
 let searchQ = '';
+let filterTagId = null;
 
 /* ══ Sheet date state ══════════════════ */
 let _sheetDateMode = 'today';
@@ -3230,7 +3254,7 @@ function rToday(list, hasActive, allDone){
 function rUpcoming(list){
   const el=document.getElementById('p-upcoming');
   let adjHtml='';
-  if(!searchQ&&!adjDismissed){ const m=analyzeLoad(); if(m.length) adjHtml=adjBannerHtml(m); }
+  if(!filterTagId&&!adjDismissed){ const m=analyzeLoad(); if(m.length) adjHtml=adjBannerHtml(m); }
 
   // ── カレンダービュー ──
   _calInit();
@@ -3259,15 +3283,22 @@ function rUpcoming(list){
     <div id="cal-grid" class="cal-grid">${_buildCalGridHtml(_calYear, _calMonth)}</div>
   </div>`;
 
-  const barHtml=calHtml+`<div class="search-wrap">
-    <div class="search-box">
-      <span style="opacity:.4;display:flex;flex-shrink:0">${IC.search}</span>
-      <input class="search-inp" id="search-inp" type="search" placeholder="単元名で検索…"
-        value="${esc(searchQ)}" autocomplete="off" autocorrect="off" spellcheck="false">
-      ${searchQ?`<button class="search-clear" id="search-clear">✕</button>`:''}
+  const usedTagIds=new Set();
+  list.forEach(u=>(u.tags||[]).forEach(tid=>usedTagIds.add(tid)));
+  const availTags=TAGS.filter(t=>usedTagIds.has(t.id));
+
+  const tagFilterHtml = availTags.length ? `<div class="tagf-wrap">
+    <div class="tagf-scroll">
+      <button class="tagf-chip all${!filterTagId?' active':''}" onclick="setUpcomingTagFilter(null)">すべて</button>
+      ${availTags.map(t=>{
+        const isActive=filterTagId===t.id;
+        const st=isActive?`background:${t.color};border-color:${t.color};color:#fff`:'';
+        return `<button class="tagf-chip${isActive?' active':''}" style="${st}" onclick="setUpcomingTagFilter('${t.id}')"><span class="tagf-dot" style="background:${isActive?'#fff':t.color}"></span>${esc(t.name)}</button>`;
+      }).join('')}
     </div>
-    ${searchQ?`<div class="search-cnt" id="search-cnt"></div>`:''}
-  </div>`;
+  </div>` : '';
+
+  const barHtml=calHtml+tagFilterHtml;
 
   if(!list.length){
     el.innerHTML=barHtml+adjHtml+`<div class="empty">
@@ -3275,24 +3306,23 @@ function rUpcoming(list){
       <h3>予定中の復習はありません</h3>
       <p>＋ ボタンから新しい単元を<br>追加してみましょう</p>
     </div>`;
-    bindSearch(el); return;
+    return;
   }
 
-  const q=searchQ.trim().toLowerCase();
   let filtered=list;
-  if(q) filtered=filtered.filter(u=>u.name.toLowerCase().includes(q));
+  if(filterTagId) filtered=filtered.filter(u=>(u.tags||[]).includes(filterTagId));
   let cardsHtml='',lastG='',isFirst=true;
   if(filtered.length){
     filtered.forEach(u=>{
       const d=diff(u.nextDate);
       const g=d<=7?'今週':d<=14?'来週':'2週間以降';
-      // グループヘッダーは検索なしのときのみ表示
-      if(!q&&g!==lastG){ cardsHtml+=`<div class="sec${isFirst?' sec-first':''}">${g}</div>`; lastG=g; isFirst=false; }
+      if(g!==lastG){ cardsHtml+=`<div class="sec${isFirst?' sec-first':''}">${g}</div>`; lastG=g; isFirst=false; }
       cardsHtml+=cHtmlUpcoming(u);
     });
   } else {
-    const _emptyMsg = searchQ
-      ? `「${esc(searchQ)}」に一致する単元は<br>見つかりませんでした`
+    const _filterTag = filterTagId ? getTag(filterTagId) : null;
+    const _emptyMsg = _filterTag
+      ? `「${esc(_filterTag.name)}」のタグが付いた単元は<br>見つかりませんでした`
       : `該当する単元はありません`;
     cardsHtml=`<div class="empty" style="padding:28px 0">
       <div class="empty-icon">${IC.searchLg}</div>
@@ -3301,10 +3331,13 @@ function rUpcoming(list){
     </div>`;
   }
   el.innerHTML=barHtml+adjHtml+cardsHtml;
-  const cnt=el.querySelector('#search-cnt');
-  if(cnt && searchQ) cnt.textContent=`「${searchQ}」の検索結果：${filtered.length} 件`;
-  bindSearch(el);
   document.querySelectorAll('#p-upcoming .cw[data-id]').forEach(w=>initSwipeDeleteOnly(w));
+}
+
+function setUpcomingTagFilter(tagId){
+  filterTagId = tagId;
+  haptic();
+  render();
 }
 
 /* ── Done/Achievement panel ── */
@@ -4319,9 +4352,9 @@ function calJumpToDate(dateStr){
   if(sub)  sub.textContent = 'タップして展開';
   haptic();
 
-  // 2. 検索クリア（対象カードがDOMに存在するよう保証）
-  const needRebuild = searchQ !== '';
-  if(searchQ !== '') searchQ = '';
+  // 2. タグ絞り込みクリア（対象カードがDOMに存在するよう保証）
+  const needRebuild = filterTagId !== null;
+  if(filterTagId !== null) filterTagId = null;
   if(needRebuild) render();
 
   // 3. 期限切れのタスクは「今日のタスク」タブに表示されるため、そちらへ切り替える
@@ -4548,7 +4581,7 @@ function switchTab(btn){
 
   // Clear search only when leaving the relevant tab
   let needRender = false;
-  if(prevTab === 'upcoming' && searchQ){ searchQ = ''; needRender = true; }
+  if(prevTab === 'upcoming' && filterTagId){ filterTagId = null; needRender = true; }
   if(id === 'study'){
     rStudy();
   } else if(id === 'settings'){
