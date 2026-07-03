@@ -3088,7 +3088,7 @@ function render(){
   const t=td();
   const active=U.filter(u=>!u.done).sort((a,b)=>a.nextDate.localeCompare(b.nextDate));
   const todayL=active.filter(u=>u.nextDate<=t);
-  const upL   =active.filter(u=>u.nextDate>t);
+  const upL   =active;
   const doneL =U.filter(u=>u.done).sort((a,b)=>(b.completedAt||0)-(a.completedAt||0));
   const over  =todayL.filter(u=>diff(u.nextDate)<0).length;
 
