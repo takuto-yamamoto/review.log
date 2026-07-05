@@ -3395,13 +3395,13 @@ function rStudy(){
   }
 
   // 月間カレンダー（折りたたみ式）
-  html += `<div style="margin-top:16px">
-    <button onclick="toggleStudyCal()" style="width:100%;background:var(--card);border:none;border-radius:var(--r);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;box-shadow:var(--shadow-sm);font-family:inherit" id="study-cal-toggle-btn">
+  html += `<div style="margin-top:16px;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow-sm);overflow:hidden">
+    <button onclick="toggleStudyCal()" style="width:100%;background:transparent;border:none;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-family:inherit" id="study-cal-toggle-btn">
       <span style="font-size:13px;font-weight:700;color:var(--lbl2);letter-spacing:.5px">📅 月間カレンダー</span>
       <svg id="study-cal-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--lbl3)" stroke-width="2.5" stroke-linecap="round" style="transition:transform .22s"><polyline points="6 9 12 15 18 9"/></svg>
     </button>
     <div id="study-cal-body" style="max-height:0;overflow:hidden;transition:max-height .28s ease">
-      <div style="background:var(--card);border-radius:0 0 var(--r) var(--r);padding-top:4px;box-shadow:var(--shadow-sm)">
+      <div style="padding-top:4px">
         ${_studyMonthCalHtml()}
       </div>
     </div>
@@ -3772,7 +3772,7 @@ function _studyMonthCalHtml(){
   }
   grid+='</div>';
 
-  return `<div class="settings-section" style="margin-bottom:10px;overflow:hidden">
+  return `<div>
     <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px">
       <button id="study-cal-prev" onclick="studyCalNav(-1)" ${isPrevDisabled?'disabled':''} style="width:32px;height:32px;border:none;background:var(--fill);border-radius:8px;cursor:pointer;font-size:16px;color:var(--lbl2);display:flex;align-items:center;justify-content:center;font-family:inherit;flex-shrink:0;${isPrevDisabled?'opacity:.3;pointer-events:none':''}">‹</button>
       <div style="font-size:15px;font-weight:700;color:var(--lbl);text-align:center;flex:1">${y}年 ${months[m]}</div>
