@@ -3525,18 +3525,23 @@ function _studyWeekHtml(){
     const isToday=d===td();
     const barH=maxM===0?0:(m===0?0:Math.max(Math.round(m/maxM*BAR_MAX_H),4));
     const dayLabel=DOW[date.getDay()];
+    const dateLabel=`${date.getMonth()+1}/${date.getDate()}`;
     return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1">
       <div style="font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;line-height:1.25;color:${m>0?'var(--blue)':'var(--lbl3)'};min-height:26px;display:flex;align-items:flex-end;justify-content:center;text-align:center">${m>0?fmtMinutes(m):''}</div>
       <div style="width:100%;height:${BAR_MAX_H}px;display:flex;align-items:flex-end">
         <div style="width:100%;height:${barH}px;background:${isToday?'var(--blue)':'var(--blue-bg)'};border-radius:4px 4px 0 0;border:${isToday||m===0?'none':'1.5px solid var(--blue-bd)'};transition:height .3s"></div>
       </div>
-      <div style="font-size:11px;font-weight:${isToday?'700':'500'};color:${isToday?'var(--blue)':'var(--lbl3)'}">${dayLabel}</div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:1px">
+        <div style="font-size:11px;font-weight:${isToday?'700':'500'};color:${isToday?'var(--blue)':'var(--lbl3)'}">${dayLabel}</div>
+        <div style="font-family:'Outfit',sans-serif;font-size:8.5px;font-weight:${isToday?'700':'500'};color:${isToday?'var(--blue)':'var(--lbl3)'};opacity:${isToday?'1':'.7'}">${dateLabel}</div>
+      </div>
     </div>`;
   }).join('');
 
   const weekTotal = bars.reduce((s,b)=>s+b.m,0);
+  const weekAvg = Math.round(weekTotal/days);
   return `<div class="settings-section" style="margin-bottom:10px;padding:16px 16px 12px">
-    <div style="font-size:15px;font-weight:700;color:var(--lbl);margin-bottom:12px">今週の合計</div>
+    <div style="font-size:15px;font-weight:700;color:var(--lbl);margin-bottom:12px">平均勉強時間　<span style="font-family:'Outfit',sans-serif;font-weight:800;color:var(--blue)">${fmtMinutes(weekAvg)}</span></div>
     <div style="display:flex;gap:6px;align-items:flex-end">${barHtml}</div>
   </div>`;
 }
@@ -3726,7 +3731,10 @@ function studyCalNav(delta){
   if(_studyCalMonth<0){ _studyCalMonth=11; _studyCalYear--; }
   if(_studyCalMonth>11){ _studyCalMonth=0; _studyCalYear++; }
   haptic();
+  const el = document.getElementById('p-study');
+  const scrollY = el ? el.scrollTop : 0;
   rStudy();
+  if(el) el.scrollTop = scrollY;
 }
 
 /* ══ Study timer sheet ══════════════════ */
@@ -4540,7 +4548,7 @@ function switchTab(btn){
   if(tagBtn)    tagBtn.style.display    = id === 'settings' ? 'none' : '';
   if(backupBtn) backupBtn.style.display = id === 'settings' ? 'none' : '';
   const studyQuickBtn = document.getElementById('study-quick-btn');
-  if(studyQuickBtn) studyQuickBtn.style.display = id === 'today' ? '' : 'none';
+  if(studyQuickBtn) studyQuickBtn.style.display = (id === 'today' || id === 'upcoming') ? '' : 'none';
   currentTabIdx=newIdx;
 
   // Hide FAB on settings tab
