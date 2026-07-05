@@ -4700,14 +4700,15 @@ function closeSheet(){
    - drag starts only when touching the pull handle (横棒 area)
    - moveEl follows finger visually during drag
    - release > threshold → close; release ≤ threshold → snap back
-   - scrollEl: if provided, only activates when container is scrolled to top
+   - scrollEl: reserved for future use（ハンドル自体は常にドラッグ可能）
 ═══════════════════════════════════════════════════════════════════════ */
 function bindPullToClose(moveEl, handle, closeFn, scrollEl){
   let sy=0, dragging=false;
   const THRESHOLD = 72;
 
   handle.addEventListener('touchstart', e=>{
-    if(scrollEl && scrollEl.scrollTop > 2) return;
+    // ハンドル自体は一覧のスクロール領域とは別の固定要素のため、
+    // 本体側のスクロール位置に関わらず常にドラッグを開始できるようにする
     sy = e.touches[0].clientY;
     dragging = true;
     moveEl.style.transition = 'none';
