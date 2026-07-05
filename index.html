@@ -2018,6 +2018,12 @@ function fmtMinutes(m){
   return rem ? h+'時間'+rem+'分' : h+'時間';
 }
 
+function fmtMinutesHM(m){
+  if(m<60) return m+'m';
+  const h=Math.floor(m/60), rem=m%60;
+  return rem ? h+'h'+rem+'m' : h+'h';
+}
+
 function getTag(id){ return TAGS.find(t=>t.id===id); }
 function tagHtml(tagId){
   const t=getTag(tagId); if(!t) return '';
@@ -3527,7 +3533,7 @@ function _studyWeekHtml(){
     const dayLabel=DOW[date.getDay()];
     const dateLabel=`${date.getMonth()+1}/${date.getDate()}`;
     return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1">
-      <div style="font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;line-height:1.25;color:${m>0?'var(--blue)':'var(--lbl3)'};min-height:26px;display:flex;align-items:flex-end;justify-content:center;text-align:center">${m>0?fmtMinutes(m):''}</div>
+      <div style="font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;line-height:1.25;color:${m>0?'var(--blue)':'var(--lbl3)'};min-height:26px;display:flex;align-items:flex-end;justify-content:center;text-align:center">${m>0?fmtMinutesHM(m):''}</div>
       <div style="width:100%;height:${BAR_MAX_H}px;display:flex;align-items:flex-end">
         <div style="width:100%;height:${barH}px;background:${isToday?'var(--blue)':'var(--blue-bg)'};border-radius:4px 4px 0 0;border:${isToday||m===0?'none':'1.5px solid var(--blue-bd)'};transition:height .3s"></div>
       </div>
@@ -3541,7 +3547,7 @@ function _studyWeekHtml(){
   const weekTotal = bars.reduce((s,b)=>s+b.m,0);
   const weekAvg = Math.round(weekTotal/days);
   return `<div class="settings-section" style="margin-bottom:10px;padding:16px 16px 12px">
-    <div style="font-size:15px;font-weight:700;color:var(--lbl);margin-bottom:12px">平均勉強時間　<span style="font-family:'Outfit',sans-serif;font-weight:800;color:var(--blue)">${fmtMinutes(weekAvg)}</span></div>
+    <div style="font-size:15px;font-weight:700;color:var(--lbl);margin-bottom:12px">平均勉強時間　<span style="font-family:'Outfit',sans-serif;font-weight:800;color:#7C3AED">${fmtMinutes(weekAvg)}</span></div>
     <div style="display:flex;gap:6px;align-items:flex-end">${barHtml}</div>
   </div>`;
 }
