@@ -2029,6 +2029,11 @@ function fmtMinutes(m){
   const h=Math.floor(m/60), rem=m%60;
   return rem ? h+'h'+rem+'m' : h+'h';
 }
+function fmtMinutesJa(m){
+  if(m<60) return m+'分';
+  const h=Math.floor(m/60), rem=m%60;
+  return rem ? h+'時間'+rem+'分' : h+'時間';
+}
 
 function getTag(id){ return TAGS.find(t=>t.id===id); }
 function tagHtml(tagId){
@@ -3351,7 +3356,7 @@ function rStudy(){
       ${iconHtml}
       <div>
         <div class="hero-msg">今日の勉強時間</div>
-        <div style="font-size:28px;font-weight:800;color:#fff;font-family:'Outfit',sans-serif;line-height:1.1;margin-top:4px">${fmtMinutes(todayMins)}</div>
+        <div style="font-size:28px;font-weight:800;color:#fff;font-family:'Outfit',sans-serif;line-height:1.1;margin-top:4px">${fmtMinutesJa(todayMins)}</div>
       </div>
     </div>
 
@@ -3595,7 +3600,7 @@ function _studyWeekHtml(){
   const weekTotal = bars.reduce((s,b)=>s+b.m,0);
   const weekAvg = Math.round(weekTotal/days);
   return `<div class="settings-section" style="margin-bottom:10px;padding:16px 16px 12px">
-    <div style="font-size:15px;font-weight:700;color:var(--lbl);margin-bottom:12px">平均勉強時間　<span style="font-family:'Outfit',sans-serif;font-weight:800;color:#7C3AED">${fmtMinutes(weekAvg)}</span></div>
+    <div style="font-size:15px;font-weight:700;color:var(--lbl);margin-bottom:12px">平均勉強時間　<span style="font-family:'Outfit',sans-serif;font-weight:800;color:#7C3AED">${fmtMinutesJa(weekAvg)}</span></div>
     <div style="display:flex;gap:6px;align-items:flex-end">${barHtml}</div>
   </div>`;
 }
