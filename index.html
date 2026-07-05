@@ -361,12 +361,8 @@ button,a,input,[role="button"]{touch-action:manipulation}
 }
 /* ── チャット風 勉強ログ ── */
 .chat-thread{display:flex;flex-direction:column;gap:6px;margin-bottom:4px}
-/* ══ Study log scroll window (勉強の記録) ═══ */
+/* ══ Study log preview card (勉強の記録プレビュー) ═══ */
 .chat-thread-wrap{
-  max-height:520px;
-  overflow-y:auto;
-  -webkit-overflow-scrolling:touch;
-  overscroll-behavior:contain;
   border-radius:var(--r);
   background:var(--card);
   box-shadow:var(--shadow-sm);
@@ -1450,6 +1446,26 @@ button,a,input,[role="button"]{touch-action:manipulation}
 }
 .backup-sheet.on{transform:translateY(0)}
 .backup-body{padding:8px 20px 28px;overflow-y:auto;flex:1;min-height:0}
+
+/* ══ All study logs sheet ══════════════════ */
+.all-logs-sheet{
+  position:fixed;bottom:0;left:0;right:0;z-index:108;
+  background:var(--card);border-radius:24px 24px 0 0;
+  transform:translateY(110%);transition:transform .38s cubic-bezier(.32,.72,0,1);
+  padding-bottom:var(--safe-bottom);
+  display:flex;flex-direction:column;max-height:85vh
+}
+.all-logs-sheet.on{transform:translateY(0)}
+.all-logs-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:2px 16px 10px;flex-shrink:0;border-bottom:1px solid var(--sep)
+}
+.all-logs-ttl{font-size:17px;font-weight:700;color:var(--lbl)}
+.all-logs-close{
+  background:var(--fill);border:none;cursor:pointer;width:30px;height:30px;border-radius:50%;
+  color:var(--lbl2);display:flex;align-items:center;justify-content:center;flex-shrink:0
+}
+.all-logs-body{padding:12px 14px 20px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;flex:1;min-height:0}
 .backup-ttl{font-size:17px;font-weight:700;text-align:center;margin-bottom:6px}
 .backup-sub{font-size:13px;color:var(--lbl2);text-align:center;margin-bottom:20px;line-height:1.6}
 .backup-row{
@@ -3363,36 +3379,22 @@ function rStudy(){
   // タグ別内訳
   html += _studyTagBreakdownHtml();
 
-  // 全記録をチャット風で表示（新→古、直近10件程度が見える窓の中でスクロール）
+  // 直近の記録をプレビュー表示（ネストスクロールをやめ、全画面シートへ誘導）
   if(STUDY_LOGS.length){
-    html += `<div class="sec" style="margin-top:16px">勉強の記録（${STUDY_LOGS.length}件）</div>`;
-    html += `<div class="chat-thread-wrap"><div class="chat-thread" id="chat-log-thread">`;
-    // 新しい順にソート（idはDate.now()文字列なので降順）
-    const logs = STUDY_LOGS.slice().sort((a,b)=>{
+    const PREVIEW_COUNT = 5;
+    const allLogsSorted = STUDY_LOGS.slice().sort((a,b)=>{
       // 日付降順、同日はid降順（追加が新しい順）
       if(b.date !== a.date) return b.date.localeCompare(a.date);
       return b.id.localeCompare(a.id);
-    }).slice(0,100);
-    // 日付でグループ化
-    const groups = [];
-    let curDate = null, curGroup = [];
-    logs.forEach(l => {
-      if(l.date !== curDate){
-        if(curGroup.length) groups.push({date: curDate, logs: curGroup});
-        curDate = l.date; curGroup = [l];
-      } else {
-        curGroup.push(l);
-      }
     });
-    if(curGroup.length) groups.push({date: curDate, logs: curGroup});
-    // DOM順：新しいグループ → 古いグループ。セパレータはグループ先頭
-    groups.forEach(g => {
-      const d = new Date(g.date+'T00:00:00');
-      const label = g.date===t ? '今日' : `${d.getMonth()+1}月${d.getDate()}日（${DOW[d.getDay()]}）`;
-      html += `<div class="chat-date-sep">${label}</div>`;
-      g.logs.forEach(l => { html += _studyLogRowHtml(l); });
-    });
-    html += `</div></div>`;
+    html += `<div class="sec" style="margin-top:16px">勉強の記録（${STUDY_LOGS.length}件）</div>`;
+    html += `<div class="chat-thread-wrap">${_studyLogsGroupedHtml(allLogsSorted.slice(0,PREVIEW_COUNT), t)}</div>`;
+    if(allLogsSorted.length > PREVIEW_COUNT){
+      html += `<button onclick="openAllLogsSheet()" style="width:100%;background:var(--card);border:none;border-radius:var(--r);padding:13px 16px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;box-shadow:var(--shadow-sm);font-family:inherit;font-size:13px;font-weight:700;color:var(--blue);margin-top:8px">
+        すべての記録を見る（${allLogsSorted.length}件）
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>`;
+    }
   } else {
     html+=`<div class="empty"><div class="empty-icon" style="background:var(--blue-bg)">${IC.clockLg}</div><h3>まだ記録がありません</h3><p>復習カードの「記録」ボタンか<br>上の追加ボタンから記録しましょう</p></div>`;
   }
@@ -3438,6 +3440,31 @@ function toggleStudyCal(){
   }
 }
 
+function _studyLogsGroupedHtml(logs, todayStr){
+  if(!logs.length) return '';
+  const t = todayStr || td();
+  const groups = [];
+  let curDate = null, curGroup = [];
+  logs.forEach(l => {
+    if(l.date !== curDate){
+      if(curGroup.length) groups.push({date: curDate, logs: curGroup});
+      curDate = l.date; curGroup = [l];
+    } else {
+      curGroup.push(l);
+    }
+  });
+  if(curGroup.length) groups.push({date: curDate, logs: curGroup});
+  let html = `<div class="chat-thread">`;
+  groups.forEach(g => {
+    const d = new Date(g.date+'T00:00:00');
+    const label = g.date===t ? '今日' : `${d.getMonth()+1}月${d.getDate()}日（${DOW[d.getDay()]}）`;
+    html += `<div class="chat-date-sep">${label}</div>`;
+    g.logs.forEach(l => { html += _studyLogRowHtml(l); });
+  });
+  html += `</div>`;
+  return html;
+}
+
 function _studyLogRowHtml(l){
   const tagChips = (l.tagIds||[]).map(id=>{
     const tag=TAGS.find(t=>t.id===id);
@@ -3464,6 +3491,35 @@ function _studyLogRowHtml(l){
 }
 
 let _editLogId = null;
+function openAllLogsSheet(){
+  renderAllLogsSheet();
+  document.getElementById('all-logs-overlay').classList.add('on');
+  document.getElementById('all-logs-sheet').classList.add('on');
+  setFabHidden(true);
+  haptic();
+}
+function closeAllLogsSheet(){
+  document.getElementById('all-logs-overlay').classList.remove('on');
+  document.getElementById('all-logs-sheet').classList.remove('on');
+  setFabHidden(false);
+}
+function renderAllLogsSheet(){
+  const body = document.getElementById('all-logs-body'); if(!body) return;
+  if(!STUDY_LOGS.length){
+    body.innerHTML = `<div class="empty"><div class="empty-icon" style="background:var(--blue-bg)">${IC.clockLg}</div><h3>まだ記録がありません</h3></div>`;
+    return;
+  }
+  const logs = STUDY_LOGS.slice().sort((a,b)=>{
+    if(b.date !== a.date) return b.date.localeCompare(a.date);
+    return b.id.localeCompare(a.id);
+  });
+  body.innerHTML = _studyLogsGroupedHtml(logs, td());
+}
+function _refreshAllLogsSheetIfOpen(){
+  const sheet = document.getElementById('all-logs-sheet');
+  if(sheet && sheet.classList.contains('on')) renderAllLogsSheet();
+}
+
 function openEditStudyLog(id){
   const l = STUDY_LOGS.find(x=>x.id===id); if(!l) return;
   _editLogId = id;
@@ -3502,6 +3558,7 @@ function saveEditStudyLog(){
   saveStudyLogs();
   closeEditStudyLog();
   rStudy();
+  _refreshAllLogsSheetIfOpen();
   haptic('medium');
   toast(IC.checkCircle, '記録を更新しました');
 }
@@ -3509,6 +3566,7 @@ function saveEditStudyLog(){
 function delStudyLogAndRefresh(id){
   delStudyLog(id);
   rStudy();
+  _refreshAllLogsSheetIfOpen();
   // 今日タブのstat-rowも更新
   const todayMins = todayStudyMinutes();
   haptic();
@@ -4581,6 +4639,7 @@ function setFabHidden(hidden){
       document.getElementById('sheet')?.classList.contains('on') ||
       document.getElementById('tag-mgr-sheet')?.classList.contains('on') ||
       document.getElementById('backup-sheet')?.classList.contains('on') ||
+      document.getElementById('all-logs-sheet')?.classList.contains('on') ||
       document.getElementById('edit-modal')?.classList.contains('on') ||
       document.getElementById('snooze-pick')?.classList.contains('on');
     if(anyOpen) return; // keep hidden
@@ -5632,6 +5691,19 @@ self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWi
   <div class="sheet-footer" id="study-sheet-footer"></div>
 </div>
 
+<!-- All study logs sheet（すべての勉強記録） -->
+<div class="overlay" id="all-logs-overlay" onclick="closeAllLogsSheet()" style="z-index:107"></div>
+<div class="all-logs-sheet" id="all-logs-sheet">
+  <div class="sheet-pull"></div>
+  <div class="all-logs-header">
+    <div class="all-logs-ttl">すべての記録</div>
+    <button class="all-logs-close" onclick="closeAllLogsSheet()" aria-label="閉じる">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="all-logs-body" id="all-logs-body"></div>
+</div>
+
 <!-- Study log edit sheet（タイトル・メモ・時間を変更） -->
 <div class="overlay" id="edit-log-overlay" onclick="closeEditStudyLog()" style="z-index:109"></div>
 <div class="sheet" id="edit-log-sheet" style="z-index:110">
@@ -5700,6 +5772,14 @@ self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWi
   if(backupSheet){
     const p = backupSheet.querySelector('.sheet-pull');
     if(p) bindPullToClose(backupSheet, p, closeBackupSheet);
+  }
+
+  // all-logs-sheet（すべての記録）— scrollEl を渡してスクロール中は無効化
+  const allLogsSheet = document.getElementById('all-logs-sheet');
+  if(allLogsSheet){
+    const p = allLogsSheet.querySelector('.sheet-pull');
+    const sc = document.getElementById('all-logs-body');
+    if(p) bindPullToClose(allLogsSheet, p, closeAllLogsSheet, sc);
   }
 })();
 </script>
