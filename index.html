@@ -1457,14 +1457,10 @@ button,a,input,[role="button"]{touch-action:manipulation}
 }
 .all-logs-sheet.on{transform:translateY(0)}
 .all-logs-header{
-  display:flex;align-items:center;justify-content:space-between;
+  display:flex;align-items:center;justify-content:center;
   padding:2px 16px 10px;flex-shrink:0;border-bottom:1px solid var(--sep)
 }
 .all-logs-ttl{font-size:17px;font-weight:700;color:var(--lbl)}
-.all-logs-close{
-  background:var(--fill);border:none;cursor:pointer;width:30px;height:30px;border-radius:50%;
-  color:var(--lbl2);display:flex;align-items:center;justify-content:center;flex-shrink:0
-}
 .all-logs-body{padding:12px 14px 20px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;flex:1;min-height:0}
 .backup-ttl{font-size:17px;font-weight:700;text-align:center;margin-bottom:6px}
 .backup-sub{font-size:13px;color:var(--lbl2);text-align:center;margin-bottom:20px;line-height:1.6}
@@ -2029,12 +2025,6 @@ function todayStudyMinutes(){
   return STUDY_LOGS.filter(l=>l.date===t).reduce((s,l)=>s+l.minutes,0);
 }
 function fmtMinutes(m){
-  if(m<60) return m+'分';
-  const h=Math.floor(m/60), rem=m%60;
-  return rem ? h+'時間'+rem+'分' : h+'時間';
-}
-
-function fmtMinutesHM(m){
   if(m<60) return m+'m';
   const h=Math.floor(m/60), rem=m%60;
   return rem ? h+'h'+rem+'m' : h+'h';
@@ -3591,7 +3581,7 @@ function _studyWeekHtml(){
     const dayLabel=DOW[date.getDay()];
     const dateLabel=`${date.getMonth()+1}/${date.getDate()}`;
     return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1">
-      <div style="font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;line-height:1.25;color:${m>0?'var(--blue)':'var(--lbl3)'};min-height:26px;display:flex;align-items:flex-end;justify-content:center;text-align:center">${m>0?fmtMinutesHM(m):''}</div>
+      <div style="font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;line-height:1.25;color:${m>0?'var(--blue)':'var(--lbl3)'};min-height:26px;display:flex;align-items:flex-end;justify-content:center;text-align:center">${m>0?fmtMinutes(m):''}</div>
       <div style="width:100%;height:${BAR_MAX_H}px;display:flex;align-items:flex-end">
         <div style="width:100%;height:${barH}px;background:${isToday?'var(--blue)':'var(--blue-bg)'};border-radius:4px 4px 0 0;border:${isToday||m===0?'none':'1.5px solid var(--blue-bd)'};transition:height .3s"></div>
       </div>
@@ -3779,11 +3769,9 @@ function _studyMonthCalHtml(){
 
   return `<div class="settings-section" style="margin-bottom:10px;overflow:hidden">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px">
-      <div style="font-size:15px;font-weight:700;color:var(--lbl)">${y}年 ${months[m]}</div>
-      <div style="display:flex;gap:6px">
-        <button id="study-cal-prev" onclick="studyCalNav(-1)" ${isPrevDisabled?'disabled':''} style="width:32px;height:32px;border:none;background:var(--fill);border-radius:8px;cursor:pointer;font-size:16px;color:var(--lbl2);display:flex;align-items:center;justify-content:center;font-family:inherit;${isPrevDisabled?'opacity:.3;pointer-events:none':''}">‹</button>
-        <button id="study-cal-next" onclick="studyCalNav(1)" style="width:32px;height:32px;border:none;background:var(--fill);border-radius:8px;cursor:pointer;font-size:16px;color:var(--lbl2);display:flex;align-items:center;justify-content:center;font-family:inherit">›</button>
-      </div>
+      <button id="study-cal-prev" onclick="studyCalNav(-1)" ${isPrevDisabled?'disabled':''} style="width:32px;height:32px;border:none;background:var(--fill);border-radius:8px;cursor:pointer;font-size:16px;color:var(--lbl2);display:flex;align-items:center;justify-content:center;font-family:inherit;flex-shrink:0;${isPrevDisabled?'opacity:.3;pointer-events:none':''}">‹</button>
+      <div style="font-size:15px;font-weight:700;color:var(--lbl);text-align:center;flex:1">${y}年 ${months[m]}</div>
+      <button id="study-cal-next" onclick="studyCalNav(1)" style="width:32px;height:32px;border:none;background:var(--fill);border-radius:8px;cursor:pointer;font-size:16px;color:var(--lbl2);display:flex;align-items:center;justify-content:center;font-family:inherit;flex-shrink:0">›</button>
     </div>
     ${grid}
   </div>`;
@@ -5698,9 +5686,6 @@ self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWi
   <div class="sheet-pull"></div>
   <div class="all-logs-header">
     <div class="all-logs-ttl">すべての記録</div>
-    <button class="all-logs-close" onclick="closeAllLogsSheet()" aria-label="閉じる">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
   </div>
   <div class="all-logs-body" id="all-logs-body"></div>
 </div>
