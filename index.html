@@ -578,6 +578,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
   scroll-padding-bottom:16px;
 }
 .sheet-ttl{font-size:17px;font-weight:700;text-align:center;margin-bottom:18px}
+#study-sheet .sheet-ttl{padding:0 46px;box-sizing:border-box}
 .sheet-footer{
   padding:10px 20px 14px;
   padding-left:calc(20px + var(--safe-left));
@@ -590,8 +591,8 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .sheet-footer:empty{display:none}
 /* ── Study timer lock (計測中の誤タップ防止) ── */
 .study-lock-btn{
-  position:absolute;top:calc(10px + var(--safe-top,0px));right:calc(14px + var(--safe-right,0px));z-index:20;
-  width:34px;height:34px;border-radius:50%;border:none;
+  position:absolute;top:8px;right:calc(14px + var(--safe-right,0px));z-index:20;
+  width:32px;height:32px;border-radius:50%;border:none;
   background:var(--fill);color:var(--lbl2);
   display:flex;align-items:center;justify-content:center;
   cursor:pointer;-webkit-tap-highlight-color:transparent;
