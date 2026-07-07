@@ -588,6 +588,22 @@ button,a,input,[role="button"]{touch-action:manipulation}
   flex-shrink:0;
 }
 .sheet-footer:empty{display:none}
+/* ── Study timer lock (計測中の誤タップ防止) ── */
+.study-lock-btn{
+  position:absolute;top:calc(10px + var(--safe-top,0px));right:calc(14px + var(--safe-right,0px));z-index:20;
+  width:34px;height:34px;border-radius:50%;border:none;
+  background:var(--fill);color:var(--lbl2);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+  transition:background .2s,color .2s;
+}
+.study-lock-btn.on{background:var(--blue);color:#fff}
+.sheet.locked .sheet-pull,
+.sheet.locked .sheet-body,
+.sheet.locked .sheet-footer{
+  pointer-events:none;
+}
+.sheet.locked .sheet-body{opacity:.5}
 .sheet-inp{
   width:100%;background:var(--fill);border:none;border-radius:12px;
   padding:14px 16px;font-family:inherit;font-size:17px;color:var(--lbl);
@@ -1928,6 +1944,8 @@ const IC = {
   tag:        `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>`,
   todayStat:  `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>`,
   activeStat: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`,
+  lock:       `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>`,
+  lockOpen:   `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/></svg>`,
 };
 
 /* ══════════════════════════════════════════
@@ -3797,6 +3815,7 @@ function studyCalNav(delta){
 /* ══ Study timer sheet ══════════════════ */
 let _timerUnitId=null, _timerStart=null, _timerInterval=null;
 let _timerElapsed=0; // 累積経過秒数（一時停止時に保持）
+let _manualInpEdited=false; // 手動入力欄をユーザーが自分で編集したか（trueならタイマー側で上書きしない）
 const TIMER_KEY='fukushu_timer_v1';
 function _saveTimerState(){
   if(_timerStart || _timerElapsed>0){
@@ -3818,6 +3837,21 @@ function _restoreTimerState(){
 let _studySheetMode='review'; // 'review' or 'new'
 let _studySheetTags=[];
 let _studySheetDate=null; // null = today
+let _studySheetLocked=false; // 計測中の誤タップ防止ロック
+
+function toggleStudyLock(){
+  _studySheetLocked=!_studySheetLocked;
+  const sh=document.getElementById('study-sheet');
+  if(sh) sh.classList.toggle('locked',_studySheetLocked);
+  const btn=document.getElementById('study-lock-btn');
+  if(btn){
+    btn.classList.toggle('on',_studySheetLocked);
+    btn.innerHTML=_studySheetLocked?IC.lock:IC.lockOpen;
+    btn.setAttribute('aria-label',_studySheetLocked?'ロック解除':'ロック');
+  }
+  toast(_studySheetLocked?IC.lock:IC.lockOpen, _studySheetLocked?'ロックしました。誤タップを防止します':'ロックを解除しました');
+  haptic(_studySheetLocked?'medium':'light');
+}
 
 function openStudyTimer(unitId){
   // 別ユニット用に開く場合は前回の計測をリセット
@@ -3830,6 +3864,8 @@ function openStudyTimer(unitId){
   _timerUnitId=unitId;
   _studySheetMode='review';
   _studySheetDate=null;
+  _manualInpEdited=false;
+  _resetStudyLockUI();
   const u=U.find(x=>x.id===unitId);
   _studySheetTags=(u&&u.tags&&u.tags.length)?[...u.tags]:[];
   _renderStudySheet();
@@ -3850,6 +3886,8 @@ function openNewStudySheet(){
   _studySheetMode='new';
   _studySheetTags=[];
   _studySheetDate=null;
+  _manualInpEdited=false;
+  _resetStudyLockUI();
   _renderStudySheet();
   document.getElementById('overlay').classList.add('on');
   document.getElementById('study-sheet').classList.add('on');
@@ -3858,11 +3896,24 @@ function openNewStudySheet(){
   setTimeout(()=>document.getElementById('study-title-inp')?.focus(),200);
 }
 
+function _resetStudyLockUI(){
+  _studySheetLocked=false;
+  const sh=document.getElementById('study-sheet');
+  if(sh) sh.classList.remove('locked');
+  const btn=document.getElementById('study-lock-btn');
+  if(btn){
+    btn.classList.remove('on');
+    btn.innerHTML=IC.lockOpen;
+    btn.setAttribute('aria-label','ロック');
+  }
+}
+
 function closeStudySheet(){
   if(_timerInterval){ clearInterval(_timerInterval); _timerInterval=null; }
   _timerStart=null;
   _timerElapsed=0;
   _saveTimerState(); // タイマー動作中にキャンセルしてもlocalStorageをクリア
+  _resetStudyLockUI();
   document.getElementById('overlay').classList.remove('on');
   document.getElementById('study-sheet').classList.remove('on');
   setFabHidden(false);
@@ -3872,6 +3923,12 @@ function closeStudySheet(){
 // シートを閉じようとした場合に限り、計測中・一時停止中の時間が
 // 気づかないうちに破棄されないよう確認する（保存後のclose呼び出しはこれを経由しない）
 function requestCloseStudySheet(){
+  // ロック中は誤タップでの閉じる操作を一切受け付けない（鍵ボタン自身はこの経路を通らない）
+  if(_studySheetLocked){
+    toast(IC.lock,'ロック中です。鍵ボタンで解除してください');
+    haptic('medium');
+    return;
+  }
   const hasUnsavedTime = (_timerStart || _timerElapsed>0);
   if(hasUnsavedTime){
     if(!confirm('計測中の時間がまだ記録されていません。閉じると破棄されますが、よろしいですか？')) return;
@@ -3917,7 +3974,7 @@ function _renderStudySheet(){
     </div>
     <div style="text-align:center;color:var(--lbl3);font-size:12px;margin-bottom:10px">— または手動で入力 —</div>
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
-      <input type="number" id="study-manual-inp" min="1" max="600" placeholder="例：30" style="flex:1;background:var(--fill);border:none;border-radius:12px;padding:13px 14px;font-family:'Outfit',inherit;font-size:18px;font-weight:700;color:var(--lbl);outline:none;text-align:center">
+      <input type="number" id="study-manual-inp" min="1" max="600" placeholder="例：30" oninput="_manualInpEdited=true" style="flex:1;background:var(--fill);border:none;border-radius:12px;padding:13px 14px;font-family:'Outfit',inherit;font-size:18px;font-weight:700;color:var(--lbl);outline:none;text-align:center">
       <span style="color:var(--lbl2);font-size:14px;font-weight:600;flex-shrink:0">分</span>
     </div>
     <input type="text" id="study-note-inp" placeholder="メモ（任意）" maxlength="60" autocomplete="off" style="width:100%;background:var(--fill);border:none;border-radius:12px;padding:12px 14px;font-family:inherit;font-size:16px;color:var(--lbl);outline:none;margin-bottom:14px">
@@ -3976,6 +4033,13 @@ function toggleStudyTimer(){
     // Start / Resume: _timerElapsed には一時停止までの累積秒数が入っている
     _timerStart=Date.now();
     _saveTimerState();
+    // 再開時：一時停止中にタイマーが自動反映した分数（ユーザーが自分で編集していない値）が
+    // 残ったままだと、この後経過した時間が記録時に無視されてしまうバグの原因になるため、
+    // ユーザー自身が手入力していない限りクリアしてタイマー計測に戻す
+    if(!_manualInpEdited){
+      const inp=document.getElementById('study-manual-inp');
+      if(inp) inp.value='';
+    }
     const btn=document.getElementById('study-timer-btn');
     if(btn) btn.innerHTML=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> 一時停止`;
     const stateEl=document.getElementById('study-timer-state');
@@ -3988,10 +4052,12 @@ function toggleStudyTimer(){
     _timerElapsed += Math.floor((Date.now()-_timerStart)/1000);
     _timerStart=null;
     _saveTimerState();
-    // 手動入力欄に累積分数を反映
-    const elapsedMin=Math.ceil(_timerElapsed/60);
-    const inp=document.getElementById('study-manual-inp');
-    if(inp&&elapsedMin>0) inp.value=elapsedMin;
+    // 手動入力欄に累積分数を反映（ユーザーがすでに自分で編集済みの場合は上書きしない）
+    if(!_manualInpEdited){
+      const elapsedMin=Math.ceil(_timerElapsed/60);
+      const inp=document.getElementById('study-manual-inp');
+      if(inp&&elapsedMin>0) inp.value=elapsedMin;
+    }
     // 表示は累積時間のまま維持
     _updateTimerDisplay();
     const btn=document.getElementById('study-timer-btn');
@@ -4013,6 +4079,7 @@ function clearStudyTimer(){
   if(_timerInterval){ clearInterval(_timerInterval); _timerInterval=null; }
   _timerStart=null;
   _timerElapsed=0;
+  _manualInpEdited=false;
   _saveTimerState();
   const el=document.getElementById('study-timer-num'); if(el) el.textContent='00:00';
   const stateEl=document.getElementById('study-timer-state');
@@ -5680,6 +5747,7 @@ self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWi
 
 <!-- Study sheet -->
 <div class="sheet" id="study-sheet">
+  <button type="button" id="study-lock-btn" class="study-lock-btn" onclick="toggleStudyLock()" aria-label="ロック"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/></svg></button>
   <div class="sheet-pull"></div>
   <div class="sheet-body"></div>
   <div class="sheet-footer" id="study-sheet-footer"></div>
