@@ -5548,6 +5548,27 @@ function confirmIconCrop(){
   haptic('medium');
 }
 
+/* ══ 永続化ストレージ要求 ══════════════════
+   ブラウザに対し、ユーザーの学習データ（localStorage）が
+   容量逼迫時などに自動で消去されないよう永続化を要求する。
+   対応ブラウザ（Chrome/Edge等）では条件を満たせば付与される。
+   Safari/iOS PWAは本APIをサポートしないため no-op で安全に無視される。 */
+async function requestPersistentStorage(){
+  try{
+    if(!(navigator.storage && navigator.storage.persist)) return;
+
+    // すでに永続化されているか確認してから要求する
+    const already = navigator.storage.persisted ? await navigator.storage.persisted() : false;
+    if(already){ console.log('[storage] already persisted'); return; }
+
+    const granted = await navigator.storage.persist();
+    console.log('[storage] persist request:', granted ? 'granted' : 'denied');
+  }catch(err){
+    console.warn('[storage] persist request failed', err);
+  }
+}
+requestPersistentStorage();
+
 /* ══ Init ══════════════════════════════ */
 (function init(){
   // PWA standalone detection
