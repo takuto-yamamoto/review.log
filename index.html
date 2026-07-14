@@ -20,6 +20,7 @@
   --bg:#F2F4F9;--card:#fff;
   --blue:#2563EB;--blue-d:#1D4ED8;--blue-bg:#EFF6FF;--blue-bd:rgba(37,99,235,.15);
   --red:#FF3B30;
+  --plan:#7C3AED;--plan-d:#6D28D9;--plan-bg:#F5F3FF;--plan-bd:rgba(124,58,237,.18);
   --lbl:#0F0F14;--lbl2:rgba(60,60,67,.52);--lbl3:rgba(60,60,67,.26);
   --sep:rgba(60,60,67,.09);--fill:rgba(120,120,128,.09);
   --shadow:0 1px 3px rgba(0,0,0,.05),0 6px 20px rgba(0,0,0,.07);
@@ -272,6 +273,101 @@ button,a,input,[role="button"]{touch-action:manipulation}
   transition:opacity .12s,background .12s;font-family:inherit;flex-shrink:0
 }
 .btn-snooze:active{opacity:.6;background:var(--sep)}
+
+/* ══ Plan (計画) card & controls ═══════════════ */
+.card.plan{border-left:3px solid var(--plan);padding-left:13px}
+.card.plan.over .card-when{color:var(--red)}
+.card.plan.due .card-when{color:var(--plan)}
+.plan-type-badge{
+  display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;
+  color:var(--plan-d);background:var(--plan-bg);border:1px solid var(--plan-bd);
+  border-radius:100px;padding:3px 9px;margin-bottom:8px;letter-spacing:.1px
+}
+.btn-plan-ok{
+  flex:1;background:var(--plan);color:#fff;border:none;border-radius:12px;
+  padding:11px 12px;min-height:44px;font-size:14px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  transition:opacity .12s,transform .1s;font-family:inherit;
+  box-shadow:0 2px 10px rgba(124,58,237,.3),0 1px 3px rgba(124,58,237,.15);letter-spacing:.1px
+}
+.btn-plan-ok:active{opacity:.78;transform:scale(.97)}
+.btn-plan-ok:disabled{opacity:.45;pointer-events:none}
+.plan-pace{
+  display:flex;align-items:center;gap:6px;background:var(--plan-bg);border:1px solid var(--plan-bd);
+  border-radius:12px;padding:8px 11px;margin:8px 0;font-size:12.5px;color:var(--plan-d);font-weight:700
+}
+.plan-pace-sub{font-weight:500;color:var(--lbl2);font-size:11.5px;margin-left:auto}
+.plan-progress-track{background:var(--fill);border-radius:100px;height:6px;overflow:hidden;margin:8px 0 4px}
+.plan-progress-fill{background:var(--plan);height:100%;border-radius:100px;transition:width .25s}
+.plan-progress-lbl{font-size:11.5px;color:var(--lbl2);margin-bottom:2px;display:flex;justify-content:space-between}
+.plan-custom-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.plan-custom-idx{flex-shrink:0;font-size:12px;color:var(--lbl2);width:44px}
+.plan-custom-row .edit-modal-inp{margin-bottom:0;flex:1}
+.plan-custom-del{
+  flex-shrink:0;width:32px;height:32px;border-radius:9px;border:none;background:var(--fill);
+  color:var(--red);display:flex;align-items:center;justify-content:center;
+}
+.plan-custom-del:active{opacity:.7}
+.plan-custom-add{
+  width:100%;background:var(--plan-bg);color:var(--plan-d);border:1px dashed var(--plan-bd);
+  border-radius:12px;padding:9px;font-size:13px;font-weight:700;margin-bottom:12px;
+}
+.plan-custom-add:active{opacity:.75}
+.plan-add-cta{
+  width:100%;display:flex;align-items:center;gap:12px;
+  background:var(--card);border:1.5px dashed var(--plan-bd);border-radius:var(--r);
+  padding:14px 16px;margin:12px 0 4px;cursor:pointer;text-align:left;
+}
+.plan-add-cta:active{opacity:.75;transform:scale(.99)}
+.plan-add-cta-icon{
+  flex-shrink:0;width:38px;height:38px;border-radius:50%;
+  background:var(--plan-bg);color:var(--plan-d);
+  display:flex;align-items:center;justify-content:center;
+}
+.plan-add-cta-txt{display:flex;flex-direction:column;gap:2px;min-width:0}
+.plan-add-cta-ttl{font-size:14.5px;font-weight:700;color:var(--lbl)}
+.plan-add-cta-sub{font-size:12px;color:var(--lbl2)}
+.plan-type-seg{display:flex;gap:6px;background:var(--fill);border-radius:12px;padding:3px;margin-bottom:12px}
+.plan-type-seg button{
+  flex:1;border:none;background:none;border-radius:9px;padding:9px 4px;font-size:12.5px;font-weight:600;
+  color:var(--lbl2);cursor:pointer;font-family:inherit;transition:background .12s,color .12s
+}
+.plan-type-seg button.on{background:var(--card);color:var(--plan-d);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.plan-field-label{font-size:12px;font-weight:700;color:var(--lbl2);margin:12px 0 6px;letter-spacing:.2px}
+.plan-wd-row{display:flex;gap:6px;flex-wrap:wrap}
+.plan-wd-btn{
+  width:40px;height:40px;border-radius:50%;border:1.5px solid var(--sep);background:var(--card);
+  color:var(--lbl2);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;
+  display:flex;align-items:center;justify-content:center;transition:background .12s,color .12s,border-color .12s
+}
+.plan-wd-btn.on{background:var(--plan);border-color:var(--plan);color:#fff}
+.plan-num-row{display:flex;gap:10px;align-items:center}
+.plan-num-inp{
+  flex:1;background:var(--fill);border:none;border-radius:12px;padding:12px 14px;
+  font-size:15px;font-family:inherit;color:var(--lbl);min-height:46px
+}
+.plan-num-inp:focus{outline:2px solid var(--plan-bd)}
+.cal-pip.plan{border-radius:50%}
+
+/* ── 計画モーダル ゼロベース再設計 ── */
+.plan-sec-label{font-size:13px;font-weight:800;color:var(--lbl);margin:18px 0 8px;letter-spacing:.2px;display:flex;align-items:center;gap:6px}
+.plan-sec-label.first{margin-top:2px}
+.plan-sec-sub{font-size:11.5px;font-weight:500;color:var(--lbl3);margin:-4px 0 10px}
+.plan-goal-card{background:var(--plan-bg);border:1px solid var(--plan-bd);border-radius:14px;padding:14px}
+.plan-goal-row{display:flex;gap:10px}
+.plan-goal-field{flex:1;display:flex;flex-direction:column;gap:5px;min-width:0}
+.plan-goal-field label{font-size:11px;font-weight:700;color:var(--plan-d);letter-spacing:.1px}
+.plan-goal-field input{background:var(--card);border:none;border-radius:10px;padding:11px 12px;font-size:15px;font-family:inherit;color:var(--lbl);min-height:42px;width:100%;box-sizing:border-box}
+.plan-goal-field input:focus{outline:2px solid var(--plan-bd)}
+.plan-pace-hint{display:flex;align-items:center;gap:6px;margin-top:11px;font-size:12.5px;font-weight:700;color:var(--plan-d);line-height:1.4}
+.plan-pace-hint.muted{color:var(--lbl3);font-weight:500}
+.plan-pace-hint.warn{color:var(--red)}
+.plan-pace-apply-btn{margin-top:9px;width:100%;background:var(--card);color:var(--plan-d);border:1.5px dashed var(--plan-bd);border-radius:10px;padding:9px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit}
+.plan-pace-apply-btn:active{opacity:.75}
+.plan-goal-done-row{margin-top:11px;padding-top:11px;border-top:1px solid var(--plan-bd)}
+.plan-sub-card{background:var(--fill);border-radius:14px;padding:12px}
+.plan-name-preview-box{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--lbl2);background:var(--card);border-radius:100px;padding:5px 11px;margin-top:2px}
+.plan-name-preview-box b{color:var(--lbl);font-weight:700}
 
 /* ══ Tag progress summary (実績タブ) ══════ */
 .tag-prog-card{
@@ -611,7 +707,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
   outline:none;margin-bottom:12px;-webkit-appearance:none
 }
 .sheet-inp::placeholder{color:var(--lbl3)}
-.sheet-inp.shake,.tag-add-inp.shake{animation:shake .35s ease}
+.sheet-inp.shake,.tag-add-inp.shake,.edit-modal-inp.shake{animation:shake .35s ease}
 @keyframes shake{
   0%,100%{transform:translateX(0)}
   20%{transform:translateX(-6px)}40%{transform:translateX(6px)}
@@ -1810,6 +1906,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
   <div class="panels">
     <div class="panel visible" id="p-today"></div>
     <div class="panel" id="p-upcoming"></div>
+    <div class="panel" id="p-plan"></div>
     <div class="panel" id="p-study"></div>
     <div class="panel" id="p-settings"></div>
   </div>
@@ -1825,11 +1922,16 @@ button,a,input,[role="button"]{touch-action:manipulation}
       <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M8 14h.01M12 14h.01M16 14h.01"/></svg>
       <span class="tab-lbl">予定</span>
     </button>
-    <button class="tab-btn" data-tab="study" data-idx="2" onclick="switchTab(this)">
+    <button class="tab-btn" data-tab="plan" data-idx="2" onclick="switchTab(this)">
+      <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      <span class="tab-lbl">計画</span>
+      <span class="tbadge h" id="pbadge"></span>
+    </button>
+    <button class="tab-btn" data-tab="study" data-idx="3" onclick="switchTab(this)">
       <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
       <span class="tab-lbl">勉強時間</span>
     </button>
-    <button class="tab-btn" data-tab="settings" data-idx="3" onclick="switchTab(this)">
+    <button class="tab-btn" data-tab="settings" data-idx="4" onclick="switchTab(this)">
       <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       <span class="tab-lbl">設定</span>
     </button>
@@ -1893,6 +1995,20 @@ button,a,input,[role="button"]{touch-action:manipulation}
     <div class="edit-actions">
       <button class="edit-cancel" onclick="closeEdit()">キャンセル</button>
       <button class="edit-save" onclick="saveEdit()">保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- 計画タスク 追加/編集モーダル -->
+<div class="edit-modal" id="plan-modal">
+  <div class="edit-modal-bg" onclick="closePlanModal()"></div>
+  <div class="edit-modal-box" style="max-height:82vh;overflow-y:auto">
+    <div class="edit-modal-pull"></div>
+    <div class="edit-modal-ttl" id="plan-modal-ttl">計画タスクを追加</div>
+    <div id="plan-modal-body"></div>
+    <div class="edit-actions">
+      <button class="edit-cancel" onclick="closePlanModal()">キャンセル</button>
+      <button class="edit-save" style="background:var(--plan)" onclick="savePlanTask()">保存する</button>
     </div>
   </div>
 </div>
@@ -1986,7 +2102,7 @@ const KEY   = 'fukushu-v6';
 const STUDY_KEY = 'fukushu-study-v1';
 const ICON_KEY  = 'fukushu-icon-v1';
 const DOW   = '日月火水木金土';
-const TABS  = { today:'今日のタスク', upcoming:'予定一覧', study:'勉強時間', settings:'設定' };
+const TABS  = { today:'今日のタスク', upcoming:'予定一覧', plan:'勉強計画', study:'勉強時間', settings:'設定' };
 
 /* ══ Tag data ══════════════════════════ */
 const TAG_KEY = 'fukushu-tags-v1';
@@ -2012,6 +2128,93 @@ function getCategory(id){ return CATEGORIES.find(c=>c.id===id); }
 ══════════════════════════════════════════ */
 let STUDY_LOGS = (() => { try { return JSON.parse(localStorage.getItem(STUDY_KEY)) || []; } catch { return []; } })();
 const saveStudyLogs = () => localStorage.setItem(STUDY_KEY, JSON.stringify(STUDY_LOGS));
+
+/* ══ Plan (勉強計画) data ═══════════════
+   Task: {
+     id, name, tags:[], createdDate,
+     type: 'daily' | 'weekday' | 'interval' | 'goal',
+     weekdays:[0-6]      (weekday only)
+     intervalDays:N      (interval only)
+     nextDate            (weekday/interval/goal: next due date or deadline)
+     totalCount, doneCount, deadline   (goal only)
+     lastDoneDate, done (goal: fully reached)
+   }
+══════════════════════════════════════════ */
+const PLAN_KEY = 'fukushu-plan-v1';
+let PLAN = (() => { try { return JSON.parse(localStorage.getItem(PLAN_KEY)) || []; } catch { return []; } })();
+const savePlan = () => localStorage.setItem(PLAN_KEY, JSON.stringify(PLAN));
+const PLAN_TYPE_LABEL = { daily:'毎日', weekday:'曜日指定', interval:'間隔', goal:'目標' };
+const WD_LABELS = ['日','月','火','水','木','金','土'];
+const PLAN_NAME_MODE_LABEL = { fixed:'毎回同じ', sequence:'数字+カスタム', custom:'完全カスタム' };
+function planOccurrenceIdx(p){
+  // 0始まりの「今回・次回」インデックス
+  return p.type==='goal' ? (p.doneCount||0) : (p.occurrenceCount||0);
+}
+function planDisplayName(p){
+  const mode = p.nameMode || 'fixed';
+  if(mode==='fixed') return p.name;
+  const idx = planOccurrenceIdx(p);
+  if(mode==='sequence'){
+    const start = (p.seqStart!=null && p.seqStart!=='') ? Number(p.seqStart) : 1;
+    const unit = p.seqUnit && p.seqUnit.trim() ? p.seqUnit.trim() : '回';
+    return `${p.name} ${start+idx}${unit}`;
+  }
+  if(mode==='custom'){
+    const labels = p.customLabels||[];
+    const raw = labels[idx];
+    const label = (raw && raw.trim()) ? raw.trim() : `${idx+1}回目`;
+    return `${p.name} ${label}`;
+  }
+  return p.name;
+}
+
+function planIsOverdue(p){
+  if(p.type==='daily') return false;
+  return p.nextDate < td();
+}
+function planIsDueToday(p){
+  if(p.type==='daily') return p.lastDoneDate!==td();
+  if(p.type==='goal') return false;
+  return p.nextDate<=td();
+}
+function planNextWeekday(fromDateExclusive, weekdays){
+  if(!weekdays || !weekdays.length) return addD(fromDateExclusive,1);
+  for(let i=1;i<=14;i++){
+    const cand=addD(fromDateExclusive,i);
+    const dow=new Date(cand+'T00:00:00').getDay();
+    if(weekdays.includes(dow)) return cand;
+  }
+  return addD(fromDateExclusive,7);
+}
+function planComplete(id){
+  const p=PLAN.find(x=>x.id===id); if(!p) return;
+  const t=td();
+  const doneLabel=planDisplayName(p);
+  if(p.type==='goal'){
+    p.doneCount=Math.min((p.doneCount||0)+1,p.totalCount);
+    p.lastDoneDate=t;
+    if(p.doneCount>=p.totalCount){ p.done=true; p.completedAt=Date.now(); }
+    savePlan(); haptic('medium'); render();
+    toast(IC.checkCircle, esc(doneLabel)+(p.done?'の目標を達成しました！':'を1件記録しました'));
+    return;
+  }
+  if(p.lastDoneDate===t) return; // already done today
+  p.lastDoneDate=t;
+  p.occurrenceCount=(p.occurrenceCount||0)+1;
+  if(p.type==='weekday'){ p.nextDate=planNextWeekday(t,p.weekdays); }
+  else if(p.type==='interval'){ p.nextDate=addD(t,p.intervalDays); }
+  savePlan(); haptic('medium'); render();
+  toast(IC.check, esc(doneLabel)+'を完了しました！');
+}
+function planDelete(id){
+  PLAN=PLAN.filter(x=>x.id!==id); savePlan(); render();
+}
+function planShift(id, days){
+  const p=PLAN.find(x=>x.id===id); if(!p) return;
+  const base = p.nextDate<td()?td():p.nextDate;
+  p.nextDate=addD(base,days);
+  savePlan(); haptic(); render(); _renderCalGrid();
+}
 
 /* アイコン（base64 or null） */
 let APP_ICON = (() => { try { return localStorage.getItem(ICON_KEY) || null; } catch { return null; } })();
@@ -2547,15 +2750,15 @@ function fmtFull(s){
 /* ══ Scroll position preservation ══════
    B2 fix: save/restore scroll per panel so render() doesn't jump to top
 ══════════════════════════════════════════ */
-const _scroll = {today:0, upcoming:0, study:0, settings:0};
+const _scroll = {today:0, upcoming:0, plan:0, study:0, settings:0};
 function saveScroll(){
-  ['today','upcoming','study','settings'].forEach(id=>{
+  ['today','upcoming','plan','study','settings'].forEach(id=>{
     const el=document.getElementById('p-'+id);
     if(el && el.style.display!=='none' && el.scrollHeight>0) _scroll[id]=el.scrollTop;
   });
 }
 function restoreScroll(){
-  ['today','upcoming','study','settings'].forEach(id=>{
+  ['today','upcoming','plan','study','settings'].forEach(id=>{
     const el=document.getElementById('p-'+id);
     if(el) el.scrollTop=_scroll[id]||0;
   });
@@ -2729,7 +2932,7 @@ function complete(id){
 let _snoozeId = null;
 function openSnooze(id){
   const u=U.find(x=>x.id===id); if(!u) return;
-  _snoozeId=id;
+  _snoozeId=id; _snoozeKind='review';
   document.getElementById('snooze-pick-ttl').textContent=`「${u.name}」を延期する`;
   const opts=document.getElementById('snooze-opts');
   const options=[
@@ -2755,11 +2958,43 @@ function closeSnooze(){
   document.getElementById('snooze-pick').classList.remove('on');
   setFabHidden(false);
   _snoozeId=null;
+  _snoozeKind='review';
+}
+let _snoozeKind='review';
+function openPlanSnooze(id){
+  const p=PLAN.find(x=>x.id===id); if(!p) return;
+  _snoozeId=id; _snoozeKind='plan';
+  document.getElementById('snooze-pick-ttl').textContent=`「${p.name}」を延期する`;
+  const opts=document.getElementById('snooze-opts');
+  const options=[
+    {days:1, label:'明日に延期'},
+    {days:2, label:'2日後に延期'},
+    {days:3, label:'3日後に延期'},
+    {days:7, label:'1週間後に延期'},
+  ];
+  opts.innerHTML=options.map(o=>{
+    const dateStr=fmtShortText(addD(td(),o.days));
+    return `<button class="snooze-opt" onclick="applySnooze(${o.days})">
+      <span class="snooze-opt-lbl">${esc(o.label)}</span>
+      <span class="snooze-opt-date">${dateStr}</span>
+    </button>`;
+  }).join('');
+  document.getElementById('snooze-pick').classList.add('on');
+  setFabHidden(true);
+  haptic();
 }
 function applySnooze(days){
   if(!_snoozeId) return;                         // Bug3 fix: guard double-tap
-  const id = _snoozeId;
+  const id = _snoozeId, kind=_snoozeKind;
   closeSnooze();                                 // clears _snoozeId immediately
+  if(kind==='plan'){
+    const p=PLAN.find(x=>x.id===id); if(!p) return;
+    p.nextDate=addD(td(),days); savePlan();
+    haptic('medium'); render(); _renderCalGrid();
+    const label=days===1?'明日':days===7?'1週間後':`${days}日後`;
+    toast(IC.moon, esc(planDisplayName(p))+`を${label}に延期しました`);
+    return;
+  }
   const u=U.find(x=>x.id===id); if(!u) return;
   u.nextDate=addD(td(),days); save();
   haptic('medium');
@@ -3134,8 +3369,13 @@ function render(){
   if(todayL.length>0){ tb.textContent=todayL.length; tb.classList.remove('h'); }
   else tb.classList.add('h');
 
+  const planDueCount = PLAN.filter(p=>!p.done && (planIsDueToday(p)||planIsOverdue(p))).length;
+  const pb=document.getElementById('pbadge');
+  if(pb){ if(planDueCount>0){ pb.textContent=planDueCount; pb.classList.remove('h'); } else pb.classList.add('h'); }
+
   rToday(todayL, active.length > 0, doneL);
   rUpcoming(upL);
+  rPlan();
   rStudy();
 
   // Clear isNew flags after first render
@@ -3150,6 +3390,19 @@ function render(){
 function rToday(list, hasActive, allDone){
   const el=document.getElementById('p-today');
   const bannerHtml = backupBannerHtml();
+
+  // 計画タブで作成したタスクのうち、今日やること（毎日/曜日指定/間隔。目標型は対象外）
+  const duePlan = PLAN.filter(p=>!p.done && (p.type==='goal' || planIsDueToday(p)||planIsOverdue(p)))
+    .sort((a,b)=>{
+      const ka = a.type==='goal' ? (a.deadline||'') : (a.nextDate||'');
+      const kb = b.type==='goal' ? (b.deadline||'') : (b.nextDate||'');
+      return ka.localeCompare(kb);
+    });
+  function duePlanSecHtml(firstSec){
+    if(!duePlan.length) return '';
+    return `<div class="sec${firstSec?' sec-first':''}">計画タスク · ${duePlan.length}件</div>`
+      + duePlan.map(p=>planCardHtml(p,{todayMode:true})).join('');
+  }
 
   // Units completed today (step advanced today, not fully done — or fully completed today)
   const t = td();
@@ -3204,6 +3457,16 @@ function rToday(list, hasActive, allDone){
 
   if(!list.length){
     // Different state: tasks exist but all done today vs truly empty app
+    if(duePlan.length){
+      // 復習は無いが計画タスクがある場合はそれを表示
+      const msg = hasActive ? '今日の復習は完了しました！' : '今日の計画タスクがあります';
+      el.innerHTML=bannerHtml+`
+        <div class="hero">
+          <div class="hero-msg">${msg}</div>
+          <div class="hero-sub" style="margin-top:6px">計画タスクが ${duePlan.length} 件あります</div>
+        </div>`+duePlanSecHtml(true)+todayDoneAccHtml();
+      return;
+    }
     if(hasActive){
       el.innerHTML=bannerHtml+`
         <div class="hero all-done">
@@ -3227,17 +3490,19 @@ function rToday(list, hasActive, allDone){
   const overdue = list.filter(u=>diff(u.nextDate)<0);
   const dueToday = list.filter(u=>diff(u.nextDate)===0);
   const overSub = overdue.length > 0 ? `<div class="hero-sub" style="margin-top:6px">うち ${overdue.length} 件が期限超過</div>` : '';
+  const planSub = duePlan.length > 0 ? `<div class="hero-sub" style="margin-top:6px">計画タスクが ${duePlan.length} 件あります</div>` : '';
   let html=bannerHtml+`
     <div class="hero">
       <div class="hero-msg">${list.length} 件の復習があります</div>
       ${overSub}
+      ${planSub}
     </div>`;
   const filteredOverdue=overdue;
   const filteredDueToday=dueToday;
 
   if(!filteredOverdue.length && !filteredDueToday.length){
     html+=`<div class="empty" style="padding:28px 0"><div class="empty-icon">${IC.searchLg}</div><h3>該当する単元がありません</h3><p>今日の復習はありません</p></div>`;
-    html += todayDoneAccHtml();
+    html += duePlanSecHtml(true) + todayDoneAccHtml();
     el.innerHTML=html; return;
   }
   if(filteredOverdue.length){
@@ -3247,6 +3512,7 @@ function rToday(list, hasActive, allDone){
     html+=`<div class="sec${filteredOverdue.length?'':' sec-first'}">今日が期限 · ${filteredDueToday.length}件</div>`;
     html+=filteredDueToday.map(u=>cHtml(u)).join('');
   }
+  html += duePlanSecHtml(false);
   html += todayDoneAccHtml();
   el.innerHTML=html;
 }
@@ -3814,13 +4080,13 @@ function studyCalNav(delta){
 }
 
 /* ══ Study timer sheet ══════════════════ */
-let _timerUnitId=null, _timerStart=null, _timerInterval=null;
+let _timerUnitId=null, _timerPlanId=null, _timerStart=null, _timerInterval=null;
 let _timerElapsed=0; // 累積経過秒数（一時停止時に保持）
 let _manualInpEdited=false; // 手動入力欄をユーザーが自分で編集したか（trueならタイマー側で上書きしない）
 const TIMER_KEY='fukushu_timer_v1';
 function _saveTimerState(){
   if(_timerStart || _timerElapsed>0){
-    try{ localStorage.setItem(TIMER_KEY, JSON.stringify({start:_timerStart, elapsed:_timerElapsed, unitId:_timerUnitId})); }catch(_){}
+    try{ localStorage.setItem(TIMER_KEY, JSON.stringify({start:_timerStart, elapsed:_timerElapsed, unitId:_timerUnitId, planId:_timerPlanId})); }catch(_){}
   } else {
     try{ localStorage.removeItem(TIMER_KEY); }catch(_){}
   }
@@ -3829,10 +4095,11 @@ function _restoreTimerState(){
   try{
     const s=localStorage.getItem(TIMER_KEY);
     if(!s) return;
-    const {start, elapsed, unitId}=JSON.parse(s);
+    const {start, elapsed, unitId, planId}=JSON.parse(s);
     _timerElapsed=elapsed||0;
     if(start){ _timerStart=start; }
     _timerUnitId=unitId||null;
+    _timerPlanId=planId||null;
   }catch(_){}
 }
 let _studySheetMode='review'; // 'review' or 'new'
@@ -3856,13 +4123,14 @@ function toggleStudyLock(){
 
 function openStudyTimer(unitId){
   // 別ユニット用に開く場合は前回の計測をリセット
-  if(_timerUnitId !== unitId){
+  if(_timerUnitId !== unitId || _timerPlanId){
     if(_timerInterval){ clearInterval(_timerInterval); _timerInterval=null; }
     _timerStart=null;
     _timerElapsed=0;
     _saveTimerState();
   }
   _timerUnitId=unitId;
+  _timerPlanId=null;
   _studySheetMode='review';
   _studySheetDate=null;
   _manualInpEdited=false;
@@ -3878,12 +4146,38 @@ function openStudyTimer(unitId){
   haptic();
 }
 
+function openStudyTimerForPlan(planId){
+  // 別タスク用に開く場合は前回の計測をリセット
+  if(_timerPlanId !== planId || _timerUnitId){
+    if(_timerInterval){ clearInterval(_timerInterval); _timerInterval=null; }
+    _timerStart=null;
+    _timerElapsed=0;
+    _saveTimerState();
+  }
+  _timerPlanId=planId;
+  _timerUnitId=null;
+  _studySheetMode='review';
+  _studySheetDate=null;
+  _manualInpEdited=false;
+  _resetStudyLockUI();
+  const p=PLAN.find(x=>x.id===planId);
+  _studySheetTags=(p&&p.tags&&p.tags.length)?[...p.tags]:[];
+  _renderStudySheet();
+  // タイマー動作中 or 一時停止中ならUIを復元
+  if(_timerStart || _timerElapsed>0) _restoreTimerUI();
+  document.getElementById('overlay').classList.add('on');
+  document.getElementById('study-sheet').classList.add('on');
+  setFabHidden(true);
+  haptic();
+}
+
 function openNewStudySheet(){
   if(_timerInterval){ clearInterval(_timerInterval); _timerInterval=null; }
   _timerStart=null;
   _timerElapsed=0;
   _saveTimerState();
   _timerUnitId=null;
+  _timerPlanId=null;
   _studySheetMode='new';
   _studySheetTags=[];
   _studySheetDate=null;
@@ -3940,6 +4234,7 @@ function requestCloseStudySheet(){
 function _renderStudySheet(){
   const sh=document.getElementById('study-sheet'); if(!sh) return;
   const u=_timerUnitId?U.find(x=>x.id===_timerUnitId):null;
+  const p=_timerPlanId?PLAN.find(x=>x.id===_timerPlanId):null;
   const tagSelHtml = _studySheetMode==='review'
     ? (_studySheetTags.length ? `<div style="margin-bottom:14px">
         <div style="font-size:13px;font-weight:600;color:var(--lbl2);margin-bottom:8px">タグ</div>
@@ -3955,11 +4250,15 @@ function _renderStudySheet(){
     }).join('')}</div></div>`:'');
 
   sh.querySelector('.sheet-body').innerHTML=`
-    <div class="sheet-ttl">${_studySheetMode==='review'&&u?'復習時間を記録':'勉強時間を記録'}</div>
+    <div class="sheet-ttl">${_studySheetMode==='review'&&u?'復習時間を記録':_studySheetMode==='review'&&p?'計画タスクの時間を記録':'勉強時間を記録'}</div>
     ${_studySheetMode==='new'?`<input class="sheet-inp" id="study-title-inp" type="text" placeholder="内容（例：英単語、数学B）" maxlength="40" autocomplete="off" autocorrect="off">`:''}
     ${_studySheetMode==='review'&&u?`<div style="background:var(--blue-bg);border-radius:10px;padding:10px 14px;margin-bottom:14px">
       <div style="font-size:11px;font-weight:700;color:var(--blue);letter-spacing:.5px;margin-bottom:3px">記録タイトル（自動）</div>
       <div style="font-size:14px;font-weight:700;color:var(--blue-d)">📖 ${esc(u.name)} - ${esc(STEPS[u.step]||`${u.step}回目`)}</div>
+    </div>`:''}
+    ${_studySheetMode==='review'&&p?`<div style="background:var(--plan-bg);border-radius:10px;padding:10px 14px;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--plan-d);letter-spacing:.5px;margin-bottom:3px">記録タイトル（自動）</div>
+      <div style="font-size:14px;font-weight:700;color:var(--plan-d)">🗓️ ${esc(planDisplayName(p))}</div>
     </div>`:''}
     ${tagSelHtml}
     <div id="study-timer-display" style="text-align:center;margin:10px 0 16px">
@@ -4144,6 +4443,9 @@ function saveStudyRecord(){
   if(_studySheetMode==='review'&&_timerUnitId){
     const u=U.find(x=>x.id===_timerUnitId);
     if(u) title=`${u.name} - ${STEPS[u.step]||`${u.step}回目`}`;
+  } else if(_studySheetMode==='review'&&_timerPlanId){
+    const p=PLAN.find(x=>x.id===_timerPlanId);
+    if(p) title=planDisplayName(p);
   } else {
     title=titleInp?.value.trim()||'';
   }
@@ -4153,9 +4455,11 @@ function saveStudyRecord(){
     haptic('medium'); return;
   }
   const _savedUnitId=_timerUnitId;
+  const _savedPlanId=_timerPlanId;
   addStudyLog({
     date:resolvedDate,
     unitId:_savedUnitId||null,
+    planId:_savedPlanId||null,
     title:title||null,
     tagIds:[..._studySheetTags],
     minutes,
@@ -4163,7 +4467,9 @@ function saveStudyRecord(){
   });
   closeStudySheet();
   if(_savedUnitId){
-    complete(_savedUnitId); // complete() calls render() internally
+    complete(_savedUnitId); // complete() calls render()内部で呼ぶ
+  } else if(_savedPlanId){
+    planComplete(_savedPlanId); // planComplete() calls render() internally
   } else {
     render();
     const activeTab=document.querySelector('.tab-btn.on');
@@ -4213,13 +4519,13 @@ function calNav(delta){
 
 /* 日付ごとのタスク情報を返す純粋関数 */
 function _calEventMap(){
-  // { 'YYYY-MM-DD': { count: number, overdue: bool, colors: string[] } }
+  // { 'YYYY-MM-DD': { count: number, overdue: bool, colors: string[], planColors: string[] } }
   const map = {};
   const today = td();
   U.filter(u => !u.done).forEach(u => {
     const d = u.nextDate;
     if(!d) return;
-    if(!map[d]) map[d] = { count: 0, overdue: d < today, colors: [] };
+    if(!map[d]) map[d] = { count: 0, overdue: d < today, colors: [], planColors: [] };
     map[d].count++;
     // タグの色を収集（タグなし → グレー）
     const tagColors = (u.tags || []).map(tid => { const t = getTag(tid); return t ? t.color : null; }).filter(Boolean);
@@ -4227,6 +4533,20 @@ function _calEventMap(){
       tagColors.forEach(c => { if(!map[d].colors.includes(c)) map[d].colors.push(c); });
     } else if(!map[d].colors.includes('#9CA3AF')) {
       map[d].colors.push('#9CA3AF');
+    }
+  });
+  // 計画タスク（毎日/曜日指定/間隔）: 次回日、目標型は期限日にピップを表示
+  PLAN.filter(p=>!p.done).forEach(p=>{
+    const d = p.type==='daily' ? today : p.nextDate;
+    if(!d) return;
+    if(!map[d]) map[d] = { count: 0, overdue: false, colors: [], planColors: [] };
+    map[d].count++;
+    if(p.type!=='daily' && d < today) map[d].overdue = true;
+    const tagColors = (p.tags || []).map(tid => { const t = getTag(tid); return t ? t.color : null; }).filter(Boolean);
+    if(tagColors.length) {
+      tagColors.forEach(c => { if(!map[d].planColors.includes(c)) map[d].planColors.push(c); });
+    } else if(!map[d].planColors.includes('#7C3AED')) {
+      map[d].planColors.push('#7C3AED');
     }
   });
   return map;
@@ -4319,7 +4639,7 @@ function _buildCalGridHtml(year, month){
         : `onclick="openDenseSheet('${dateStr}')"`
       : '';
 
-    // タグ色の四角ピップ（最大4個表示、超過は +N）
+    // タグ色の四角ピップ（最大4個表示、超過は +N）／計画タスクは丸ピップ
     let pipsHtml = '';
     if(hasEvent && !isOther){
       const MAX_PIPS = 4;
@@ -4327,12 +4647,14 @@ function _buildCalGridHtml(year, month){
       const colors = isOverdue
         ? ev.colors.map(() => '#EF4444')
         : ev.colors;
-      const shown = colors.slice(0, MAX_PIPS);
-      // +N は「ピップで表現しきれないタスク件数」（タスク数 - 表示ピップ数）
-      const shownPipCount = Math.min(count, shown.length);
+      const planColors = (ev.planColors||[]).slice(0, MAX_PIPS);
+      const shown = colors.slice(0, Math.max(0, MAX_PIPS - planColors.length));
+      const shownPipCount = Math.min(count, shown.length + planColors.length);
       const rest  = count - shownPipCount; // 表示しきれないタスク数
       const pips  = shown.map(c =>
         `<div class="cal-pip" style="background:${c}"></div>`
+      ).join('') + planColors.map(c =>
+        `<div class="cal-pip plan" style="background:${c}"></div>`
       ).join('');
       const more  = rest > 0 ? `<span class="cal-pip-more">+${rest}</span>` : '';
       pipsHtml = `<div class="cal-pips">${pips}${more}</div>`;
@@ -4368,45 +4690,62 @@ function _renderDenseSheet(){
   const dateStr = _denseDate;
   if(!dateStr) return;
   const today = td();
-  const allCount = U.filter(u => !u.done && u.nextDate === dateStr).length;
-  const cands = U.filter(u => !u.done && u.nextDate === dateStr);
+  const reviewCands = U.filter(u => !u.done && u.nextDate === dateStr);
+  // 計画: 毎日タスクは常に「今日」なので今日の日付のときのみ、日付固定移動はできない（除外）
+  const planCands = PLAN.filter(p => !p.done && p.type!=='daily' && p.nextDate === dateStr);
+  const allCount = reviewCands.length + planCands.length;
 
   // ヘッダー
   document.getElementById('dense-sheet-ttl').textContent =
-    fmtShortText(dateStr) + ' の復習（' + allCount + '件）';
+    fmtShortText(dateStr) + ' のタスク（' + allCount + '件）';
   document.getElementById('dense-sheet-sub').textContent = '日付を変更したいカードをずらせます';
 
   const scroll = document.getElementById('dense-sheet-scroll');
 
-  if(cands.length === 0){
+  if(allCount === 0){
     scroll.innerHTML = '<div class="dense-empty">ずらせるカードがありません。</div>';
     return;
   }
 
   // 移動先の候補日ボタンを生成（-3〜+3日、過去・当日は除外）
-  function shiftBtns(uid){
+  function shiftBtns(id, isPlan){
     const deltas = [-3,-2,-1,1,2,3];
     return deltas.map(d => {
       const dest = addD(dateStr, d);
       if(dest <= today) return ''; // 過去はスキップ
       if(dest === dateStr) return '';
-      const destCount = U.filter(u => !u.done && u.nextDate === dest).length;
+      const destCount = U.filter(u => !u.done && u.nextDate === dest).length
+        + PLAN.filter(p => !p.done && p.type!=='daily' && p.nextDate === dest).length;
       const warn = destCount >= CAL_DENSE_OVER ? '⚠️' : '';
       const label = (d > 0 ? '+' : '') + d + '日' + warn;
-      return `<button class="dense-shift-btn" onclick="denseShiftUnit('${uid}','${dest}')">${label}</button>`;
+      const fn = isPlan ? `denseShiftPlan('${id}','${dest}')` : `denseShiftUnit('${id}','${dest}')`;
+      return `<button class="dense-shift-btn" onclick="${fn}">${label}</button>`;
     }).join('');
   }
 
-  scroll.innerHTML = cands.map(u => {
+  const reviewHtml = reviewCands.map(u => {
     const stepLabel = STEPS[u.step] || (u.step + '回目');
     return `<div class="dense-row" id="dense-row-${u.id}">
       <div class="dense-row-top">
         <div class="dense-row-name">${esc(u.name)}</div>
         <div class="dense-row-step">${stepLabel}</div>
       </div>
-      <div class="dense-row-btns">${shiftBtns(u.id)}</div>
+      <div class="dense-row-btns">${shiftBtns(u.id,false)}</div>
     </div>`;
   }).join('');
+
+  const planHtml = planCands.map(p => {
+    const stepLabel = p.type==='goal' ? '目標の期限' : PLAN_TYPE_LABEL[p.type];
+    return `<div class="dense-row" id="dense-row-${p.id}">
+      <div class="dense-row-top">
+        <div class="dense-row-name">${esc(planDisplayName(p))}</div>
+        <div class="dense-row-step" style="color:var(--plan-d)">${stepLabel}</div>
+      </div>
+      <div class="dense-row-btns">${shiftBtns(p.id,true)}</div>
+    </div>`;
+  }).join('');
+
+  scroll.innerHTML = reviewHtml + planHtml;
 }
 
 function denseShiftUnit(uid, destDate){
@@ -4417,8 +4756,22 @@ function denseShiftUnit(uid, destDate){
   save();
   haptic('medium');
   toast(IC.check, esc(u.name) + ' を ' + fmtShortText(destDate) + ' へ移動しました');
+  _denseShiftRowOut(uid);
+}
+
+function denseShiftPlan(pid, destDate){
+  const p = PLAN.find(x => x.id === pid);
+  if(!p) return;
+  p.nextDate = destDate;
+  savePlan();
+  haptic('medium');
+  toast(IC.check, esc(planDisplayName(p)) + ' を ' + fmtShortText(destDate) + ' へ移動しました');
+  _denseShiftRowOut(pid);
+}
+
+function _denseShiftRowOut(id){
   // 行を削除してシートを再描画（_denseDateはそのまま残す）
-  const row = document.getElementById('dense-row-' + uid);
+  const row = document.getElementById('dense-row-' + id);
   if(row){
     row.style.transition = 'max-height .2s ease, opacity .15s';
     row.style.overflow = 'hidden';
@@ -4430,7 +4783,8 @@ function denseShiftUnit(uid, destDate){
     }));
     setTimeout(() => {
       // 残件数が0になったらシートを閉じる
-      const remaining = U.filter(u => !u.done && u.nextDate === _denseDate).length;
+      const remaining = U.filter(u => !u.done && u.nextDate === _denseDate).length
+        + PLAN.filter(p => !p.done && p.type!=='daily' && p.nextDate === _denseDate).length;
       if(remaining === 0){
         closeDenseSheet();
         _renderCalGrid();
@@ -4440,6 +4794,10 @@ function denseShiftUnit(uid, destDate){
         _renderCalGrid(); // カレンダーのピップ・過密バッジも更新
       }
     }, 220);
+  } else {
+    _renderDenseSheet();
+    _renderCalGrid();
+    render();
   }
 }
 
@@ -4460,19 +4818,22 @@ function calJumpToDate(dateStr){
   if(filterTagId !== null) filterTagId = null;
   if(needRebuild) render();
 
-  // 3. 期限切れのタスクは「今日のタスク」タブに表示されるため、そちらへ切り替える
-  //    （切り替えないと p-upcoming にはカードが存在せず、タイトルが表示できない）
-  const todayTabBtn = document.querySelector('.tab-btn[data-tab="today"]');
-  if(todayTabBtn && !todayTabBtn.classList.contains('on')){
-    switchTab(todayTabBtn);
+  // 3. 期限切れのタスクは「今日のタスク」タブ（復習）または「計画」タブ（計画タスク）に
+  //    表示されるため、該当するタブへ切り替える
+  const reviewTargets = U.filter(u => !u.done && u.nextDate === dateStr);
+  const planTargets = PLAN.filter(p => !p.done && p.type!=='daily' && p.nextDate === dateStr);
+  const destTabName = reviewTargets.length ? 'today' : (planTargets.length ? 'plan' : 'today');
+  const destTabBtn = document.querySelector(`.tab-btn[data-tab="${destTabName}"]`);
+  if(destTabBtn && !destTabBtn.classList.contains('on')){
+    switchTab(destTabBtn);
   }
 
   // 4. 対象カードを探してスクロール（タブ切替・cal-wrap のトランジション完了後に実行）
   setTimeout(() => {
-    const panel = document.getElementById('p-today');
+    const panel = document.getElementById('p-'+destTabName);
     if(!panel) return;
     // 同日に複数ユニットある場合も全件ハイライトし、先頭へスクロール
-    const targets = U.filter(u => !u.done && u.nextDate === dateStr);
+    const targets = destTabName==='plan' ? planTargets : reviewTargets;
     if(!targets.length) return;
     let firstCard = null;
     targets.forEach(target => {
@@ -4605,6 +4966,531 @@ function cHtmlUpcoming(u){
     </div>
   </div>`;
 }
+/* ══════════════════════════════════════════
+   計画（Plan）タブ
+══════════════════════════════════════════ */
+function _planPaceRaw(deadline, totalCount, doneCount){
+  // 期限・個数から目安ペースを算出する純粋関数
+  const remain = (totalCount||0) - (doneCount||0);
+  const daysLeft = Math.max(diff(deadline), 0);
+  if(remain<=0) return {remain:0, daysLeft, perDay:0, daysPerOne:0};
+  if(daysLeft<=0) return {remain, daysLeft:0, perDay:remain, daysPerOne:0};
+  const perDay = remain/daysLeft;
+  return {
+    remain, daysLeft,
+    perDay: Math.ceil(perDay),
+    daysPerOne: perDay<1 ? Math.floor(daysLeft/remain) : 0
+  };
+}
+function planPace(p){
+  // 目標型: 期限までの必要ペースを算出
+  return _planPaceRaw(p.deadline, p.totalCount, p.doneCount||0);
+}
+
+function planCardHtml(p, opts){
+  opts = opts || {};
+  const dispName = planDisplayName(p);
+  if(p.type==='goal'){
+    const pace=planPace(p);
+    const pct=Math.min(100,Math.round(((p.doneCount||0)/p.totalCount)*100));
+    const over=!p.done && diff(p.deadline)<0;
+    const paceLbl = p.done ? '🎉 達成しました！'
+      : over ? `${IC.alertSm} 期限を過ぎています`
+      : pace.remain<=0 ? ''
+      : pace.daysPerOne>0 ? `${pace.daysPerOne}日に1個のペースでOK`
+      : `1日${pace.perDay}個 必要`;
+    return `<div class="cw" id="w-${p.id}" data-id="${p.id}">
+      <div class="card plan${over?' over':''}${p.done?'':''}" id="c-${p.id}">
+        <div class="card-top">
+          <div class="card-name">${esc(dispName)}</div>
+          <div style="display:flex;gap:2px;flex-shrink:0">
+            <button class="btn-edit" onclick="openPlanSheet('${p.id}')" aria-label="編集">${IC.pencil}</button>
+            <button class="btn-del" onclick="planDelete('${p.id}')" aria-label="削除">${IC.trash}</button>
+          </div>
+        </div>
+        <div class="plan-type-badge">${IC.calendar} 目標 · ${fmtShort(p.deadline)}まで</div>
+        ${(p.tags&&p.tags.length)?`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">${p.tags.map(tid=>tagHtml(tid)).join('')}</div>`:''}
+        <div class="plan-progress-lbl"><span>${p.doneCount||0} / ${p.totalCount}</span><span>${pct}%</span></div>
+        <div class="plan-progress-track"><div class="plan-progress-fill" style="width:${pct}%"></div></div>
+        ${paceLbl?`<div class="plan-pace">${IC.zap.replace('white','currentColor')}${paceLbl}</div>`:''}
+        ${(p.done||opts.hideComplete)?'':`<div class="acts"><button class="btn-plan-ok" onclick="${opts.todayMode?`openStudyTimerForPlan('${p.id}')`:`planComplete('${p.id}')`}">${opts.todayMode?IC.timerSm:IC.check} ${opts.todayMode?'時間を記録して1個完了':'1個完了にする'}</button></div>`}
+      </div>
+    </div>`;
+  }
+  // daily / weekday / interval
+  const over = planIsOverdue(p);
+  const due = planIsDueToday(p);
+  const doneToday = p.type==='daily' ? p.lastDoneDate===td() : (p.lastDoneDate===td() && !due && !over);
+  const showComplete = opts.hideComplete ? false : (p.type==='daily' ? !doneToday : (due||over));
+  const showSnooze = opts.hideSnooze ? false : (opts.alwaysSnooze ? p.type!=='daily' : (p.type!=='daily' && (due||over)));
+  const typeSub = p.type==='daily' ? '毎日'
+    : p.type==='weekday' ? '毎週 '+(p.weekdays||[]).slice().sort().map(d=>WD_LABELS[d]).join('・')
+    : `${p.intervalDays}日ごと`;
+  const when = p.type==='daily'
+    ? (doneToday?`<div class="card-when due">${IC.check} 今日は完了済み</div>`:`<div class="card-when due">${IC.clock} 今日のタスク</div>`)
+    : over
+    ? `<div class="card-when over">${IC.alert} ${Math.abs(diff(p.nextDate))}日超過中</div>`
+    : due
+    ? `<div class="card-when due">${IC.clock} 今日が期限</div>`
+    : `<div class="card-when">${IC.calendar} ${fmtShort(p.nextDate)}</div>`;
+  return `<div class="cw" id="w-${p.id}" data-id="${p.id}">
+    <div class="card plan${over?' over':due?' due':''}" id="c-${p.id}">
+      <div class="card-top">
+        <div class="card-name">${esc(dispName)}</div>
+        <div style="display:flex;gap:2px;flex-shrink:0">
+          <button class="btn-edit" onclick="openPlanSheet('${p.id}')" aria-label="編集">${IC.pencil}</button>
+          <button class="btn-del" onclick="planDelete('${p.id}')" aria-label="削除">${IC.trash}</button>
+        </div>
+      </div>
+      <div class="plan-type-badge">${PLAN_TYPE_LABEL[p.type]} · ${esc(typeSub)}</div>
+      ${(p.tags&&p.tags.length)?`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">${p.tags.map(tid=>tagHtml(tid)).join('')}</div>`:''}
+      ${when}
+      ${(showComplete||showSnooze)?`<div class="acts">
+        ${showComplete?`<button class="btn-plan-ok" onclick="${opts.todayMode?`openStudyTimerForPlan('${p.id}')`:`planComplete('${p.id}')`}">${opts.todayMode?IC.timerSm:IC.check} ${opts.todayMode?'時間を記録して完了':'完了にする'}</button>`:''}
+        ${showSnooze?`<button class="btn-snooze" onclick="openPlanSnooze('${p.id}')">${IC.moon} 延期</button>`:''}
+      </div>`:''}
+    </div>
+  </div>`;
+}
+
+function rPlan(){
+  const el=document.getElementById('p-plan'); if(!el) return;
+  const addCtaHtml = `<button class="plan-add-cta" onclick="openPlanSheet()">
+    <span class="plan-add-cta-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+    <span class="plan-add-cta-txt">
+      <span class="plan-add-cta-ttl">新しい計画を立てる</span>
+      <span class="plan-add-cta-sub">毎日・曜日指定・間隔・目標から選べます</span>
+    </span>
+  </button>`;
+
+  if(!PLAN.length){
+    el.innerHTML=`
+      <div class="hero" style="background:linear-gradient(135deg,#4C1D95 0%,#7C3AED 55%,#A78BFA 100%)">
+        <div class="hero-msg">勉強計画を立てましょう</div>
+        <div class="hero-sub" style="margin-top:6px">下のボタンから最初の計画を追加できます</div>
+      </div>
+      ${addCtaHtml}
+      <div class="empty">
+        <div class="empty-icon">${IC.calendarLg}</div>
+        <p>「計画」タブでは学習計画を立てて<br>内容を確認できます<br>今日やるタスクは「今日」タブに表示されます</p>
+      </div>`;
+    return;
+  }
+  const active = PLAN.filter(p=>!p.done);
+  const goals = active.filter(p=>p.type==='goal');
+  const routines = active.filter(p=>p.type!=='goal')
+    .sort((a,b)=>(a.nextDate||'').localeCompare(b.nextDate||''));
+  const dueCount = routines.filter(p=>planIsDueToday(p)||planIsOverdue(p)).length;
+
+  let html = `<div class="hero" style="background:linear-gradient(135deg,#4C1D95 0%,#7C3AED 55%,#A78BFA 100%)">
+    <div class="hero-msg">${active.length} 件の計画があります</div>
+    ${dueCount?`<div class="hero-sub" style="margin-top:6px">今日やることは「今日」タブで確認・完了できます</div>`:''}
+  </div>
+  ${addCtaHtml}`;
+
+  if(goals.length){
+    html += `<div class="sec sec-first">目標</div>` + goals.map(p=>planCardHtml(p,{hideComplete:true})).join('');
+  }
+  if(routines.length){
+    html += `<div class="sec${goals.length?'':' sec-first'}">ルーティンの確認 · ${routines.length}件</div>`
+      + routines.map(p=>planCardHtml(p,{hideComplete:true,alwaysSnooze:true})).join('');
+  }
+  el.innerHTML=html;
+}
+
+/* ── Plan add / edit modal ── */
+let _planDraft=null;
+let _planEditId=null;
+function _planDefaultDraft(){
+  return {name:'', type:'daily', tags:[], weekdays:[], intervalDays:3, totalCount:10, doneCount:0, deadline:addD(td(),14),
+    nameMode:'fixed', seqStart:1, seqUnit:'', customLabels:['']};
+}
+function openPlanSheet(editId){
+  if(editId){
+    const p=PLAN.find(x=>x.id===editId); if(!p) return;
+    _planEditId=editId;
+    _planDraft={name:p.name, type:p.type, tags:[...(p.tags||[])],
+      weekdays:[...(p.weekdays||[])], intervalDays:p.intervalDays||3,
+      totalCount:p.totalCount||10, doneCount:p.doneCount||0, deadline:p.deadline||addD(td(),14),
+      nameMode:p.nameMode||'fixed', seqStart:(p.seqStart!=null?p.seqStart:1), seqUnit:p.seqUnit||'',
+      customLabels:(p.customLabels&&p.customLabels.length)?[...p.customLabels]:['']};
+    document.getElementById('plan-modal-ttl').textContent='計画タスクを編集';
+  } else {
+    _planEditId=null;
+    _planDraft=_planDefaultDraft();
+    document.getElementById('plan-modal-ttl').textContent='計画タスクを追加';
+  }
+  renderPlanModalBody();
+  document.getElementById('plan-modal').classList.add('on');
+  setFabHidden(true);
+  haptic();
+  setTimeout(()=>document.getElementById('plan-name-inp')?.focus(),280);
+}
+function closePlanModal(){
+  document.getElementById('plan-name-inp')?.blur();
+  document.getElementById('plan-modal').classList.remove('on');
+  setFabHidden(false);
+  _planDraft=null; _planEditId=null;
+}
+function selectPlanType(t){
+  if(!_planDraft) return;
+  const nameInp=document.getElementById('plan-name-inp');
+  if(nameInp) _planDraft.name=nameInp.value;
+  const totalInp=document.getElementById('plan-total-inp');
+  if(totalInp && totalInp.value!=='') _planDraft.totalCount=parseInt(totalInp.value,10)||_planDraft.totalCount;
+  const deadlineInp=document.getElementById('plan-deadline-inp');
+  if(deadlineInp && deadlineInp.value) _planDraft.deadline=deadlineInp.value;
+  _planDraft.type=t;
+  renderPlanModalBody();
+}
+function _syncPlanNameFieldsFromDom(){
+  if(!_planDraft) return;
+  const nameInp=document.getElementById('plan-name-inp');
+  if(nameInp) _planDraft.name=nameInp.value;
+  const seqStartInp=document.getElementById('plan-seq-start-inp');
+  if(seqStartInp) _planDraft.seqStart=seqStartInp.value;
+  const seqUnitInp=document.getElementById('plan-seq-unit-inp');
+  if(seqUnitInp) _planDraft.seqUnit=seqUnitInp.value;
+  const customInps=document.querySelectorAll('.plan-custom-label-inp');
+  if(customInps.length) _planDraft.customLabels=Array.from(customInps).map(i=>i.value);
+}
+function selectPlanNameMode(m){
+  if(!_planDraft) return;
+  _syncPlanNameFieldsFromDom();
+  _planDraft.nameMode=m;
+  renderPlanModalBody();
+}
+function addPlanCustomLabel(){
+  if(!_planDraft) return;
+  _syncPlanNameFieldsFromDom();
+  _planDraft.customLabels=[...(_planDraft.customLabels||['']), ''];
+  renderPlanModalBody();
+  setTimeout(()=>{
+    const inps=document.querySelectorAll('.plan-custom-label-inp');
+    if(inps.length) inps[inps.length-1].focus();
+  },30);
+}
+function removePlanCustomLabel(idx){
+  if(!_planDraft) return;
+  _syncPlanNameFieldsFromDom();
+  const arr=[...(_planDraft.customLabels||[''])];
+  arr.splice(idx,1);
+  _planDraft.customLabels=arr.length?arr:[''];
+  renderPlanModalBody();
+}
+function updatePlanPreview(){
+  if(!_planDraft) return;
+  const el=document.getElementById('plan-name-preview'); if(!el) return;
+  const nameInp=document.getElementById('plan-name-inp');
+  const base=(nameInp?nameInp.value:_planDraft.name)||'タスク名';
+  const mode=_planDraft.nameMode||'fixed';
+  const editP=_planEditId?PLAN.find(x=>x.id===_planEditId):null;
+  const idx=(_planDraft.type==='goal'?(_planDraft.doneCount||0):(editP?(editP.occurrenceCount||0):0));
+  let preview=base;
+  if(mode==='sequence'){
+    const startInp=document.getElementById('plan-seq-start-inp');
+    const unitInp=document.getElementById('plan-seq-unit-inp');
+    const start=(startInp&&startInp.value!=='')?Number(startInp.value):1;
+    const unit=(unitInp&&unitInp.value.trim())?unitInp.value.trim():'回';
+    preview=`${base} ${start+idx}${unit}`;
+  } else if(mode==='custom'){
+    const customInps=document.querySelectorAll('.plan-custom-label-inp');
+    const raw=customInps[idx]?customInps[idx].value:'';
+    const label=raw&&raw.trim()?raw.trim():`${idx+1}回目`;
+    preview=`${base} ${label}`;
+  }
+  el.textContent=preview;
+}
+function _planPaceHintHtml(deadline, count){
+  if(!deadline || !count || count<=0){
+    return `<div class="plan-pace-hint muted" id="plan-pace-hint">${IC.clock} 期限と個数を入力すると目安のペースが表示されます</div>`;
+  }
+  if(diff(deadline)<0){
+    return `<div class="plan-pace-hint warn" id="plan-pace-hint">${IC.alertSm} 期限を過ぎています</div>`;
+  }
+  const pace=_planPaceRaw(deadline, count, 0);
+  if(pace.remain<=0){
+    return `<div class="plan-pace-hint" id="plan-pace-hint">🎉 今日が期限です。今日中に${count}個やりましょう</div>`;
+  }
+  const msg = pace.daysPerOne>1
+    ? `${IC.zap.replace('white','currentColor')} 目安：${pace.daysPerOne}日に1回のペースでOK`
+    : pace.perDay<=1
+    ? `${IC.zap.replace('white','currentColor')} 目安：毎日1個のペースでOK`
+    : `${IC.zap.replace('white','currentColor')} 目安：1日${pace.perDay}個のペースが必要`;
+  return `<div class="plan-pace-hint" id="plan-pace-hint">${msg}</div>`;
+}
+function _planPaceApplyBtnHtml(deadline, count){
+  if(!_planDraft || _planDraft.type==='goal') return '';
+  if(!deadline || !count || count<=0 || diff(deadline)<0) return '';
+  const pace=_planPaceRaw(deadline, count, 0);
+  if(pace.remain<=0) return '';
+  const label = pace.daysPerOne>1 ? `→ ${pace.daysPerOne}日ごとに設定する` : `→ 毎日に設定する`;
+  return `<button type="button" class="plan-pace-apply-btn" onclick="applyPlanPaceSuggestion()">${label}</button>`;
+}
+function updatePlanPaceHint(){
+  if(!_planDraft) return;
+  const deadlineInp=document.getElementById('plan-deadline-inp');
+  const countInp=document.getElementById('plan-total-inp');
+  const deadline=deadlineInp?deadlineInp.value:'';
+  const count=countInp?parseInt(countInp.value,10):0;
+  const hintEl=document.getElementById('plan-pace-hint');
+  if(hintEl) hintEl.outerHTML=_planPaceHintHtml(deadline,count);
+  const applyWrap=document.getElementById('plan-pace-apply-wrap');
+  if(applyWrap) applyWrap.innerHTML=_planPaceApplyBtnHtml(deadline,count);
+}
+function applyPlanPaceSuggestion(){
+  if(!_planDraft) return;
+  const deadlineInp=document.getElementById('plan-deadline-inp');
+  const countInp=document.getElementById('plan-total-inp');
+  const deadline=deadlineInp?deadlineInp.value:'';
+  const count=countInp?parseInt(countInp.value,10):0;
+  if(!deadline||!count) return;
+  const nameInp=document.getElementById('plan-name-inp');
+  if(nameInp) _planDraft.name=nameInp.value;
+  _planDraft.deadline=deadline;
+  _planDraft.totalCount=count;
+  const pace=_planPaceRaw(deadline, count, 0);
+  if(pace.daysPerOne>1){ _planDraft.type='interval'; _planDraft.intervalDays=pace.daysPerOne; }
+  else { _planDraft.type='daily'; }
+  renderPlanModalBody();
+  haptic('medium');
+  toast(IC.check, pace.daysPerOne>1 ? `${pace.daysPerOne}日ごとに設定しました` : '毎日に設定しました');
+}
+function togglePlanWeekday(d){
+  if(!_planDraft) return;
+  const nameInp=document.getElementById('plan-name-inp');
+  if(nameInp) _planDraft.name=nameInp.value;
+  _planDraft.weekdays = _planDraft.weekdays.includes(d)
+    ? _planDraft.weekdays.filter(x=>x!==d) : [..._planDraft.weekdays,d];
+  renderPlanModalBody();
+}
+function toggleTagPlan(id){
+  if(!_planDraft) return;
+  _planDraft.tags = _planDraft.tags.includes(id)
+    ? _planDraft.tags.filter(x=>x!==id) : [..._planDraft.tags,id];
+  renderPlanTagSel();
+}
+function renderPlanTagSel(){
+  const wrap=document.getElementById('plan-tag-sel-wrap'); if(!wrap||!_planDraft) return;
+  if(!TAGS.length){ wrap.innerHTML=''; return; }
+  wrap.innerHTML=`
+    <div class="tag-sel-wrap">
+      <div class="tag-sel-label"><span>タグ</span></div>
+      <div class="tag-sel-list">${TAGS.map(t=>{
+        const on=_planDraft.tags.includes(t.id);
+        return `<button class="tag-sel-btn${on?' on':''}"
+          style="${on?`background:${t.color};border-color:${t.color}`:''}"
+          onclick="toggleTagPlan('${t.id}')">
+          <span class="tag-dot" style="background:${on?'#fff':t.color}"></span>${esc(t.name)}
+        </button>`;
+      }).join('')}</div>
+    </div>`;
+}
+function renderPlanModalBody(){
+  const body=document.getElementById('plan-modal-body'); if(!body||!_planDraft) return;
+  const d=_planDraft;
+
+  /* ── ① ゴール設定：いつまでに何個？ ── */
+  const goalCardHtml = `
+    <div class="plan-sec-label first">🎯 いつまでに、何個やる？</div>
+    <div class="plan-sec-sub">ここで決めた期限と個数から、目安のペースを計算します</div>
+    <div class="plan-goal-card">
+      <div class="plan-goal-row">
+        <div class="plan-goal-field">
+          <label>いつまでに終わらせる？</label>
+          <input type="date" id="plan-deadline-inp" value="${d.deadline}" oninput="updatePlanPaceHint()">
+        </div>
+        <div class="plan-goal-field">
+          <label>個数</label>
+          <input type="number" id="plan-total-inp" inputmode="numeric" min="1" max="9999" value="${d.totalCount}" oninput="updatePlanPaceHint()">
+        </div>
+      </div>
+      ${_planPaceHintHtml(d.deadline, d.totalCount)}
+      <div id="plan-pace-apply-wrap">${_planPaceApplyBtnHtml(d.deadline, d.totalCount)}</div>
+      ${(_planEditId && d.type==='goal')?`<div class="plan-goal-done-row">
+        <div class="plan-field-label" style="margin-top:0">これまでに完了した個数</div>
+        <div class="plan-num-row">
+          <input class="plan-num-inp" id="plan-done-inp" type="number" inputmode="numeric" min="0" max="${d.totalCount}" value="${d.doneCount}">
+          <span style="color:var(--lbl2);font-size:13px;white-space:nowrap">個</span>
+        </div>
+      </div>`:''}
+    </div>`;
+
+  /* ── ② くり返し方 ── */
+  const typeSegHtml = `<div class="plan-type-seg">
+    <button class="${d.type==='daily'?'on':''}" onclick="selectPlanType('daily')">毎日</button>
+    <button class="${d.type==='weekday'?'on':''}" onclick="selectPlanType('weekday')">曜日指定</button>
+    <button class="${d.type==='interval'?'on':''}" onclick="selectPlanType('interval')">間隔</button>
+    <button class="${d.type==='goal'?'on':''}" onclick="selectPlanType('goal')">目標のみ</button>
+  </div>`;
+
+  let repeatSubHtml='';
+  if(d.type==='weekday'){
+    repeatSubHtml=`<div class="plan-field-label" style="margin-top:0">実施する曜日</div>
+      <div class="plan-wd-row">${WD_LABELS.map((l,i)=>
+        `<button class="plan-wd-btn${d.weekdays.includes(i)?' on':''}" onclick="togglePlanWeekday(${i})">${l}</button>`
+      ).join('')}</div>`;
+  } else if(d.type==='interval'){
+    repeatSubHtml=`<div class="plan-field-label" style="margin-top:0">実施する間隔（日数）</div>
+      <div class="plan-num-row">
+        <input class="plan-num-inp" id="plan-interval-inp" type="number" inputmode="numeric" min="1" max="365" value="${d.intervalDays}">
+        <span style="color:var(--lbl2);font-size:13px;white-space:nowrap">日ごと</span>
+      </div>`;
+  } else if(d.type==='daily'){
+    repeatSubHtml=`<div style="font-size:12.5px;color:var(--lbl2)">毎日「今日」タブに表示されます</div>`;
+  } else if(d.type==='goal'){
+    repeatSubHtml=`<div style="font-size:12.5px;color:var(--lbl2)">曜日や間隔を決めず、上のゴール設定（期限・個数）だけで進捗を管理します</div>`;
+  }
+
+  const repeatSecHtml = `
+    <div class="plan-sec-label">🔁 くり返し方</div>
+    <div class="plan-sec-sub">上のペースを参考に、実施パターンを選んでください</div>
+    ${typeSegHtml}
+    <div class="plan-sub-card">${repeatSubHtml}</div>`;
+
+  /* ── ③ 表示名 ── */
+  const _editP = _planEditId ? PLAN.find(x=>x.id===_planEditId) : null;
+  const _idx = (d.type==='goal' ? (d.doneCount||0) : (_editP ? (_editP.occurrenceCount||0) : 0));
+  const _previewBase = d.name || 'タスク名';
+  let _previewName = _previewBase;
+  if(d.nameMode==='sequence'){
+    const start = (d.seqStart!==''&&d.seqStart!=null) ? Number(d.seqStart) : 1;
+    const unit = (d.seqUnit&&d.seqUnit.trim()) ? d.seqUnit.trim() : '回';
+    _previewName = `${_previewBase} ${start+_idx}${unit}`;
+  } else if(d.nameMode==='custom'){
+    const labels = d.customLabels||[];
+    const raw = labels[_idx];
+    const label = (raw&&raw.trim()) ? raw.trim() : `${_idx+1}回目`;
+    _previewName = `${_previewBase} ${label}`;
+  }
+
+  let nameModeExtraHtml='';
+  if(d.nameMode==='sequence'){
+    nameModeExtraHtml=`<div class="plan-field-label">開始する数字</div>
+      <div class="plan-num-row">
+        <input class="plan-num-inp" id="plan-seq-start-inp" type="number" inputmode="numeric" min="0" max="9999" value="${d.seqStart!=null?d.seqStart:1}" oninput="updatePlanPreview()">
+      </div>
+      <div class="plan-field-label">単位（例：章・節・回）</div>
+      <input class="edit-modal-inp" id="plan-seq-unit-inp" type="text" placeholder="章" maxlength="10" autocomplete="off" autocorrect="off" value="${esc(d.seqUnit||'')}" oninput="updatePlanPreview()" style="margin-bottom:4px">`;
+  } else if(d.nameMode==='custom'){
+    const labels=(d.customLabels&&d.customLabels.length)?d.customLabels:[''];
+    nameModeExtraHtml=`<div class="plan-field-label">各回の表示名</div>
+      <div id="plan-custom-list">
+        ${labels.map((lbl,i)=>`
+        <div class="plan-custom-row">
+          <span class="plan-custom-idx">${i+1}回目</span>
+          <input class="plan-custom-label-inp edit-modal-inp" type="text" placeholder="表示名（未入力なら「${i+1}回目」）" maxlength="20" autocomplete="off" autocorrect="off" value="${esc(lbl)}" oninput="updatePlanPreview()">
+          ${labels.length>1?`<button type="button" class="plan-custom-del" onclick="removePlanCustomLabel(${i})" aria-label="削除">${IC.trash}</button>`:''}
+        </div>`).join('')}
+      </div>
+      <button type="button" class="plan-custom-add" onclick="addPlanCustomLabel()" style="margin-bottom:0">＋ 行を追加</button>`;
+  }
+
+  const nameModeSecHtml = `
+    <div class="plan-sec-label">✏️ 表示名</div>
+    <div class="plan-sec-sub">${d.type==='daily'?'毎日':'実施'}のたびに名前を変えたい場合はここで設定できます</div>
+    <div class="plan-type-seg" style="margin-bottom:${nameModeExtraHtml?'12px':'0'}">
+      <button class="${d.nameMode==='fixed'?'on':''}" onclick="selectPlanNameMode('fixed')">毎回同じ</button>
+      <button class="${d.nameMode==='sequence'?'on':''}" onclick="selectPlanNameMode('sequence')">連番</button>
+      <button class="${d.nameMode==='custom'?'on':''}" onclick="selectPlanNameMode('custom')">個別入力</button>
+    </div>
+    ${nameModeExtraHtml?`<div class="plan-sub-card" style="margin-bottom:10px">${nameModeExtraHtml}</div>`:''}
+    <div class="plan-name-preview-box" id="plan-name-preview-wrap">表示例：<b id="plan-name-preview">${esc(_previewName)}</b></div>`;
+
+  body.innerHTML=`
+    <input class="edit-modal-inp" id="plan-name-inp" type="text" placeholder="タスク名（例：単語帳、参考書P.1〜50）" maxlength="40" autocomplete="off" autocorrect="off" value="${esc(d.name)}" oninput="updatePlanPreview()">
+    ${goalCardHtml}
+    ${repeatSecHtml}
+    ${nameModeSecHtml}
+    <div class="tag-sel-wrap" id="plan-tag-sel-wrap"></div>
+  `;
+  renderPlanTagSel();
+}
+function _readPlanNameFields(){
+  const mode=(_planDraft&&_planDraft.nameMode)||'fixed';
+  const out={nameMode:mode};
+  if(mode==='sequence'){
+    const s=document.getElementById('plan-seq-start-inp');
+    const u=document.getElementById('plan-seq-unit-inp');
+    out.seqStart = s ? (parseInt(s.value,10)||0) : (_planDraft.seqStart!=null?_planDraft.seqStart:1);
+    out.seqUnit = u ? u.value.trim() : (_planDraft.seqUnit||'');
+  } else if(mode==='custom'){
+    const inps=document.querySelectorAll('.plan-custom-label-inp');
+    out.customLabels = inps.length ? Array.from(inps).map(i=>i.value.trim()) : (_planDraft.customLabels||['']);
+  }
+  return out;
+}
+function savePlanTask(){
+  if(!_planDraft) return;
+  const nameInp=document.getElementById('plan-name-inp');
+  const name=nameInp.value.trim();
+  if(!name){
+    nameInp.classList.remove('shake'); void nameInp.offsetWidth; nameInp.classList.add('shake');
+    haptic('medium'); return;
+  }
+  const d=_planDraft;
+  const tags=[...d.tags];
+  const t=td();
+  const nameFields=_readPlanNameFields();
+
+  if(d.type==='weekday'){
+    const wdInputs=document.querySelectorAll('.plan-wd-btn.on');
+    if(!wdInputs.length){ toast(IC.alertSm,'曜日を1つ以上選んでください'); haptic('medium'); return; }
+  }
+
+  if(_planEditId){
+    const p=PLAN.find(x=>x.id===_planEditId); if(!p) return;
+    p.name=name; p.type=d.type; p.tags=tags; p.nameMode=nameFields.nameMode;
+    if(nameFields.nameMode==='sequence'){ p.seqStart=nameFields.seqStart; p.seqUnit=nameFields.seqUnit; }
+    if(nameFields.nameMode==='custom'){ p.customLabels=nameFields.customLabels; }
+    if(d.type==='weekday'){
+      p.weekdays=[...d.weekdays];
+      const curDow = p.nextDate ? new Date(p.nextDate+'T00:00:00').getDay() : -1;
+      if(!p.nextDate || !p.weekdays.includes(curDow)){
+        const dow=new Date(t+'T00:00:00').getDay();
+        p.nextDate = p.weekdays.includes(dow) ? t : planNextWeekday(t,p.weekdays);
+      }
+    } else if(d.type==='interval'){
+      const iv=parseInt(document.getElementById('plan-interval-inp').value,10);
+      p.intervalDays=(iv>=1?iv:1);
+    } else if(d.type==='goal'){
+      p.totalCount=Math.max(1,parseInt(document.getElementById('plan-total-inp').value,10)||1);
+      p.deadline=document.getElementById('plan-deadline-inp').value||d.deadline;
+      const doneInp=document.getElementById('plan-done-inp');
+      if(doneInp) p.doneCount=Math.min(p.totalCount,Math.max(0,parseInt(doneInp.value,10)||0));
+      p.done = p.doneCount>=p.totalCount;
+    }
+    savePlan(); closePlanModal(); render();
+    toast(IC.check, esc(name)+'を更新しました');
+    haptic('medium');
+    return;
+  }
+
+  let task={id:'plan-'+Date.now().toString(), name, type:d.type, tags, createdDate:t, lastDoneDate:null, nameMode:nameFields.nameMode, occurrenceCount:0};
+  if(nameFields.nameMode==='sequence'){ task.seqStart=nameFields.seqStart; task.seqUnit=nameFields.seqUnit; }
+  if(nameFields.nameMode==='custom'){ task.customLabels=nameFields.customLabels; }
+  if(d.type==='daily'){
+    // 何もなし（毎日タスク）
+  } else if(d.type==='weekday'){
+    task.weekdays=[...d.weekdays];
+    const dow=new Date(t+'T00:00:00').getDay();
+    task.nextDate = task.weekdays.includes(dow) ? t : planNextWeekday(t,task.weekdays);
+  } else if(d.type==='interval'){
+    const iv=parseInt(document.getElementById('plan-interval-inp').value,10);
+    task.intervalDays=(iv>=1?iv:1);
+    task.nextDate=t;
+  } else if(d.type==='goal'){
+    task.totalCount=Math.max(1,parseInt(document.getElementById('plan-total-inp').value,10)||1);
+    task.deadline=document.getElementById('plan-deadline-inp').value||d.deadline;
+    task.doneCount=0;
+    task.nextDate=task.deadline;
+  }
+  PLAN.unshift(task);
+  savePlan(); closePlanModal(); render();
+  toast(IC.checkCircle, esc(name)+'を追加しました');
+  haptic('medium');
+}
+
 function bindSearch(el){
   const inp=el.querySelector('#search-inp'); if(!inp) return;
   if(searchQ && document.activeElement !== document.body){
@@ -4676,8 +5562,8 @@ function switchTab(btn){
   if(studyQuickBtn) studyQuickBtn.style.display = (id === 'today' || id === 'upcoming') ? '' : 'none';
   currentTabIdx=newIdx;
 
-  // Hide FAB on settings tab
-  setFabHidden(id === 'settings' || id === 'study');
+  // Hide FAB on settings/study/plan tabs (plan tab has its own in-panel add button)
+  setFabHidden(id === 'settings' || id === 'study' || id === 'plan');
 
   // Clear search only when leaving the relevant tab
   let needRender = false;
@@ -4715,6 +5601,8 @@ function setFabHidden(hidden){
 /* ══ Bottom sheet ══════════════════════ */
 
 function openFabSheet(){
+  const activeTab=document.querySelector('.tab-btn.on')?.dataset?.tab;
+  if(activeTab==='plan'){ openPlanSheet(); return; }
   openSheet();
 }
 function openSheet(){
