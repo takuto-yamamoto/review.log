@@ -357,7 +357,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .plan-goal-row{display:flex;gap:10px}
 .plan-goal-field{flex:1;display:flex;flex-direction:column;gap:5px;min-width:0}
 .plan-goal-field label{font-size:11px;font-weight:700;color:var(--plan-d);letter-spacing:.1px}
-.plan-goal-field input{background:var(--card);border:none;border-radius:10px;padding:11px 12px;font-size:15px;font-family:inherit;color:var(--lbl);min-height:42px;width:100%;box-sizing:border-box}
+.plan-goal-field input{background:var(--card);border:none;border-radius:10px;padding:11px 12px;font-size:15px;font-family:inherit;color:var(--lbl);min-height:42px;width:100%;box-sizing:border-box;-webkit-appearance:none;appearance:none;min-width:0}
 .plan-goal-field input:focus{outline:2px solid var(--plan-bd)}
 .plan-pace-hint{display:flex;align-items:center;gap:6px;margin-top:11px;font-size:12.5px;font-weight:700;color:var(--plan-d);line-height:1.4}
 .plan-pace-hint.muted{color:var(--lbl3);font-weight:500}
@@ -2002,7 +2002,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
 <!-- 計画タスク 追加/編集モーダル -->
 <div class="edit-modal" id="plan-modal">
   <div class="edit-modal-bg" onclick="closePlanModal()"></div>
-  <div class="edit-modal-box" style="max-height:82vh;overflow-y:auto">
+  <div class="edit-modal-box" style="max-height:92vh;overflow-y:auto">
     <div class="edit-modal-pull"></div>
     <div class="edit-modal-ttl" id="plan-modal-ttl">計画タスクを追加</div>
     <div id="plan-modal-body"></div>
@@ -2034,7 +2034,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
 ══════════════════════════════════════════ */
 /* ══ App version ════════════════════════ */
 const APP_VERSION = 'v2.4.0';
-const APP_BUILD   = '2026-07-05';
+const APP_BUILD   = '2026-07-14';
 
 const IC = {
   check:      `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
@@ -5292,7 +5292,7 @@ function renderPlanModalBody(){
 
   /* ── ① ゴール設定：いつまでに何個？ ── */
   const goalCardHtml = `
-    <div class="plan-sec-label first">🎯 いつまでに、何個やる？</div>
+    <div class="plan-sec-label">🎯 いつまでに、何個やる？</div>
     <div class="plan-sec-sub">ここで決めた期限と個数から、目安のペースを計算します</div>
     <div class="plan-goal-card">
       <div class="plan-goal-row">
@@ -5399,10 +5399,10 @@ function renderPlanModalBody(){
 
   body.innerHTML=`
     <input class="edit-modal-inp" id="plan-name-inp" type="text" placeholder="タスク名（例：単語帳、参考書P.1〜50）" maxlength="40" autocomplete="off" autocorrect="off" value="${esc(d.name)}" oninput="updatePlanPreview()">
+    <div class="tag-sel-wrap" id="plan-tag-sel-wrap"></div>
     ${goalCardHtml}
     ${repeatSecHtml}
     ${nameModeSecHtml}
-    <div class="tag-sel-wrap" id="plan-tag-sel-wrap"></div>
   `;
   renderPlanTagSel();
 }
@@ -6708,10 +6708,17 @@ self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWi
     if(p) bindPullToClose(editLogSheet, p, closeEditStudyLog);
   }
 
-  const editBox = document.querySelector('.edit-modal-box');
+  const editBox = document.querySelector('#edit-modal .edit-modal-box');
   if(editBox){
     const p = editBox.querySelector('.edit-modal-pull');
     if(p) bindPullToClose(editBox, p, closeEdit);
+  }
+
+  // plan-modal（計画タスクの追加・編集）
+  const planBox = document.querySelector('#plan-modal .edit-modal-box');
+  if(planBox){
+    const p = planBox.querySelector('.edit-modal-pull');
+    if(p) bindPullToClose(planBox, p, closePlanModal);
   }
 
   // snooze-pick-box（延期）
