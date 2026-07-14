@@ -2168,11 +2168,19 @@ function planDisplayName(p){
   return p.name;
 }
 
+function planInPeriod(p){
+  const t=td();
+  if(p.startDate && t < p.startDate) return false;
+  if(p.endDate && t > p.endDate) return false;
+  return true;
+}
 function planIsOverdue(p){
+  if(!planInPeriod(p)) return false;
   if(p.type==='daily') return false;
   return p.nextDate < td();
 }
 function planIsDueToday(p){
+  if(!planInPeriod(p)) return false;
   if(p.type==='daily') return p.lastDoneDate!==td();
   if(p.type==='goal') return false;
   return p.nextDate<=td();
@@ -3392,7 +3400,7 @@ function rToday(list, hasActive, allDone){
   const bannerHtml = backupBannerHtml();
 
   // 計画タブで作成したタスクのうち、今日やること（毎日/曜日指定/間隔。目標型は対象外）
-  const duePlan = PLAN.filter(p=>!p.done && (p.type==='goal' || planIsDueToday(p)||planIsOverdue(p)))
+  const duePlan = PLAN.filter(p=>!p.done && planInPeriod(p) && (p.type==='goal' || planIsDueToday(p)||planIsOverdue(p)))
     .sort((a,b)=>{
       const ka = a.type==='goal' ? (a.deadline||'') : (a.nextDate||'');
       const kb = b.type==='goal' ? (b.deadline||'') : (b.nextDate||'');
@@ -4536,7 +4544,7 @@ function _calEventMap(){
     }
   });
   // 計画タスク（毎日/曜日指定/間隔）: 次回日、目標型は期限日にピップを表示
-  PLAN.filter(p=>!p.done).forEach(p=>{
+  PLAN.filter(p=>!p.done && planInPeriod(p)).forEach(p=>{
     const d = p.type==='daily' ? today : p.nextDate;
     if(!d) return;
     if(!map[d]) map[d] = { count: 0, overdue: false, colors: [], planColors: [] };
@@ -5103,7 +5111,8 @@ let _planDraft=null;
 let _planEditId=null;
 function _planDefaultDraft(){
   return {name:'', type:'daily', tags:[], weekdays:[], intervalDays:3, totalCount:10, doneCount:0, deadline:addD(td(),14),
-    nameMode:'fixed', seqStart:1, seqUnit:'', customLabels:['']};
+    nameMode:'fixed', seqStart:1, seqUnit:'', customLabels:[''],
+    startDate:td(), endDate:'', noEnd:true};
 }
 function openPlanSheet(editId){
   if(editId){
@@ -5113,7 +5122,8 @@ function openPlanSheet(editId){
       weekdays:[...(p.weekdays||[])], intervalDays:p.intervalDays||3,
       totalCount:p.totalCount||10, doneCount:p.doneCount||0, deadline:p.deadline||addD(td(),14),
       nameMode:p.nameMode||'fixed', seqStart:(p.seqStart!=null?p.seqStart:1), seqUnit:p.seqUnit||'',
-      customLabels:(p.customLabels&&p.customLabels.length)?[...p.customLabels]:['']};
+      customLabels:(p.customLabels&&p.customLabels.length)?[...p.customLabels]:[''],
+      startDate:p.startDate||p.createdDate||td(), endDate:p.endDate||'', noEnd:!p.endDate};
     document.getElementById('plan-modal-ttl').textContent='計画タスクを編集';
   } else {
     _planEditId=null;
@@ -5132,14 +5142,25 @@ function closePlanModal(){
   setFabHidden(false);
   _planDraft=null; _planEditId=null;
 }
+function _syncPlanDraftFromDom(){
+  if(!_planDraft) return;
+  const g=id=>document.getElementById(id);
+  const nameInp=g('plan-name-inp'); if(nameInp) _planDraft.name=nameInp.value;
+  const totalInp=g('plan-total-inp'); if(totalInp && totalInp.value!=='') _planDraft.totalCount=parseInt(totalInp.value,10)||_planDraft.totalCount;
+  const deadlineInp=g('plan-deadline-inp'); if(deadlineInp && deadlineInp.value) _planDraft.deadline=deadlineInp.value;
+  const intervalInp=g('plan-interval-inp'); if(intervalInp && intervalInp.value!=='') _planDraft.intervalDays=parseInt(intervalInp.value,10)||_planDraft.intervalDays;
+  const startInp=g('plan-start-inp'); if(startInp && startInp.value) _planDraft.startDate=startInp.value;
+}
+function togglePlanNoEnd(checked){
+  if(!_planDraft) return;
+  _syncPlanDraftFromDom();
+  _planDraft.noEnd=checked;
+  if(checked) _planDraft.endDate='';
+  renderPlanModalBody();
+}
 function selectPlanType(t){
   if(!_planDraft) return;
-  const nameInp=document.getElementById('plan-name-inp');
-  if(nameInp) _planDraft.name=nameInp.value;
-  const totalInp=document.getElementById('plan-total-inp');
-  if(totalInp && totalInp.value!=='') _planDraft.totalCount=parseInt(totalInp.value,10)||_planDraft.totalCount;
-  const deadlineInp=document.getElementById('plan-deadline-inp');
-  if(deadlineInp && deadlineInp.value) _planDraft.deadline=deadlineInp.value;
+  _syncPlanDraftFromDom();
   _planDraft.type=t;
   renderPlanModalBody();
 }
@@ -5258,8 +5279,7 @@ function applyPlanPaceSuggestion(){
 }
 function togglePlanWeekday(d){
   if(!_planDraft) return;
-  const nameInp=document.getElementById('plan-name-inp');
-  if(nameInp) _planDraft.name=nameInp.value;
+  _syncPlanDraftFromDom();
   _planDraft.weekdays = _planDraft.weekdays.includes(d)
     ? _planDraft.weekdays.filter(x=>x!==d) : [..._planDraft.weekdays,d];
   renderPlanModalBody();
@@ -5290,24 +5310,34 @@ function renderPlanModalBody(){
   const body=document.getElementById('plan-modal-body'); if(!body||!_planDraft) return;
   const d=_planDraft;
 
-  /* ── ① ゴール設定：いつまでに何個？ ── */
+  /* ── ① 実施期間・ゴール：いつから、いつまでに何個？ ── */
+  const isGoal = d.type==='goal';
+  const noEnd = d.noEnd!==false && !isGoal;
   const goalCardHtml = `
-    <div class="plan-sec-label">🎯 いつまでに、何個やる？</div>
-    <div class="plan-sec-sub">ここで決めた期限と個数から、目安のペースを計算します</div>
+    <div class="plan-sec-label">📅 実施期間${isGoal?'・ゴール':''}</div>
+    <div class="plan-sec-sub">${isGoal?'いつからいつまでに、何個やるか決めます':'いつからいつまで取り組むか設定できます（期限と個数を入れるとペースも計算）'}</div>
     <div class="plan-goal-card">
       <div class="plan-goal-row">
         <div class="plan-goal-field">
-          <label>いつまでに終わらせる？</label>
-          <input type="date" id="plan-deadline-inp" value="${d.deadline}" oninput="updatePlanPaceHint()">
+          <label>いつから？</label>
+          <input type="date" id="plan-start-inp" value="${d.startDate||td()}">
         </div>
         <div class="plan-goal-field">
-          <label>個数</label>
-          <input type="number" id="plan-total-inp" inputmode="numeric" min="1" max="9999" value="${d.totalCount}" oninput="updatePlanPaceHint()">
+          <label>${isGoal?'いつまでに終わらせる？':'いつまで？'}</label>
+          <input type="date" id="plan-deadline-inp" value="${d.deadline||''}" oninput="updatePlanPaceHint()" ${noEnd?'disabled':''}>
+          ${isGoal?'':`<label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--lbl2);cursor:pointer;margin-top:6px">
+            <input type="checkbox" id="plan-noend-chk" ${noEnd?'checked':''} onchange="togglePlanNoEnd(this.checked)" style="width:16px;height:16px;flex-shrink:0">
+            終了日を設定しない
+          </label>`}
         </div>
+      </div>
+      <div class="plan-goal-field" style="margin-top:2px">
+        <label>個数${isGoal?'':'（任意・ペース計算用）'}</label>
+        <input type="number" id="plan-total-inp" inputmode="numeric" min="1" max="9999" value="${d.totalCount}" oninput="updatePlanPaceHint()">
       </div>
       ${_planPaceHintHtml(d.deadline, d.totalCount)}
       <div id="plan-pace-apply-wrap">${_planPaceApplyBtnHtml(d.deadline, d.totalCount)}</div>
-      ${(_planEditId && d.type==='goal')?`<div class="plan-goal-done-row">
+      ${(_planEditId && isGoal)?`<div class="plan-goal-done-row">
         <div class="plan-field-label" style="margin-top:0">これまでに完了した個数</div>
         <div class="plan-num-row">
           <input class="plan-num-inp" id="plan-done-inp" type="number" inputmode="numeric" min="0" max="${d.totalCount}" value="${d.doneCount}">
@@ -5432,6 +5462,11 @@ function savePlanTask(){
   const tags=[...d.tags];
   const t=td();
   const nameFields=_readPlanNameFields();
+  const startVal=document.getElementById('plan-start-inp')?.value||t;
+  const isGoalType=d.type==='goal';
+  const noEndChk=document.getElementById('plan-noend-chk');
+  const noEndVal=isGoalType?false:(noEndChk?noEndChk.checked:true);
+  const endVal=noEndVal?'':(document.getElementById('plan-deadline-inp')?.value||'');
 
   if(d.type==='weekday'){
     const wdInputs=document.querySelectorAll('.plan-wd-btn.on');
@@ -5441,6 +5476,7 @@ function savePlanTask(){
   if(_planEditId){
     const p=PLAN.find(x=>x.id===_planEditId); if(!p) return;
     p.name=name; p.type=d.type; p.tags=tags; p.nameMode=nameFields.nameMode;
+    p.startDate=startVal; p.endDate=endVal||null;
     if(nameFields.nameMode==='sequence'){ p.seqStart=nameFields.seqStart; p.seqUnit=nameFields.seqUnit; }
     if(nameFields.nameMode==='custom'){ p.customLabels=nameFields.customLabels; }
     if(d.type==='weekday'){
@@ -5466,7 +5502,7 @@ function savePlanTask(){
     return;
   }
 
-  let task={id:'plan-'+Date.now().toString(), name, type:d.type, tags, createdDate:t, lastDoneDate:null, nameMode:nameFields.nameMode, occurrenceCount:0};
+  let task={id:'plan-'+Date.now().toString(), name, type:d.type, tags, createdDate:t, lastDoneDate:null, nameMode:nameFields.nameMode, occurrenceCount:0, startDate:startVal, endDate:endVal||null};
   if(nameFields.nameMode==='sequence'){ task.seqStart=nameFields.seqStart; task.seqUnit=nameFields.seqUnit; }
   if(nameFields.nameMode==='custom'){ task.customLabels=nameFields.customLabels; }
   if(d.type==='daily'){
