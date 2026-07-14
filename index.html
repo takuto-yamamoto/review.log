@@ -5313,6 +5313,7 @@ function renderPlanModalBody(){
   /* ── ① 実施期間・ゴール：いつから、いつまでに何個？ ── */
   const isGoal = d.type==='goal';
   const noEnd = d.noEnd!==false && !isGoal;
+  const paceDeadline = noEnd ? '' : (d.deadline||'');
   const goalCardHtml = `
     <div class="plan-sec-label">📅 実施期間${isGoal?'・ゴール':''}</div>
     <div class="plan-sec-sub">${isGoal?'いつからいつまでに、何個やるか決めます':'いつからいつまで取り組むか設定できます（期限と個数を入れるとペースも計算）'}</div>
@@ -5324,7 +5325,7 @@ function renderPlanModalBody(){
         </div>
         <div class="plan-goal-field">
           <label>${isGoal?'いつまでに終わらせる？':'いつまで？'}</label>
-          <input type="date" id="plan-deadline-inp" value="${d.deadline||''}" oninput="updatePlanPaceHint()" ${noEnd?'disabled':''}>
+          <input type="date" id="plan-deadline-inp" value="${paceDeadline}" oninput="updatePlanPaceHint()" ${noEnd?'disabled':''}>
           ${isGoal?'':`<label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--lbl2);cursor:pointer;margin-top:6px">
             <input type="checkbox" id="plan-noend-chk" ${noEnd?'checked':''} onchange="togglePlanNoEnd(this.checked)" style="width:16px;height:16px;flex-shrink:0">
             終了日を設定しない
@@ -5335,8 +5336,8 @@ function renderPlanModalBody(){
         <label>個数${isGoal?'':'（任意・ペース計算用）'}</label>
         <input type="number" id="plan-total-inp" inputmode="numeric" min="1" max="9999" value="${d.totalCount}" oninput="updatePlanPaceHint()">
       </div>
-      ${_planPaceHintHtml(d.deadline, d.totalCount)}
-      <div id="plan-pace-apply-wrap">${_planPaceApplyBtnHtml(d.deadline, d.totalCount)}</div>
+      ${_planPaceHintHtml(paceDeadline, d.totalCount)}
+      <div id="plan-pace-apply-wrap">${_planPaceApplyBtnHtml(paceDeadline, d.totalCount)}</div>
       ${(_planEditId && isGoal)?`<div class="plan-goal-done-row">
         <div class="plan-field-label" style="margin-top:0">これまでに完了した個数</div>
         <div class="plan-num-row">
@@ -5476,22 +5477,27 @@ function savePlanTask(){
   if(_planEditId){
     const p=PLAN.find(x=>x.id===_planEditId); if(!p) return;
     p.name=name; p.type=d.type; p.tags=tags; p.nameMode=nameFields.nameMode;
-    p.startDate=startVal; p.endDate=endVal||null;
+    p.startDate=startVal;
+    if(d.type!=='goal') p.endDate=endVal||null;
     if(nameFields.nameMode==='sequence'){ p.seqStart=nameFields.seqStart; p.seqUnit=nameFields.seqUnit; }
     if(nameFields.nameMode==='custom'){ p.customLabels=nameFields.customLabels; }
     if(d.type==='weekday'){
       p.weekdays=[...d.weekdays];
+      const base = startVal>t ? startVal : t;
       const curDow = p.nextDate ? new Date(p.nextDate+'T00:00:00').getDay() : -1;
-      if(!p.nextDate || !p.weekdays.includes(curDow)){
-        const dow=new Date(t+'T00:00:00').getDay();
-        p.nextDate = p.weekdays.includes(dow) ? t : planNextWeekday(t,p.weekdays);
+      if(!p.nextDate || !p.weekdays.includes(curDow) || p.nextDate<base){
+        const dow=new Date(base+'T00:00:00').getDay();
+        p.nextDate = p.weekdays.includes(dow) ? base : planNextWeekday(base,p.weekdays);
       }
     } else if(d.type==='interval'){
       const iv=parseInt(document.getElementById('plan-interval-inp').value,10);
       p.intervalDays=(iv>=1?iv:1);
+      const base = startVal>t ? startVal : t;
+      if(!p.nextDate || p.nextDate<base) p.nextDate=base;
     } else if(d.type==='goal'){
       p.totalCount=Math.max(1,parseInt(document.getElementById('plan-total-inp').value,10)||1);
       p.deadline=document.getElementById('plan-deadline-inp').value||d.deadline;
+      p.nextDate=p.deadline;
       const doneInp=document.getElementById('plan-done-inp');
       if(doneInp) p.doneCount=Math.min(p.totalCount,Math.max(0,parseInt(doneInp.value,10)||0));
       p.done = p.doneCount>=p.totalCount;
@@ -5502,19 +5508,21 @@ function savePlanTask(){
     return;
   }
 
-  let task={id:'plan-'+Date.now().toString(), name, type:d.type, tags, createdDate:t, lastDoneDate:null, nameMode:nameFields.nameMode, occurrenceCount:0, startDate:startVal, endDate:endVal||null};
+  let task={id:'plan-'+Date.now().toString(), name, type:d.type, tags, createdDate:t, lastDoneDate:null, nameMode:nameFields.nameMode, occurrenceCount:0, startDate:startVal};
+  if(d.type!=='goal') task.endDate=endVal||null;
   if(nameFields.nameMode==='sequence'){ task.seqStart=nameFields.seqStart; task.seqUnit=nameFields.seqUnit; }
   if(nameFields.nameMode==='custom'){ task.customLabels=nameFields.customLabels; }
+  const base = startVal>t ? startVal : t; // 開始日が未来ならそこを起点に次回日を計算
   if(d.type==='daily'){
     // 何もなし（毎日タスク）
   } else if(d.type==='weekday'){
     task.weekdays=[...d.weekdays];
-    const dow=new Date(t+'T00:00:00').getDay();
-    task.nextDate = task.weekdays.includes(dow) ? t : planNextWeekday(t,task.weekdays);
+    const dow=new Date(base+'T00:00:00').getDay();
+    task.nextDate = task.weekdays.includes(dow) ? base : planNextWeekday(base,task.weekdays);
   } else if(d.type==='interval'){
     const iv=parseInt(document.getElementById('plan-interval-inp').value,10);
     task.intervalDays=(iv>=1?iv:1);
-    task.nextDate=t;
+    task.nextDate=base;
   } else if(d.type==='goal'){
     task.totalCount=Math.max(1,parseInt(document.getElementById('plan-total-inp').value,10)||1);
     task.deadline=document.getElementById('plan-deadline-inp').value||d.deadline;
