@@ -357,8 +357,9 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .plan-goal-row{display:flex;gap:10px}
 .plan-goal-field{flex:1;display:flex;flex-direction:column;gap:5px;min-width:0}
 .plan-goal-field label{font-size:11px;font-weight:700;color:var(--plan-d);letter-spacing:.1px}
-.plan-goal-field input{background:var(--card);border:none;border-radius:10px;padding:11px 12px;font-size:15px;font-family:inherit;color:var(--lbl);min-height:42px;width:100%;box-sizing:border-box;-webkit-appearance:none;appearance:none;min-width:0}
-.plan-goal-field input:focus{outline:2px solid var(--plan-bd)}
+.plan-goal-field input:not([type="checkbox"]){background:var(--card);border:none;border-radius:10px;padding:11px 12px;font-size:15px;font-family:inherit;color:var(--lbl);min-height:42px;width:100%;box-sizing:border-box;-webkit-appearance:none;appearance:none;min-width:0}
+.plan-goal-field input:not([type="checkbox"]):focus{outline:2px solid var(--plan-bd)}
+.plan-goal-field input[type="checkbox"]{accent-color:var(--plan-d)}
 .plan-pace-hint{display:flex;align-items:center;gap:6px;margin-top:11px;font-size:12.5px;font-weight:700;color:var(--plan-d);line-height:1.4}
 .plan-pace-hint.muted{color:var(--lbl3);font-weight:500}
 .plan-pace-hint.warn{color:var(--red)}
@@ -1723,6 +1724,11 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .settings-row-body{flex:1;min-width:0}
 .settings-row-title{font-size:15px;font-weight:600;color:var(--lbl)}
 .settings-row-sub{font-size:12px;color:var(--lbl2);margin-top:2px;line-height:1.4}
+.settings-select{
+  background:var(--fill);border:none;border-radius:8px;
+  padding:7px 8px;font-family:inherit;font-size:13px;font-weight:600;
+  color:var(--lbl);cursor:pointer;outline:none;flex-shrink:0
+}
 /* iOS-style toggle */
 .toggle-wrap{flex-shrink:0}
 .toggle{
@@ -1925,7 +1931,6 @@ button,a,input,[role="button"]{touch-action:manipulation}
     <button class="tab-btn" data-tab="plan" data-idx="2" onclick="switchTab(this)">
       <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
       <span class="tab-lbl">計画</span>
-      <span class="tbadge h" id="pbadge"></span>
     </button>
     <button class="tab-btn" data-tab="study" data-idx="3" onclick="switchTab(this)">
       <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
@@ -2184,6 +2189,16 @@ function planIsDueToday(p){
   if(p.type==='daily') return p.lastDoneDate!==td();
   if(p.type==='goal') return false;
   return p.nextDate<=td();
+}
+// 今日タブに表示すべき計画タスク（毎日/曜日指定/間隔/目標型）を取得。
+// 今日タブのバッジ数・本文表示で共通利用する
+function getDuePlanList(){
+  return PLAN.filter(p=>!p.done && planInPeriod(p) && (p.type==='goal' || planIsDueToday(p)||planIsOverdue(p)))
+    .sort((a,b)=>{
+      const ka = a.type==='goal' ? (a.deadline||'') : (a.nextDate||'');
+      const kb = b.type==='goal' ? (b.deadline||'') : (b.nextDate||'');
+      return ka.localeCompare(kb);
+    });
 }
 function planNextWeekday(fromDateExclusive, weekdays){
   if(!weekdays || !weekdays.length) return addD(fromDateExclusive,1);
@@ -2733,6 +2748,7 @@ const addD  = (s,n) => { const d=new Date(s+'T00:00:00'); d.setDate(d.getDate()+
   if(fixed) localStorage.setItem(KEY,JSON.stringify(U));
 })();
 const diff  = s => Math.round((new Date(s+'T00:00:00')-new Date(td()+'T00:00:00'))/86400000);
+const daysBetween = (a,b) => Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000);
 const haptic = (t='light') => { try { if(navigator.vibrate) navigator.vibrate(t==='medium'?8:t==='heavy'?[10,4,10]:4); } catch(_){} };
 const esc   = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
@@ -3373,13 +3389,11 @@ function render(){
 
   const _sr=document.getElementById('stat-row'); if(_sr) _sr.innerHTML='';
 
+  // 今日タブのバッジに「復習」「計画タスク」の件数をまとめて表示（計画タブ側には出さない）
   const tb=document.getElementById('tbadge');
-  if(todayL.length>0){ tb.textContent=todayL.length; tb.classList.remove('h'); }
+  const totalBadge = todayL.length + getDuePlanList().length;
+  if(totalBadge>0){ tb.textContent=totalBadge; tb.classList.remove('h'); }
   else tb.classList.add('h');
-
-  const planDueCount = PLAN.filter(p=>!p.done && (planIsDueToday(p)||planIsOverdue(p))).length;
-  const pb=document.getElementById('pbadge');
-  if(pb){ if(planDueCount>0){ pb.textContent=planDueCount; pb.classList.remove('h'); } else pb.classList.add('h'); }
 
   rToday(todayL, active.length > 0, doneL);
   rUpcoming(upL);
@@ -3399,17 +3413,12 @@ function rToday(list, hasActive, allDone){
   const el=document.getElementById('p-today');
   const bannerHtml = backupBannerHtml();
 
-  // 計画タブで作成したタスクのうち、今日やること（毎日/曜日指定/間隔。目標型は対象外）
-  const duePlan = PLAN.filter(p=>!p.done && planInPeriod(p) && (p.type==='goal' || planIsDueToday(p)||planIsOverdue(p)))
-    .sort((a,b)=>{
-      const ka = a.type==='goal' ? (a.deadline||'') : (a.nextDate||'');
-      const kb = b.type==='goal' ? (b.deadline||'') : (b.nextDate||'');
-      return ka.localeCompare(kb);
-    });
-  function duePlanSecHtml(firstSec){
+  // 計画タブで作成したタスクのうち、今日やること（毎日/曜日指定/間隔/目標型）。
+  // 通常の復習カードと見出しなしで同じリストに並べる
+  const duePlan = getDuePlanList();
+  function duePlanSecHtml(){
     if(!duePlan.length) return '';
-    return `<div class="sec${firstSec?' sec-first':''}">計画タスク · ${duePlan.length}件</div>`
-      + duePlan.map(p=>planCardHtml(p,{todayMode:true})).join('');
+    return duePlan.map(p=>planCardHtml(p,{todayMode:true})).join('');
   }
 
   // Units completed today (step advanced today, not fully done — or fully completed today)
@@ -3471,8 +3480,7 @@ function rToday(list, hasActive, allDone){
       el.innerHTML=bannerHtml+`
         <div class="hero">
           <div class="hero-msg">${msg}</div>
-          <div class="hero-sub" style="margin-top:6px">計画タスクが ${duePlan.length} 件あります</div>
-        </div>`+duePlanSecHtml(true)+todayDoneAccHtml();
+        </div>`+duePlanSecHtml()+todayDoneAccHtml();
       return;
     }
     if(hasActive){
@@ -3498,19 +3506,17 @@ function rToday(list, hasActive, allDone){
   const overdue = list.filter(u=>diff(u.nextDate)<0);
   const dueToday = list.filter(u=>diff(u.nextDate)===0);
   const overSub = overdue.length > 0 ? `<div class="hero-sub" style="margin-top:6px">うち ${overdue.length} 件が期限超過</div>` : '';
-  const planSub = duePlan.length > 0 ? `<div class="hero-sub" style="margin-top:6px">計画タスクが ${duePlan.length} 件あります</div>` : '';
   let html=bannerHtml+`
     <div class="hero">
       <div class="hero-msg">${list.length} 件の復習があります</div>
       ${overSub}
-      ${planSub}
     </div>`;
   const filteredOverdue=overdue;
   const filteredDueToday=dueToday;
 
   if(!filteredOverdue.length && !filteredDueToday.length){
     html+=`<div class="empty" style="padding:28px 0"><div class="empty-icon">${IC.searchLg}</div><h3>該当する単元がありません</h3><p>今日の復習はありません</p></div>`;
-    html += duePlanSecHtml(true) + todayDoneAccHtml();
+    html += duePlanSecHtml() + todayDoneAccHtml();
     el.innerHTML=html; return;
   }
   if(filteredOverdue.length){
@@ -3520,7 +3526,7 @@ function rToday(list, hasActive, allDone){
     html+=`<div class="sec${filteredOverdue.length?'':' sec-first'}">今日が期限 · ${filteredDueToday.length}件</div>`;
     html+=filteredDueToday.map(u=>cHtml(u)).join('');
   }
-  html += duePlanSecHtml(false);
+  html += duePlanSecHtml();
   html += todayDoneAccHtml();
   el.innerHTML=html;
 }
@@ -5120,7 +5126,12 @@ function openPlanSheet(editId){
     _planEditId=editId;
     _planDraft={name:p.name, type:p.type, tags:[...(p.tags||[])],
       weekdays:[...(p.weekdays||[])], intervalDays:p.intervalDays||3,
-      totalCount:p.totalCount||10, doneCount:p.doneCount||0, deadline:p.deadline||addD(td(),14),
+      totalCount:p.totalCount||10, doneCount:p.doneCount||0,
+      // p.deadline はゴール型専用、p.endDate は毎日/曜日指定/間隔型の実施期間の終了日。
+      // 従来は常に p.deadline を見ていたため、期間終了日を設定した毎日/曜日指定タスクを
+      // 編集で開くと入力欄に無関係な初期値が表示され、そのまま保存すると終了日が
+      // 上書きされてしまうバグがあった。type に応じて正しい方を参照する。
+      deadline:(p.type==='goal' ? p.deadline : p.endDate) || addD(td(),14),
       nameMode:p.nameMode||'fixed', seqStart:(p.seqStart!=null?p.seqStart:1), seqUnit:p.seqUnit||'',
       customLabels:(p.customLabels&&p.customLabels.length)?[...p.customLabels]:[''],
       startDate:p.startDate||p.createdDate||td(), endDate:p.endDate||'', noEnd:!p.endDate};
@@ -5151,17 +5162,106 @@ function _syncPlanDraftFromDom(){
   const intervalInp=g('plan-interval-inp'); if(intervalInp && intervalInp.value!=='') _planDraft.intervalDays=parseInt(intervalInp.value,10)||_planDraft.intervalDays;
   const startInp=g('plan-start-inp'); if(startInp && startInp.value) _planDraft.startDate=startInp.value;
 }
+// 実施期間（開始日〜終了日）とくり返し方から、実施回数が確定できる場合に計算する。
+// 終了日未設定（noEnd）の場合や曜日未選択の場合は回数を確定できないので null を返す。
+function calcPlanExpectedCount(d){
+  if(!d) return null;
+  if(d.type==='goal'){
+    const n=parseInt(d.totalCount,10);
+    return (n>=1) ? n : null;
+  }
+  if(d.noEnd) return null;
+  const start=d.startDate||td();
+  const end=d.deadline||'';
+  if(!end || end<start) return null;
+  if(d.type==='daily'){
+    return daysBetween(start,end)+1;
+  }
+  if(d.type==='weekday'){
+    const wds=d.weekdays||[];
+    if(!wds.length) return null;
+    let count=0, cur=start;
+    for(let i=0;i<3660;i++){
+      if(cur>end) break;
+      const dow=new Date(cur+'T00:00:00').getDay();
+      if(wds.includes(dow)) count++;
+      cur=addD(cur,1);
+    }
+    return count>0?count:null;
+  }
+  if(d.type==='interval'){
+    const iv=parseInt(d.intervalDays,10)||1;
+    return Math.floor(daysBetween(start,end)/iv)+1;
+  }
+  return null;
+}
+// 個別入力（customLabels）の行数を、期間×くり返し方から確定する回数に自動で合わせる。
+// 既に入力済みの表示名は維持し、不足分だけ空行を追加／余剰分は末尾を削る。
+function syncPlanCustomLabelCountToPeriod(){
+  if(!_planDraft || _planDraft.nameMode!=='custom') return false;
+  const count=calcPlanExpectedCount(_planDraft);
+  if(!count || count<1) return false;
+  const cur=(_planDraft.customLabels&&_planDraft.customLabels.length)?_planDraft.customLabels:[''];
+  if(cur.length===count) return false;
+  const next=[];
+  for(let i=0;i<count;i++) next.push(cur[i]||'');
+  _planDraft.customLabels=next;
+  return true;
+}
 function togglePlanNoEnd(checked){
   if(!_planDraft) return;
   _syncPlanDraftFromDom();
   _planDraft.noEnd=checked;
   if(checked) _planDraft.endDate='';
+  if(_planDraft.nameMode==='custom'){ _syncPlanNameFieldsFromDom(); syncPlanCustomLabelCountToPeriod(); }
   renderPlanModalBody();
+}
+// 「いつまで？」欄を直接編集したときに、ペース目安の更新に加えて
+// 個別入力中なら行数も自動で合わせる
+function onPlanDeadlineInput(){
+  if(!_planDraft) return;
+  _syncPlanDraftFromDom();
+  if(_planDraft.nameMode==='custom'){
+    _syncPlanNameFieldsFromDom();
+    if(syncPlanCustomLabelCountToPeriod()){ renderPlanModalBody(); return; }
+  }
+  updatePlanPaceHint();
+  updatePlanPreview();
+}
+// 「いつから？」欄を直接編集したときも同様に行数を合わせる
+function onPlanStartInput(){
+  if(!_planDraft) return;
+  _syncPlanDraftFromDom();
+  if(_planDraft.nameMode==='custom'){
+    _syncPlanNameFieldsFromDom();
+    if(syncPlanCustomLabelCountToPeriod()){ renderPlanModalBody(); }
+  }
+}
+// 「間隔（日数）」欄を直接編集したときも同様に行数を合わせる
+function onPlanIntervalInput(){
+  if(!_planDraft) return;
+  _syncPlanDraftFromDom();
+  if(_planDraft.nameMode==='custom'){
+    _syncPlanNameFieldsFromDom();
+    if(syncPlanCustomLabelCountToPeriod()){ renderPlanModalBody(); }
+  }
+}
+// 目標型の「個数」欄を直接編集したときも同様に行数を合わせる
+function onPlanTotalInput(){
+  if(!_planDraft) return;
+  _syncPlanDraftFromDom();
+  if(_planDraft.type==='goal' && _planDraft.nameMode==='custom'){
+    _syncPlanNameFieldsFromDom();
+    if(syncPlanCustomLabelCountToPeriod()){ renderPlanModalBody(); return; }
+  }
+  updatePlanPaceHint();
+  updatePlanPreview();
 }
 function selectPlanType(t){
   if(!_planDraft) return;
   _syncPlanDraftFromDom();
   _planDraft.type=t;
+  if(_planDraft.nameMode==='custom'){ _syncPlanNameFieldsFromDom(); syncPlanCustomLabelCountToPeriod(); }
   renderPlanModalBody();
 }
 function _syncPlanNameFieldsFromDom(){
@@ -5179,6 +5279,7 @@ function selectPlanNameMode(m){
   if(!_planDraft) return;
   _syncPlanNameFieldsFromDom();
   _planDraft.nameMode=m;
+  if(m==='custom') syncPlanCustomLabelCountToPeriod();
   renderPlanModalBody();
 }
 function addPlanCustomLabel(){
@@ -5282,6 +5383,7 @@ function togglePlanWeekday(d){
   _syncPlanDraftFromDom();
   _planDraft.weekdays = _planDraft.weekdays.includes(d)
     ? _planDraft.weekdays.filter(x=>x!==d) : [..._planDraft.weekdays,d];
+  if(_planDraft.nameMode==='custom'){ _syncPlanNameFieldsFromDom(); syncPlanCustomLabelCountToPeriod(); }
   renderPlanModalBody();
 }
 function toggleTagPlan(id){
@@ -5321,11 +5423,11 @@ function renderPlanModalBody(){
       <div class="plan-goal-row">
         <div class="plan-goal-field">
           <label>いつから？</label>
-          <input type="date" id="plan-start-inp" value="${d.startDate||td()}">
+          <input type="date" id="plan-start-inp" value="${d.startDate||td()}" oninput="onPlanStartInput()">
         </div>
         <div class="plan-goal-field">
           <label>${isGoal?'いつまでに終わらせる？':'いつまで？'}</label>
-          <input type="date" id="plan-deadline-inp" value="${paceDeadline}" oninput="updatePlanPaceHint()" ${noEnd?'disabled':''}>
+          <input type="date" id="plan-deadline-inp" value="${paceDeadline}" oninput="onPlanDeadlineInput()" ${noEnd?'disabled':''}>
           ${isGoal?'':`<label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--lbl2);cursor:pointer;margin-top:6px">
             <input type="checkbox" id="plan-noend-chk" ${noEnd?'checked':''} onchange="togglePlanNoEnd(this.checked)" style="width:16px;height:16px;flex-shrink:0">
             終了日を設定しない
@@ -5334,7 +5436,7 @@ function renderPlanModalBody(){
       </div>
       <div class="plan-goal-field" style="margin-top:2px">
         <label>個数${isGoal?'':'（任意・ペース計算用）'}</label>
-        <input type="number" id="plan-total-inp" inputmode="numeric" min="1" max="9999" value="${d.totalCount}" oninput="updatePlanPaceHint()">
+        <input type="number" id="plan-total-inp" inputmode="numeric" min="1" max="9999" value="${d.totalCount}" oninput="onPlanTotalInput()">
       </div>
       ${_planPaceHintHtml(paceDeadline, d.totalCount)}
       <div id="plan-pace-apply-wrap">${_planPaceApplyBtnHtml(paceDeadline, d.totalCount)}</div>
@@ -5364,7 +5466,7 @@ function renderPlanModalBody(){
   } else if(d.type==='interval'){
     repeatSubHtml=`<div class="plan-field-label" style="margin-top:0">実施する間隔（日数）</div>
       <div class="plan-num-row">
-        <input class="plan-num-inp" id="plan-interval-inp" type="number" inputmode="numeric" min="1" max="365" value="${d.intervalDays}">
+        <input class="plan-num-inp" id="plan-interval-inp" type="number" inputmode="numeric" min="1" max="365" value="${d.intervalDays}" oninput="onPlanIntervalInput()">
         <span style="color:var(--lbl2);font-size:13px;white-space:nowrap">日ごと</span>
       </div>`;
   } else if(d.type==='daily'){
@@ -5794,9 +5896,28 @@ function toast(iconHtml,msg){
      fukushu-backup-last   → ISO date string of last export
      fukushu-backup-reminded → today's date, to show reminder once per day
 ════════════════════════════════════════════════════════════════════ */
-const BACKUP_LAST_KEY      = 'fukushu-backup-last';
-const BACKUP_REMINDED_KEY  = 'fukushu-backup-reminded';
-const BACKUP_REMIND_DAYS   = 3;
+const BACKUP_LAST_KEY        = 'fukushu-backup-last';
+const BACKUP_REMINDED_KEY    = 'fukushu-backup-reminded';
+const BACKUP_REMIND_DAYS_KEY = 'fukushu-backup-remind-days';
+const BACKUP_REMIND_DAYS_DEFAULT = 3;
+
+// 通知間隔（日数）。0 = 通知しない
+function getBackupRemindDays(){
+  try {
+    const v = localStorage.getItem(BACKUP_REMIND_DAYS_KEY);
+    if(v === null) return BACKUP_REMIND_DAYS_DEFAULT;
+    const n = parseInt(v, 10);
+    return Number.isFinite(n) ? n : BACKUP_REMIND_DAYS_DEFAULT;
+  } catch { return BACKUP_REMIND_DAYS_DEFAULT; }
+}
+function setBackupRemindDays(days){
+  try { localStorage.setItem(BACKUP_REMIND_DAYS_KEY, String(days)); } catch {}
+}
+function changeBackupRemindDays(v){
+  const days = parseInt(v, 10);
+  setBackupRemindDays(days);
+  toast(IC.checkCircle, days>0 ? `バックアップ通知を ${days}日ごとに設定しました` : 'バックアップ通知をオフにしました');
+}
 
 function getLastBackupDate(){
   try { return localStorage.getItem(BACKUP_LAST_KEY) || null; } catch { return null; }
@@ -5822,10 +5943,12 @@ let _backupBannerDays = null; // null = hidden, number = show with this days val
 
 function checkBackupReminder(){
   try {
+    const remindDays = getBackupRemindDays();
+    if(remindDays <= 0) return; // 通知しない設定
     const reminded = localStorage.getItem(BACKUP_REMINDED_KEY);
     if(reminded === td()) return;
     const days = daysSinceBackup();
-    if(days < BACKUP_REMIND_DAYS) return;
+    if(days < remindDays) return;
     localStorage.setItem(BACKUP_REMINDED_KEY, td());
     _backupBannerDays = days;
     // Insert banner at top of today panel if it's already rendered, otherwise render() will include it
@@ -6234,6 +6357,20 @@ function renderSettings(){
           <div class="settings-row-sub">タグの追加・編集・削除</div>
         </div>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--lbl3)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-icon" style="background:#FFFBEB">⏰</div>
+        <div class="settings-row-body">
+          <div class="settings-row-title">バックアップ通知の間隔</div>
+          <div class="settings-row-sub">最後に保存してからの経過日数で知らせます</div>
+        </div>
+        <select class="settings-select" onchange="changeBackupRemindDays(this.value)">
+          <option value="0"${getBackupRemindDays()===0?' selected':''}>通知しない</option>
+          <option value="3"${getBackupRemindDays()===3?' selected':''}>3日ごと</option>
+          <option value="7"${getBackupRemindDays()===7?' selected':''}>7日ごと</option>
+          <option value="14"${getBackupRemindDays()===14?' selected':''}>14日ごと</option>
+          <option value="30"${getBackupRemindDays()===30?' selected':''}>30日ごと</option>
+        </select>
       </div>
     </div>
 
