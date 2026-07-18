@@ -2209,16 +2209,17 @@ function planNextWeekday(fromDateExclusive, weekdays){
   }
   return addD(fromDateExclusive,7);
 }
-function planComplete(id){
+function planComplete(id, qty){
   const p=PLAN.find(x=>x.id===id); if(!p) return;
   const t=td();
   const doneLabel=planDisplayName(p);
   if(p.type==='goal'){
-    p.doneCount=Math.min((p.doneCount||0)+1,p.totalCount);
+    const n=Math.max(1, parseInt(qty,10)||1);
+    p.doneCount=Math.min((p.doneCount||0)+n,p.totalCount);
     p.lastDoneDate=t;
     if(p.doneCount>=p.totalCount){ p.done=true; p.completedAt=Date.now(); }
     savePlan(); haptic('medium'); render();
-    toast(IC.checkCircle, esc(doneLabel)+(p.done?'の目標を達成しました！':'を1件記録しました'));
+    toast(IC.checkCircle, esc(doneLabel)+(p.done?'の目標を達成しました！':n>1?`を${n}件記録しました`:'を1件記録しました'));
     return;
   }
   if(p.lastDoneDate===t) return; // already done today
@@ -4120,6 +4121,7 @@ let _studySheetMode='review'; // 'review' or 'new'
 let _studySheetTags=[];
 let _studySheetDate=null; // null = today
 let _studySheetLocked=false; // 計測中の誤タップ防止ロック
+let _studySheetQty=1; // 目標型の計画タスク：この記録でまとめて完了にする件数
 
 function toggleStudyLock(){
   _studySheetLocked=!_studySheetLocked;
@@ -4173,6 +4175,7 @@ function openStudyTimerForPlan(planId){
   _studySheetMode='review';
   _studySheetDate=null;
   _manualInpEdited=false;
+  _studySheetQty=1;
   _resetStudyLockUI();
   const p=PLAN.find(x=>x.id===planId);
   _studySheetTags=(p&&p.tags&&p.tags.length)?[...p.tags]:[];
@@ -4221,6 +4224,7 @@ function closeStudySheet(){
   if(_timerInterval){ clearInterval(_timerInterval); _timerInterval=null; }
   _timerStart=null;
   _timerElapsed=0;
+  _studySheetQty=1;
   _saveTimerState(); // タイマー動作中にキャンセルしてもlocalStorageをクリア
   _resetStudyLockUI();
   document.getElementById('overlay').classList.remove('on');
@@ -4274,6 +4278,7 @@ function _renderStudySheet(){
       <div style="font-size:11px;font-weight:700;color:var(--plan-d);letter-spacing:.5px;margin-bottom:3px">記録タイトル（自動）</div>
       <div style="font-size:14px;font-weight:700;color:var(--plan-d)">🗓️ ${esc(planDisplayName(p))}</div>
     </div>`:''}
+    ${_studyQtyHtml(p)}
     ${tagSelHtml}
     <div id="study-timer-display" style="text-align:center;margin:10px 0 16px">
       <div style="font-family:'Outfit',sans-serif;font-size:48px;font-weight:800;color:var(--blue);letter-spacing:-1px" id="study-timer-num">00:00</div>
@@ -4306,6 +4311,35 @@ function _renderStudySheet(){
     <button onclick="requestCloseStudySheet()" style="background:var(--fill);color:var(--lbl2);border:none;border-radius:12px;padding:14px 18px;font-size:16px;font-weight:500;font-family:inherit;cursor:pointer">キャンセル</button>
     <button onclick="saveStudyRecord()" style="flex:1;background:linear-gradient(145deg,#4F8EF7,#1D4ED8);color:#fff;border:none;border-radius:12px;padding:14px;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 2px 10px rgba(37,99,235,.3)">記録する</button>
   `;
+}
+
+// 目標型の計画タスク（例：1日4個必要）は、まとめて計測した時間を
+// 1回の記録で複数件分の完了として扱えるよう、件数ステッパーを表示する
+function _studyQtyMax(p){
+  if(!p || p.type!=='goal') return 1;
+  return Math.max(1, p.totalCount-(p.doneCount||0));
+}
+function _studyQtyHtml(p){
+  if(_studySheetMode!=='review' || !p || p.type!=='goal' || p.done) return '';
+  const max=_studyQtyMax(p);
+  if(_studySheetQty>max) _studySheetQty=max;
+  return `<div style="margin-bottom:14px">
+    <div style="font-size:13px;font-weight:600;color:var(--lbl2);margin-bottom:8px">この記録でまとめて完了にする件数</div>
+    <div style="display:flex;align-items:center;gap:12px;background:var(--plan-bg);border-radius:12px;padding:8px 10px">
+      <button onclick="changeStudyQty(-1)" aria-label="減らす" style="width:38px;height:38px;flex-shrink:0;border-radius:10px;border:none;background:var(--card);font-size:20px;font-weight:700;color:var(--plan-d);cursor:pointer">−</button>
+      <div style="flex:1;text-align:center;font-family:'Outfit',sans-serif;font-weight:800;color:var(--plan-d)" id="study-qty-num"><span style="font-size:22px">${_studySheetQty}</span><span style="font-size:13px;font-weight:600;color:var(--lbl3)"> / 残り${max}個</span></div>
+      <button onclick="changeStudyQty(1)" aria-label="増やす" style="width:38px;height:38px;flex-shrink:0;border-radius:10px;border:none;background:var(--card);font-size:20px;font-weight:700;color:var(--plan-d);cursor:pointer">＋</button>
+    </div>
+  </div>`;
+}
+// タイマーの計測状態を保ったまま件数だけをその場で更新する（フル再描画するとタイマー表示が作り直され紛らわしいため）
+function changeStudyQty(delta){
+  const p=_timerPlanId?PLAN.find(x=>x.id===_timerPlanId):null;
+  const max=_studyQtyMax(p);
+  _studySheetQty=Math.min(max, Math.max(1,(_studySheetQty||1)+delta));
+  const el=document.getElementById('study-qty-num');
+  if(el) el.innerHTML=`<span style="font-size:22px">${_studySheetQty}</span><span style="font-size:13px;font-weight:600;color:var(--lbl3)"> / 残り${max}個</span>`;
+  haptic();
 }
 
 function toggleStudyTag(id){
@@ -4453,13 +4487,17 @@ function saveStudyRecord(){
   const titleInp=document.getElementById('study-title-inp');
   const noteInp=document.getElementById('study-note-inp');
   const note=noteInp?.value.trim()||'';
+  const _savedQty=_studySheetQty;
   let title='';
   if(_studySheetMode==='review'&&_timerUnitId){
     const u=U.find(x=>x.id===_timerUnitId);
     if(u) title=`${u.name} - ${STEPS[u.step]||`${u.step}回目`}`;
   } else if(_studySheetMode==='review'&&_timerPlanId){
     const p=PLAN.find(x=>x.id===_timerPlanId);
-    if(p) title=planDisplayName(p);
+    if(p){
+      title=planDisplayName(p);
+      if(p.type==='goal' && _savedQty>1) title += ` ×${_savedQty}`;
+    }
   } else {
     title=titleInp?.value.trim()||'';
   }
@@ -4483,7 +4521,7 @@ function saveStudyRecord(){
   if(_savedUnitId){
     complete(_savedUnitId); // complete() calls render()内部で呼ぶ
   } else if(_savedPlanId){
-    planComplete(_savedPlanId); // planComplete() calls render() internally
+    planComplete(_savedPlanId, _savedQty); // planComplete() calls render() internally
   } else {
     render();
     const activeTab=document.querySelector('.tab-btn.on');
