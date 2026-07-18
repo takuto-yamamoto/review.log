@@ -2190,11 +2190,27 @@ function planIsDueToday(p){
   if(p.type==='goal') return false;
   return p.nextDate<=td();
 }
+// 目標型プランの「今日分」の状況を算出。
+// today分の進捗（todayCount）を除いた時点のペースから、今日必要な件数（target）を固定して求める。
+// こうすることで、今日中に完了させるほど target が変わってしまう（自己参照的でわかりにくい）のを防ぐ。
+function _planGoalTodayStatus(p){
+  const todayCount = (p.todayDate===td()) ? (p.todayCount||0) : 0;
+  const doneBeforeToday = Math.max(0, (p.doneCount||0) - todayCount);
+  const pace = _planPaceRaw(p.deadline, p.totalCount, doneBeforeToday);
+  return {todayCount, target:pace.perDay};
+}
 // 今日タブに表示すべき計画タスク（毎日/曜日指定/間隔/目標型）を取得。
 // 今日タブのバッジ数・本文表示で共通利用する
 function getDuePlanList(){
-  return PLAN.filter(p=>!p.done && planInPeriod(p) && (p.type==='goal' || planIsDueToday(p)||planIsOverdue(p)))
-    .sort((a,b)=>{
+  return PLAN.filter(p=>{
+    if(p.done || !planInPeriod(p)) return false;
+    if(p.type==='goal'){
+      // 「1日◯個必要」の目安分を今日すでに達成していれば今日タブからは消す
+      const {todayCount, target} = _planGoalTodayStatus(p);
+      return target>0 && todayCount<target;
+    }
+    return planIsDueToday(p)||planIsOverdue(p);
+  }).sort((a,b)=>{
       const ka = a.type==='goal' ? (a.deadline||'') : (a.nextDate||'');
       const kb = b.type==='goal' ? (b.deadline||'') : (b.nextDate||'');
       return ka.localeCompare(kb);
@@ -2215,6 +2231,8 @@ function planComplete(id, qty){
   const doneLabel=planDisplayName(p);
   if(p.type==='goal'){
     const n=Math.max(1, parseInt(qty,10)||1);
+    if(p.todayDate!==t){ p.todayDate=t; p.todayCount=0; }
+    p.todayCount=(p.todayCount||0)+n;
     p.doneCount=Math.min((p.doneCount||0)+n,p.totalCount);
     p.lastDoneDate=t;
     if(p.doneCount>=p.totalCount){ p.done=true; p.completedAt=Date.now(); }
