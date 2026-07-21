@@ -248,6 +248,22 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .card-when.over{color:var(--red);font-weight:600}
 .card-when.due{color:var(--blue);font-weight:600}
 
+/* ── 今日タブカード: 期限チップ＋進捗を1行に統合した新デザイン ── */
+.card-status-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.card-when-chip{
+  display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;
+  padding:3.5px 9px;border-radius:100px;letter-spacing:.1px;flex-shrink:0;
+  color:var(--lbl2);background:var(--fill)
+}
+.card-when-chip.due{color:var(--blue);background:var(--blue-bg);border:1px solid var(--blue-bd)}
+.card-when-chip.over{color:#C0392B;background:#FFF1F0;border:1px solid rgba(255,59,48,.18)}
+.step-mini{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.step-mini-dots{display:flex;align-items:center;gap:3.5px}
+.step-mini .step-dot{width:6px;height:6px}
+.step-mini .step-dot.active{transform:scale(1.5)}
+.step-mini-lbl{font-size:11.5px;color:var(--lbl2);font-weight:700;letter-spacing:.1px;white-space:nowrap}
+.step-mini-lbl.active{color:var(--blue)}
+
 
 /* U1 fix: 44px minimum touch target for buttons */
 .acts{display:flex;gap:7px}
@@ -6007,16 +6023,17 @@ function toggleSched(id){
 /* ── Card HTML ── */
 function cHtml(u){
   const d=diff(u.nextDate), over=d<0, due=d===0;
-  const when=over
-    ?`<div class="card-when over">${IC.alert} ${Math.abs(d)}日超過中</div>`
+  const whenChip=over
+    ?`<div class="card-when-chip over">${IC.alert} ${Math.abs(d)}日超過</div>`
     :due
-    ?`<div class="card-when due">${IC.clock} 今日が期限</div>`
-    :`<div class="card-when">${IC.calendar} ${fmtShort(u.nextDate)}</div>`;
+    ?`<div class="card-when-chip due">${IC.clock} 今日が期限</div>`
+    :`<div class="card-when-chip">${IC.calendar} ${fmtShort(u.nextDate)}</div>`;
   const newCls = u.isNew ? ' new-card' : '';
   const dotsHtml = STEPS.map((_,i)=>{
     const cls = i < u.step ? 'done' : i === u.step ? 'active' : '';
     return `<span class="step-dot ${cls}"></span>`;
-  }).join('') + `<span class="step-dot-lbl${u.step<MAX_STEP?' active':''}">${u.step<MAX_STEP?STEPS[u.step]:'完了'}</span>`;
+  }).join('');
+  const stepLbl = u.step<MAX_STEP ? STEPS[u.step] : '完了';
 
   return `<div class="cw${newCls}" id="w-${u.id}" data-id="${u.id}">
     <div class="card${over?' over':due?' due':''}" id="c-${u.id}">
@@ -6028,8 +6045,13 @@ function cHtml(u){
         </div>
       </div>
       ${(u.tags&&u.tags.length)?`<div class="card-tags-row">${u.tags.map(tid=>tagHtml(tid)).join('')}</div>`:''}
-      ${when}
-      <div class="step-dots">${dotsHtml}</div>
+      <div class="card-status-row">
+        ${whenChip}
+        <div class="step-mini">
+          <div class="step-mini-dots">${dotsHtml}</div>
+          <span class="step-mini-lbl${u.step<MAX_STEP?' active':''}">${stepLbl}</span>
+        </div>
+      </div>
       <div class="acts">
         <button class="btn-ok" onclick="openStudyTimer('${u.id}')">${IC.timerSm} 時間を記録して完了</button>
         <button class="btn-snooze" onclick="openSnooze('${u.id}')">${IC.moon} 延期</button>
