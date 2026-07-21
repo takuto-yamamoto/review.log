@@ -2412,6 +2412,7 @@ function _planGoalTodayStatus(p){
 function getDuePlanList(){
   return PLAN.filter(p=>{
     if(p.done || !planInPeriod(p)) return false;
+    if(p.snoozeUntil && p.snoozeUntil>td()) return false; // 延期中は今日タブから隠す
     if(p.type==='goal'){
       // 「1日◯個必要」の目安分を今日すでに達成していれば今日タブからは消す
       const {todayCount, target} = _planGoalTodayStatus(p);
@@ -2515,7 +2516,10 @@ function planCardHtml(p, opts){
         <div class="plan-progress-lbl"><span>${p.doneCount||0} / ${p.totalCount}</span><span>${pct}%</span></div>
         <div class="plan-progress-track"><div class="plan-progress-fill" style="width:${pct}%"></div></div>
         ${paceLbl?`<div class="plan-pace">${IC.zap.replace('white','currentColor')}${paceLbl}</div>`:''}
-        ${(p.done||opts.hideComplete)?'':`<div class="acts"><button class="btn-plan-ok" onclick="${opts.todayMode?`openStudyTimerForPlan('${p.id}')`:`planComplete('${p.id}')`}">${opts.todayMode?IC.timerSm:IC.check} ${opts.todayMode?'時間を記録して1個完了':'1個完了にする'}</button></div>`}
+        ${(p.done||opts.hideComplete)?'':`<div class="acts">
+          <button class="btn-plan-ok" onclick="${opts.todayMode?`openStudyTimerForPlan('${p.id}')`:`planComplete('${p.id}')`}">${opts.todayMode?IC.timerSm:IC.check} ${opts.todayMode?'時間を記録して1個完了':'1個完了にする'}</button>
+          ${opts.hideSnooze?'':`<button class="btn-snooze" onclick="openPlanSnooze('${p.id}')">${IC.moon} 延期</button>`}
+        </div>`}
       </div>
     </div>`;
   }
@@ -2524,7 +2528,7 @@ function planCardHtml(p, opts){
   const due = planIsDueToday(p);
   const doneToday = p.type==='daily' ? p.lastDoneDate===td() : (p.lastDoneDate===td() && !due && !over);
   const showComplete = opts.hideComplete ? false : (p.type==='daily' ? !doneToday : (due||over));
-  const showSnooze = opts.hideSnooze ? false : (opts.alwaysSnooze ? p.type!=='daily' : (p.type!=='daily' && (due||over)));
+  const showSnooze = opts.hideSnooze ? false : (p.type==='daily' ? !doneToday : (opts.alwaysSnooze || due || over));
   const typeSub = p.type==='daily' ? '毎日'
     : p.type==='weekday' ? '毎週 '+(p.weekdays||[]).slice().sort().map(d=>WD_LABELS[d]).join('・')
     : `${p.intervalDays}日ごと`;
@@ -4096,7 +4100,10 @@ function applySnooze(days){
   closeSnooze();                                 // clears _snoozeId immediately
   if(kind==='plan'){
     const p=PLAN.find(x=>x.id===id); if(!p) return;
-    p.nextDate=addD(td(),days); savePlan();
+    const until=addD(td(),days);
+    if(p.type==='weekday'||p.type==='interval') p.nextDate=until;
+    else p.snoozeUntil=until; // daily / goal は次回発生日という概念がないため専用フィールドで隠す
+    savePlan();
     haptic('medium'); render(); _renderCalGrid();
     const label=days===1?'明日':days===7?'1週間後':`${days}日後`;
     toast(IC.moon, esc(planDisplayName(p))+`を${label}に延期しました`);
