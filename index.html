@@ -2425,6 +2425,27 @@ function getDuePlanList(){
       return ka.localeCompare(kb);
     });
 }
+// 今日タブの「完了済み」に表示すべき、今日達成した計画タスクを取得
+// daily/weekday/interval: 今日 lastDoneDate が付いたもの
+// goal: 今日分の目安を達成した、または目標そのものを今日達成したもの
+function getPlanDoneTodayList(){
+  const t=td();
+  return PLAN.filter(p=>{
+    if(!planInPeriod(p)) return false;
+    if(p.type==='goal'){
+      if(p.done){
+        if(!p.completedAt) return false;
+        const d=new Date(p.completedAt);
+        const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        return ds===t;
+      }
+      if(p.todayDate!==t || !((p.todayCount||0)>0)) return false;
+      const {todayCount, target} = _planGoalTodayStatus(p);
+      return target>0 && todayCount>=target;
+    }
+    return p.lastDoneDate===t;
+  });
+}
 function planNextWeekday(fromDateExclusive, weekdays){
   if(!weekdays || !weekdays.length) return addD(fromDateExclusive,1);
   for(let i=1;i<=14;i++){
@@ -2614,7 +2635,7 @@ function planOverviewRowHtml(p){
     <div class="plan-row-icon">${icon}</div>
     <div class="plan-row-main">
       <div class="plan-row-name">${esc(dispName)}</div>
-      <div class="plan-row-meta">${over?IC.alertSm:due?IC.clock:''} ${esc(typeSub)} · ${esc(statusText)}</div>
+      <div class="plan-row-meta">${over?IC.alertSm:due?IC.clock:''} ${esc(typeSub)} · ${statusText}</div>
       ${(p.tags&&p.tags.length)?`<div class="plan-row-tags">${p.tags.map(tid=>tagHtml(tid)).join('')}</div>`:''}
     </div>
     <div class="plan-row-acts">
@@ -4378,6 +4399,30 @@ function undoCompleteFromDone(id){
   haptic('medium');
 }
 
+function undoPlanCompleteFromDone(id){
+  const p = PLAN.find(x => x.id === id);
+  if(!p) return;
+  const doneLabel = planDisplayName(p);
+  if(p.type==='goal'){
+    // 今日分の記録をすべて取り消す
+    const todayCount = p.todayCount||0;
+    p.doneCount = Math.max(0, (p.doneCount||0) - todayCount);
+    p.todayCount = 0;
+    delete p.todayDate;
+    if(p.done){ p.done = false; delete p.completedAt; }
+  } else {
+    delete p.lastDoneDate;
+    if(p.type==='weekday' || p.type==='interval'){
+      p.occurrenceCount = Math.max(0, (p.occurrenceCount||0) - 1);
+      p.nextDate = td();
+    }
+  }
+  savePlan();
+  render();
+  toast(IC.checkCircle, '「' + esc(doneLabel) + '」を計画タスクに戻しました');
+  haptic('medium');
+}
+
 /* ══ P5: Celebration ═══════════════════ */
 function celebrate(name){
   const COLORS=['#3B82F6','#F59E0B','#10B981','#EF4444','#8B5CF6','#EC4899','#F97316'];
@@ -4525,9 +4570,13 @@ function rToday(list, hasActive, allDone){
   const inProgressDoneToday = U.filter(u => !u.done && u.lastDoneDate === t && u.nextDate > t);
   const todayDoneAll = [...inProgressDoneToday, ...todayDoneList.filter(u => !inProgressDoneToday.find(x=>x.id===u.id))];
 
+  // 今日達成した計画タスク（毎日/曜日指定/間隔/目標型）も完了済みに含める
+  const planDoneToday = getPlanDoneTodayList();
+
   // Build accordion HTML (rendered regardless of pending list)
   function todayDoneAccHtml(){
-    if(!todayDoneAll.length) return '';
+    const totalCount = todayDoneAll.length + planDoneToday.length;
+    if(!totalCount) return '';
     const open = _todayDoneOpen;
     const itemsHtml = todayDoneAll.map(u => {
       const stepLabel = u.done
@@ -4546,6 +4595,24 @@ function rToday(list, hasActive, allDone){
           <button class="today-done-item-del" onclick="del('${u.id}')" aria-label="削除">${IC.trash}</button>
         </div>
       </div>`;
+    }).join('') + planDoneToday.map(p => {
+      const name = planDisplayName(p);
+      const metaLabel = p.type==='goal'
+        ? (p.done ? '目標を達成しました！' : `今日分の目安を達成 · 通算 ${p.doneCount||0}/${p.totalCount}`)
+        : '計画タスク完了';
+      return `<div class="today-done-item">
+        <div class="today-done-item-icon">
+          ${IC.checkGreen}
+        </div>
+        <div class="today-done-item-body">
+          <div class="today-done-item-name">${esc(name)}</div>
+          <div class="today-done-item-meta">${metaLabel}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button class="done-undo" onclick="undoPlanCompleteFromDone('${p.id}')" aria-label="計画タスクに戻す" style="font-size:11px;padding:4px 8px;min-height:32px">↩ 戻す</button>
+          <button class="today-done-item-del" onclick="planDelete('${p.id}')" aria-label="削除">${IC.trash}</button>
+        </div>
+      </div>`;
     }).join('');
     return `<div class="today-done-acc${open?' open':''}" id="today-done-acc">
       <div class="today-done-header" onclick="toggleTodayDone()">
@@ -4553,7 +4620,7 @@ function rToday(list, hasActive, allDone){
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
         <div class="today-done-label">完了済み</div>
-        <div class="today-done-count">✓ ${todayDoneAll.length}件</div>
+        <div class="today-done-count">✓ ${totalCount}件</div>
         <div class="today-done-chev">${IC.chevDown}</div>
       </div>
       <div class="today-done-body">
@@ -4749,11 +4816,12 @@ function rStudy(){
 
   // ヒーローカード
   let html = `<div class="hero" style="margin-bottom:12px">
-    <div style="display:flex;align-items:center;gap:12px;position:relative;z-index:1">
+    <div style="display:flex;align-items:flex-start;gap:12px;position:relative;z-index:1">
       ${iconHtml}
-      <div>
-        <div class="hero-msg">今までの総勉強時間${startDateLabel?`<span style="font-weight:500;opacity:.85">（${startDateLabel}）</span>`:''}</div>
-        <div style="font-size:28px;font-weight:800;color:#fff;font-family:'Outfit',sans-serif;line-height:1.1;margin-top:4px">${fmtMinutesJa(totalAllMins)}</div>
+      <div style="min-width:0;flex:1">
+        <div class="hero-msg" style="font-size:14px;font-weight:600;opacity:.85">今までの総勉強時間</div>
+        ${startDateLabel?`<div style="font-size:12px;color:rgba(255,255,255,.7);margin-top:2px">${startDateLabel}</div>`:''}
+        <div style="font-size:30px;font-weight:800;color:#fff;font-family:'Outfit',sans-serif;line-height:1.15;margin-top:6px">${fmtMinutesJa(totalAllMins)}</div>
       </div>
     </div>
 
@@ -5659,6 +5727,14 @@ function calNav(delta){
   haptic();
 }
 
+/* プランをカレンダー上に表示する基準日を返す
+   daily → 今日 / goal → 締切日(deadline) / weekday・interval → 次回日(nextDate) */
+function planCalDate(p){
+  if(p.type==='daily') return td();
+  if(p.type==='goal')  return p.deadline;
+  return p.nextDate;
+}
+
 /* 日付ごとのタスク情報を返す純粋関数 */
 function _calEventMap(){
   // { 'YYYY-MM-DD': { count: number, overdue: bool, colors: string[], planColors: string[] } }
@@ -5679,7 +5755,7 @@ function _calEventMap(){
   });
   // 計画タスク（毎日/曜日指定/間隔）: 次回日、目標型は期限日にピップを表示
   PLAN.filter(p=>!p.done && planInPeriod(p)).forEach(p=>{
-    const d = p.type==='daily' ? today : p.nextDate;
+    const d = planCalDate(p);
     if(!d) return;
     if(!map[d]) map[d] = { count: 0, overdue: false, colors: [], planColors: [] };
     map[d].count++;
@@ -5789,7 +5865,10 @@ function _buildCalGridHtml(year, month){
       const colors = isOverdue
         ? ev.colors.map(() => '#EF4444')
         : ev.colors;
-      const planColors = (ev.planColors||[]).slice(0, MAX_PIPS);
+      const planColors = (isOverdue
+        ? (ev.planColors||[]).map(() => '#EF4444')
+        : (ev.planColors||[])
+      ).slice(0, MAX_PIPS);
       const shown = colors.slice(0, Math.max(0, MAX_PIPS - planColors.length));
       const shownPipCount = Math.min(count, shown.length + planColors.length);
       const rest  = count - shownPipCount; // 表示しきれないタスク数
@@ -5834,7 +5913,7 @@ function _renderDenseSheet(){
   const today = td();
   const reviewCands = U.filter(u => !u.done && u.nextDate === dateStr);
   // 計画: 毎日タスクは常に「今日」なので今日の日付のときのみ、日付固定移動はできない（除外）
-  const planCands = PLAN.filter(p => !p.done && p.type!=='daily' && p.nextDate === dateStr);
+  const planCands = PLAN.filter(p => !p.done && p.type!=='daily' && planCalDate(p) === dateStr);
   const allCount = reviewCands.length + planCands.length;
 
   // ヘッダー
@@ -5857,7 +5936,7 @@ function _renderDenseSheet(){
       if(dest <= today) return ''; // 過去はスキップ
       if(dest === dateStr) return '';
       const destCount = U.filter(u => !u.done && u.nextDate === dest).length
-        + PLAN.filter(p => !p.done && p.type!=='daily' && p.nextDate === dest).length;
+        + PLAN.filter(p => !p.done && p.type!=='daily' && planCalDate(p) === dest).length;
       const warn = destCount >= CAL_DENSE_OVER ? '⚠️' : '';
       const label = (d > 0 ? '+' : '') + d + '日' + warn;
       const fn = isPlan ? `denseShiftPlan('${id}','${dest}')` : `denseShiftUnit('${id}','${dest}')`;
@@ -5904,7 +5983,8 @@ function denseShiftUnit(uid, destDate){
 function denseShiftPlan(pid, destDate){
   const p = PLAN.find(x => x.id === pid);
   if(!p) return;
-  p.nextDate = destDate;
+  if(p.type==='goal') p.deadline = destDate;
+  else p.nextDate = destDate;
   savePlan();
   haptic('medium');
   toast(IC.check, esc(planDisplayName(p)) + ' を ' + fmtShortText(destDate) + ' へ移動しました');
@@ -5963,7 +6043,7 @@ function calJumpToDate(dateStr){
   // 3. 期限切れのタスクは「今日のタスク」タブ（復習）または「計画」タブ（計画タスク）に
   //    表示されるため、該当するタブへ切り替える
   const reviewTargets = U.filter(u => !u.done && u.nextDate === dateStr);
-  const planTargets = PLAN.filter(p => !p.done && p.type!=='daily' && p.nextDate === dateStr);
+  const planTargets = PLAN.filter(p => !p.done && p.type!=='daily' && planCalDate(p) === dateStr);
   const destTabName = reviewTargets.length ? 'today' : (planTargets.length ? 'plan' : 'today');
   const destTabBtn = document.querySelector(`.tab-btn[data-tab="${destTabName}"]`);
   if(destTabBtn && !destTabBtn.classList.contains('on')){
