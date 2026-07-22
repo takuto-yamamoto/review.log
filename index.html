@@ -2497,7 +2497,14 @@ function planComplete(id, qty){
   toast(IC.check, esc(doneLabel)+'を完了しました！');
 }
 function planDelete(id){
-  PLAN=PLAN.filter(x=>x.id!==id); savePlan(); render();
+  const idx=PLAN.findIndex(x=>x.id===id); if(idx<0) return;
+  const p=PLAN[idx];
+  const name=planDisplayName(p);
+  PLAN=PLAN.filter(x=>x.id!==id); savePlan(); render(); haptic();
+  showUndo(`「${esc(name)}」を削除しました`, ()=>{
+    PLAN.splice(Math.min(idx, PLAN.length), 0, p);
+    savePlan(); render();
+  });
 }
 function planShift(id, days){
   const p=PLAN.find(x=>x.id===id); if(!p) return;
@@ -3440,10 +3447,19 @@ function addCategory(){
   haptic('medium');
 }
 function deleteCategory(id){
+  const idx=CATEGORIES.findIndex(c=>c.id===id); if(idx<0) return;
+  const cat=CATEGORIES[idx];
+  const affectedTagIds=TAGS.filter(t=>t.categoryId===id).map(t=>t.id);
   CATEGORIES=CATEGORIES.filter(c=>c.id!==id);
   TAGS.forEach(t=>{ if(t.categoryId===id) delete t.categoryId; });
   saveCategories(); saveTags(); _tagsMutated=true;
   renderTagMgr(); haptic();
+  showUndo(`「${esc(cat.name)}」を削除しました`, ()=>{
+    CATEGORIES.splice(Math.min(idx, CATEGORIES.length), 0, cat);
+    affectedTagIds.forEach(tid=>{ const t=TAGS.find(x=>x.id===tid); if(t) t.categoryId=id; });
+    saveCategories(); saveTags(); _tagsMutated=true;
+    renderTagMgr();
+  });
 }
 function renameCategory(id, val){
   const name=val.trim();
@@ -3787,6 +3803,9 @@ function renameTag(id, val){
   t.name=name; saveTags(); _tagsMutated=true;
 }
 function deleteTag(id){
+  const idx=TAGS.findIndex(t=>t.id===id); if(idx<0) return;
+  const tag=TAGS[idx];
+  const affectedUnitIds=U.filter(u=>u.tags && u.tags.includes(id)).map(u=>u.id);
   TAGS=TAGS.filter(t=>t.id!==id);
   // Remove tag from all units
   U.forEach(u=>{ if(u.tags) u.tags=u.tags.filter(tid=>tid!==id); });
@@ -3795,6 +3814,15 @@ function deleteTag(id){
   renderSheetTagSel();
   renderEditTagSel();
   haptic();
+  showUndo(`「${esc(tag.name)}」を削除しました`, ()=>{
+    TAGS.splice(Math.min(idx, TAGS.length), 0, tag);
+    affectedUnitIds.forEach(uid=>{
+      const u=U.find(x=>x.id===uid);
+      if(u){ u.tags=u.tags||[]; if(!u.tags.includes(id)) u.tags.push(id); }
+    });
+    save(); saveTags(); _tagsMutated=true;
+    renderTagMgr(); renderSheetTagSel(); renderEditTagSel();
+  });
 }
 function addTag(){
   const inp=document.getElementById('tag-add-inp');
@@ -4168,7 +4196,17 @@ function del(id){
   haptic();
   shrinkOut('w-'+id,()=>{
     U=U.filter(x=>x.id!==id); save(); render();
-    showUndo(unit, idx, `「${esc(unit.name)}」を削除しました`);
+    showUndo(`「${esc(unit.name)}」を削除しました`, ()=>{
+      if(unit.done){
+        // Completed units go back to the done list (append)
+        U.push(unit);
+      } else {
+        // 再挿入位置は日付の近さで再計算(元のidxは古くなっている可能性があるため)
+        const insertIdx = U.findIndex(u => !u.done && u.nextDate > unit.nextDate);
+        if(insertIdx === -1) U.push(unit); else U.splice(insertIdx, 0, unit);
+      }
+      save(); render();
+    });
   });
 }
 
@@ -4343,14 +4381,14 @@ function saveEdit(){
 }
 document.getElementById('edit-inp').addEventListener('keydown',e=>{ if(e.key==='Enter') saveEdit(); if(e.key==='Escape') closeEdit(); });
 
-/* ══ P2: Undo delete ═══════════════════ */
-let _undoStack = null; // { unit, idx }
+/* ══ P2: Undo delete (汎用: unit/plan/category/tag/studyLog 共通) ══ */
+let _undoStack = null; // { restore: fn }
 let _undoTimer = null;
 let _undoProgTimer = null;
 const UNDO_SEC = 5;
 
-function showUndo(unit, idx, msg){
-  _undoStack={unit,idx};
+function showUndo(msg, restoreFn){
+  _undoStack={restore:restoreFn};
   clearTimeout(_undoTimer); clearTimeout(_undoProgTimer);
   document.getElementById('undo-msg').textContent=msg;
   const bar=document.getElementById('undo-bar');
@@ -4370,21 +4408,12 @@ function undoDelete(){
   // Fix3: clear progress timer so it doesn't fire after undo
   clearTimeout(_undoTimer);
   clearTimeout(_undoProgTimer);
-  const {unit}=_undoStack; _undoStack=null;
+  const {restore}=_undoStack; _undoStack=null;
   // Hide progress bar immediately
   const prog=document.getElementById('undo-prog');
   if(prog){ prog.style.transition='none'; prog.style.width='0%'; }
-  if(unit.done){
-    // Completed units go back to the done list (append)
-    U.push(unit);
-  } else {
-    // Fix4: re-find insertion point by date proximity instead of stale idx
-    const insertIdx = U.findIndex(u => !u.done && u.nextDate > unit.nextDate);
-    if(insertIdx === -1) U.push(unit); else U.splice(insertIdx, 0, unit);
-  }
-  save();
   document.getElementById('undo-bar').classList.remove('on');
-  render();
+  restore();
   toast(IC.checkCircle,'削除を取り消しました');
   haptic('medium');
 }
@@ -5098,13 +5127,18 @@ function saveEditStudyLog(){
 }
 
 function delStudyLogAndRefresh(id){
+  const idx=STUDY_LOGS.findIndex(l=>l.id===id); if(idx<0) return;
+  const log=STUDY_LOGS[idx];
   delStudyLog(id);
   rStudy();
   _refreshAllLogsSheetIfOpen();
-  // 今日タブのstat-rowも更新
-  const todayMins = todayStudyMinutes();
   haptic();
-  toast(IC.trash, '記録を削除しました');
+  showUndo('記録を削除しました', ()=>{
+    STUDY_LOGS.splice(Math.min(idx, STUDY_LOGS.length), 0, log);
+    saveStudyLogs();
+    rStudy();
+    _refreshAllLogsSheetIfOpen();
+  });
 }
 
 // 1日の勉強時間に応じた「豪華さ」の段階。<3h=0(通常/演出なし) / 3-5h=1 / 5-8h=2 / 8h〜=3
