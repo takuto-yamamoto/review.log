@@ -2024,9 +2024,6 @@ button,a,input,[role="button"]{touch-action:manipulation}
           <div class="nav-title" id="nav-title">今日のタスク</div>
         </div>
         <div style="display:flex;align-items:center;gap:10px">
-          <button onclick="openNewStudySheet()" aria-label="勉強時間を記録" id="study-quick-btn" style="background:var(--blue-bg);border:none;cursor:pointer;width:30px;height:30px;border-radius:50%;color:var(--blue);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
-          </button>
           <div class="nav-date" id="nav-date"></div>
           <button onclick="openBackupSheet()" aria-label="バックアップ" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--lbl3);display:flex;align-items:center;border-radius:8px;transition:color .12s" id="backup-btn">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -2073,8 +2070,8 @@ button,a,input,[role="button"]{touch-action:manipulation}
 </div>
 
 <!-- Floating add button (always visible, above tab bar) -->
-<button class="float-fab" onclick="openFabSheet()" aria-label="追加">
-  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+<button class="float-fab" onclick="openFabSheet()" aria-label="勉強時間を記録">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M9 2h6"/><path d="M17.5 4.5l1.5-1.5"/></svg>
 </button>
 
 <!-- Overlay -->
@@ -4789,11 +4786,19 @@ function rUpcoming(list){
 
   const barHtml=calHtml+tagFilterHtml;
 
+  const addReviewCtaHtml = `<button class="plan-add-cta" onclick="openSheet()">
+    <span class="plan-add-cta-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+    <span class="plan-add-cta-txt">
+      <span class="plan-add-cta-ttl">新しい復習を設定する</span>
+      <span class="plan-add-cta-sub">単元を追加して復習スケジュールを組めます</span>
+    </span>
+  </button>`;
+
   if(!list.length){
-    el.innerHTML=barHtml+adjHtml+`<div class="empty">
+    el.innerHTML=barHtml+addReviewCtaHtml+adjHtml+`<div class="empty">
       <div class="empty-icon" style="background:var(--blue-bg)">${IC.clockLg}</div>
       <h3>予定中の復習はありません</h3>
-      <p>＋ ボタンから新しい単元を<br>追加してみましょう</p>
+      <p>下のボタンから新しい単元を<br>追加してみましょう</p>
     </div>`;
     return;
   }
@@ -4819,7 +4824,7 @@ function rUpcoming(list){
       <p>${_emptyMsg}</p>
     </div>`;
   }
-  el.innerHTML=barHtml+adjHtml+cardsHtml;
+  el.innerHTML=barHtml+addReviewCtaHtml+adjHtml+cardsHtml;
   const _tf=el.querySelector('.tagf-scroll');
   if(_tf) _tf.scrollLeft=_tagfScrollLeft;
   document.querySelectorAll('#p-upcoming .cw[data-id]').forEach(w=>initSwipeDeleteOnly(w));
@@ -6321,8 +6326,6 @@ function switchTab(btn){
   const backupBtn = document.getElementById('backup-btn');
   if(tagBtn)    tagBtn.style.display    = id === 'settings' ? 'none' : '';
   if(backupBtn) backupBtn.style.display = id === 'settings' ? 'none' : '';
-  const studyQuickBtn = document.getElementById('study-quick-btn');
-  if(studyQuickBtn) studyQuickBtn.style.display = (id === 'today' || id === 'upcoming') ? '' : 'none';
   currentTabIdx=newIdx;
 
   // Hide FAB on settings/study/plan tabs (plan tab has its own in-panel add button)
@@ -6366,7 +6369,7 @@ function setFabHidden(hidden){
 function openFabSheet(){
   const activeTab=document.querySelector('.tab-btn.on')?.dataset?.tab;
   if(activeTab==='plan'){ openPlanSheet(); return; }
-  openSheet();
+  openNewStudySheet();
 }
 function openSheet(){
   _sheetDateMode='today';
@@ -7698,9 +7701,9 @@ const OB_STEPS = [
     type: 'spot',
     target: '.float-fab',
     arrowDir: 'down',
-    emoji: '➕',
-    title: '単元を追加する',
-    body: 'このボタンをタップして、勉強した単元を登録します。<br>単元名と学習日を入力するだけで、<strong>復習スケジュールが自動で組まれます</strong>。',
+    emoji: '⏱️',
+    title: '勉強時間を記録する',
+    body: 'このボタンをタップして、勉強した時間を記録します。<br>タイマーで計測するか、手入力でサクッと記録できます。',
     next: '次へ',
     skip: 'スキップ',
   },
@@ -7722,7 +7725,7 @@ const OB_STEPS = [
     arrowDir: 'up',
     emoji: '🗓️',
     title: '「予定」タブ',
-    body: '今後の復習スケジュールをカレンダーで確認できます。<br><strong>忘れる前に復習できる</strong>よう、日程が組まれています。',
+    body: '今後の復習スケジュールをカレンダーで確認できます。<br>新しい単元は「新しい復習を設定する」ボタンから追加できます。',
     next: '次へ',
     skip: 'スキップ',
   },
