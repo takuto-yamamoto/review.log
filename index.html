@@ -206,8 +206,11 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .todo-list{margin-bottom:4px}
 .todo-item{
   background:var(--card);border-radius:14px;padding:11px 12px;margin-bottom:8px;
-  display:flex;align-items:center;gap:10px;box-shadow:var(--shadow-sm);
+  display:flex;flex-direction:column;gap:6px;box-shadow:var(--shadow-sm);
+  border-left:3px solid transparent;transition:border-color .15s;
 }
+.todo-item.half{border-left-color:#F59E0B}
+.todo-main{display:flex;align-items:center;gap:10px}
 .todo-check{
   flex-shrink:0;width:24px;height:24px;border-radius:50%;
   border:2px solid var(--lbl3);background:none;cursor:pointer;
@@ -215,14 +218,40 @@ button,a,input,[role="button"]{touch-action:manipulation}
   transition:background .15s,border-color .15s;
 }
 .todo-item.done .todo-check{background:#059669;border-color:#059669}
+.todo-item.half .todo-check{border-color:#F59E0B}
 .todo-text{
   flex:1;font-size:14.5px;color:var(--lbl);line-height:1.35;word-break:break-word;
 }
 .todo-item.done .todo-text{color:var(--lbl3);text-decoration:line-through}
+.todo-half-tag{
+  display:inline-block;font-size:10.5px;font-weight:700;color:#F59E0B;
+  background:rgba(245,158,11,.12);border-radius:6px;padding:1px 6px;margin-left:6px;
+  vertical-align:middle;
+}
 .todo-del{
   flex-shrink:0;background:none;border:none;cursor:pointer;padding:6px;
   color:var(--lbl3);display:flex;align-items:center;border-radius:8px;
 }
+.todo-sub{
+  display:flex;align-items:center;gap:6px;padding-left:34px;flex-wrap:wrap;
+}
+.todo-timer-btn{
+  flex-shrink:0;width:22px;height:22px;border-radius:50%;background:var(--fill2,rgba(120,120,128,.12));
+  border:none;cursor:pointer;color:var(--lbl2);display:flex;align-items:center;justify-content:center;
+  transition:background .15s,color .15s;
+}
+.todo-timer-btn.running{background:var(--blue);color:#fff}
+.todo-timer-txt{
+  font-size:12px;color:var(--lbl2);font-variant-numeric:tabular-nums;min-width:36px;
+}
+.todo-half-btn,.todo-postpone-btn{
+  font-size:11.5px;font-weight:600;color:var(--lbl2);background:var(--fill2,rgba(120,120,128,.12));
+  border:none;border-radius:100px;padding:4px 9px;cursor:pointer;display:flex;align-items:center;gap:3px;
+  transition:background .15s,color .15s;
+}
+.todo-half-btn{margin-left:auto}
+.todo-half-btn.on{background:rgba(245,158,11,.15);color:#F59E0B}
+.todo-postpone-btn svg{width:11px;height:11px}
 .todo-seg-note{font-size:12px;color:var(--lbl2);margin:2px 4px 14px}
 
 /* ══ Card wrap (swipe container) ══════ */
@@ -2047,8 +2076,8 @@ button,a,input,[role="button"]{touch-action:manipulation}
           <div class="nav-title" id="nav-title">今日のタスク</div>
         </div>
         <div style="display:flex;align-items:center;gap:10px">
-          <button onclick="openTodoAddSheet()" aria-label="ToDoを追加" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--lbl3);display:flex;align-items:center;border-radius:8px;transition:color .12s" id="todo-add-btn">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <button onclick="openTodoAddSheet()" aria-label="ToDoを追加" style="background:var(--blue-bg);border:1px solid var(--blue-bd);cursor:pointer;padding:5px 10px 5px 8px;color:var(--blue-d);display:flex;align-items:center;gap:4px;border-radius:100px;font-size:12.5px;font-weight:700;transition:opacity .12s" id="todo-add-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>ToDo
           </button>
           <div class="nav-date" id="nav-date"></div>
           <button onclick="openBackupSheet()" aria-label="バックアップ" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--lbl3);display:flex;align-items:center;border-radius:8px;transition:color .12s" id="backup-btn">
@@ -2266,6 +2295,8 @@ const IC = {
   activeStat: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`,
   lock:       `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>`,
   lockOpen:   `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/></svg>`,
+  play:       `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6 3 20 12 6 21 6 3"/></svg>`,
+  pause:      `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>`,
 };
 
 /* ══════════════════════════════════════════
@@ -2366,6 +2397,7 @@ const saveStudyLogs = () => safeSetItem(STUDY_KEY, JSON.stringify(STUDY_LOGS));
 ══════════════════════════════════════════ */
 const TODO_KEY = 'fukushu-todos-v1';
 let TODOS = (() => { try { return JSON.parse(localStorage.getItem(TODO_KEY)) || []; } catch { return []; } })();
+TODOS.forEach(x=>{ if(x.half===undefined) x.half=false; if(x.elapsedMs===undefined) x.elapsedMs=0; if(x.timerStart===undefined) x.timerStart=null; });
 const saveTodos = () => safeSetItem(TODO_KEY, JSON.stringify(TODOS));
 
 /* ══════════════════════════════════════════════════════════════
@@ -6705,7 +6737,7 @@ function addTodo(){
     haptic('medium'); inp.focus(); return;
   }
   const date=_todoDateFromMode(_todoDateMode);
-  TODOS.unshift({id:Date.now().toString(), text, date, done:false, createdAt:Date.now()});
+  TODOS.unshift({id:Date.now().toString(), text, date, done:false, half:false, elapsedMs:0, timerStart:null, createdAt:Date.now()});
   saveTodos();
   inp.value='';
   closeTodoAddSheet();
@@ -6719,6 +6751,10 @@ function toggleTodo(id){
   const item=TODOS.find(x=>x.id===id);
   if(!item) return;
   item.done=!item.done;
+  if(item.done){
+    item.half=false;
+    if(item.timerStart){ item.elapsedMs=(item.elapsedMs||0)+(Date.now()-item.timerStart); item.timerStart=null; }
+  }
   saveTodos();
   haptic();
   render();
@@ -6731,21 +6767,93 @@ function deleteTodo(id){
   render();
 }
 
+// タスクの経過時間の計測を開始/停止する（同時に計測できるのは1件のみ）
+function toggleTodoTimer(id){
+  const item=TODOS.find(x=>x.id===id);
+  if(!item) return;
+  if(item.timerStart){
+    item.elapsedMs=(item.elapsedMs||0)+(Date.now()-item.timerStart);
+    item.timerStart=null;
+  } else {
+    TODOS.forEach(x=>{ if(x.id!==id && x.timerStart){ x.elapsedMs=(x.elapsedMs||0)+(Date.now()-x.timerStart); x.timerStart=null; } });
+    item.timerStart=Date.now();
+  }
+  saveTodos();
+  haptic();
+  render();
+}
+
+// 「半分やった」の状態を切り替える（半分にすると完了は解除される）
+function toggleTodoHalf(id){
+  const item=TODOS.find(x=>x.id===id);
+  if(!item) return;
+  item.half=!item.half;
+  if(item.half) item.done=false;
+  saveTodos();
+  haptic();
+  render();
+}
+
+// 同じ内容のToDoを「明日」にも追加する（今日やったけど明日もやる場合）
+function postponeTodo(id){
+  const item=TODOS.find(x=>x.id===id);
+  if(!item) return;
+  const tomorrow=addD(td(),1);
+  TODOS.unshift({id:Date.now().toString()+'_p', text:item.text, date:tomorrow, done:false, half:false, elapsedMs:0, timerStart:null, createdAt:Date.now()});
+  saveTodos();
+  haptic('medium');
+  render();
+  setTimeout(()=>toast(IC.checkCircle, '明日のToDoにも追加'), 340);
+}
+
+// 経過時間をmm:ss / h:mm:ss形式にフォーマットする
+function fmtElapsed(ms){
+  const totalSec=Math.floor((ms||0)/1000);
+  const h=Math.floor(totalSec/3600);
+  const m=Math.floor((totalSec%3600)/60);
+  const s=totalSec%60;
+  const pad=n=>String(n).padStart(2,'0');
+  return h>0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+}
+
 // 今日タブに表示するToDoセクションのHTMLを生成（date===今日のToDoのみ）
 function renderTodoSectionHtml(){
   const t = td();
   const list = TODOS.filter(x=>x.date===t).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
   if(!list.length) return '';
   const pendingCount = list.filter(x=>!x.done).length;
-  const items = list.map(x=>`
-    <div class="todo-item${x.done?' done':''}" data-id="${x.id}">
-      <button class="todo-check" onclick="toggleTodo('${x.id}')" aria-label="${x.done?'未完了に戻す':'完了にする'}">${x.done?IC.check:''}</button>
-      <div class="todo-text">${esc(x.text)}</div>
-      <button class="todo-del" onclick="deleteTodo('${x.id}')" aria-label="削除">${IC.trash}</button>
-    </div>`).join('');
+  const items = list.map(x=>{
+    const running = !!x.timerStart;
+    const elapsed = (x.elapsedMs||0) + (running ? (Date.now()-x.timerStart) : 0);
+    const cls = `${x.done?' done':''}${x.half?' half':''}`;
+    return `
+    <div class="todo-item${cls}" data-id="${x.id}">
+      <div class="todo-main">
+        <button class="todo-check" onclick="toggleTodo('${x.id}')" aria-label="${x.done?'未完了に戻す':'完了にする'}">${x.done?IC.check:''}</button>
+        <div class="todo-text">${esc(x.text)}${x.half?'<span class="todo-half-tag">半分</span>':''}</div>
+        <button class="todo-del" onclick="deleteTodo('${x.id}')" aria-label="削除">${IC.trash}</button>
+      </div>
+      <div class="todo-sub">
+        <button class="todo-timer-btn${running?' running':''}" onclick="toggleTodoTimer('${x.id}')" aria-label="${running?'計測を止める':'計測を始める'}">${running?IC.pause:IC.play}</button>
+        <span class="todo-timer-txt" id="todo-timer-${x.id}">${fmtElapsed(elapsed)}</span>
+        <button class="todo-half-btn${x.half?' on':''}" onclick="toggleTodoHalf('${x.id}')" aria-label="半分やった">半分やった</button>
+        <button class="todo-postpone-btn" onclick="postponeTodo('${x.id}')" aria-label="明日にも追加">${IC.arrow}明日も</button>
+      </div>
+    </div>`;
+  }).join('');
   return `<div class="sec sec-first">ToDo${pendingCount?` · ${pendingCount}件`:'（全て完了）'}</div>
     <div class="todo-list">${items}</div>`;
 }
+
+// 計測中のToDoの経過時間表示を1秒ごとに更新する（フル再描画はしない）
+setInterval(()=>{
+  TODOS.forEach(x=>{
+    if(x.timerStart){
+      const el=document.getElementById('todo-timer-'+x.id);
+      if(el) el.textContent = fmtElapsed((x.elapsedMs||0)+(Date.now()-x.timerStart));
+    }
+  });
+}, 1000);
 
 function openBackupSheet(){
   updateBackupLastText();
