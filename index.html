@@ -220,13 +220,6 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .cw.new-card{animation:fadeInUp .2s ease both}
 @keyframes fadeInUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 
-.swipe-bg{
-  position:absolute;right:0;top:0;bottom:0;width:80px;
-  background:var(--red);z-index:0;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
-  cursor:pointer
-}
-
 /* ══ Card ══════════════════════════════ */
 .card{
   background:var(--card);border-radius:var(--r);padding:10px 14px;
@@ -391,6 +384,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
 }
 .plan-num-inp:focus{outline:2px solid var(--plan-bd)}
 .cal-pip.plan{border-radius:50%}
+.cal-pip.todo{border-radius:2px;transform:rotate(45deg);width:5px;height:5px}
 
 /* ── 計画モーダル ゼロベース再設計 ── */
 .plan-sec-label{font-size:13px;font-weight:800;color:var(--lbl);margin:18px 0 8px;letter-spacing:.2px;display:flex;align-items:center;gap:6px}
@@ -726,6 +720,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
 }
 .tagf-chip:active{transform:scale(.96)}
 .tagf-chip.all.active{background:var(--blue);border-color:var(--blue);color:#fff}
+.tagf-chip.todo-chip{color:#B45309;background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.35)}
 .tagf-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 
 /* ══ Overlay ═══════════════════════════ */
@@ -1500,6 +1495,22 @@ button,a,input,[role="button"]{touch-action:manipulation}
 }
 .dense-shift-btn:active{background:var(--blue-bg);border-color:var(--blue)}
 .dense-empty{text-align:center;padding:32px 16px;color:var(--lbl2);font-size:14px;line-height:1.7}
+
+/* ToDo一覧シートの行 */
+.todo-all-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:.5px solid var(--sep)}
+.todo-all-row:last-child{border-bottom:none}
+.todo-all-check{
+  width:24px;height:24px;border-radius:50%;flex-shrink:0;
+  border:1.5px solid var(--sep);background:var(--card);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;color:#fff;
+  transition:background .12s,border-color .12s;padding:0
+}
+.todo-all-check.on{background:#059669;border-color:#059669}
+.todo-all-body{flex:1;min-width:0}
+.todo-all-name{font-size:14px;font-weight:600;color:var(--lbl);word-break:break-word;overflow-wrap:break-word}
+.todo-all-name.done{color:var(--lbl3);text-decoration:line-through}
+.todo-all-date{font-size:11.5px;color:var(--lbl3);margin-top:2px}
+
 .dense-close-btn{
   margin:0 16px 8px;padding:13px;border:none;border-radius:12px;
   background:var(--fill);color:var(--lbl2);font-size:15px;font-weight:600;
@@ -4517,55 +4528,9 @@ function celebrate(name){
 
 
 /* ══ Swipe gestures ════════════════════
-   Today cards: left → delete (swipe bg reveal), right → complete flash
-   Upcoming / Done cards: left → delete only
+   Today cards: complete via buttons (no swipe)
 ══════════════════════════════════════════ */
 let openWrap=null;
-/* Left-swipe only (for upcoming cards — no complete action) */
-function initSwipeDeleteOnly(wrap){
-  if(wrap._swipeInit) return;
-  wrap._swipeInit=true;
-  const card=wrap.querySelector('.card')||wrap.querySelector('.prog-card-inner'); if(!card) return;
-  let sx=0,sy=0,cx=0,live=false,dir=0;
-  const MAX_L=-80;
-
-  function closeSelf(){
-    cx=0; dir=0;
-    card.style.transition='transform .22s ease';
-    card.style.transform='';
-  }
-  wrap._closeSwipe=closeSelf;
-
-  wrap.addEventListener('touchstart',e=>{
-    if(openWrap&&openWrap!==wrap){ openWrap._closeSwipe?.(); openWrap=null; }
-    sx=e.touches[0].clientX; sy=e.touches[0].clientY; live=true; dir=0; cx=0;
-    card.style.transition='none';
-  },{passive:true});
-
-  wrap.addEventListener('touchmove',e=>{
-    if(!live) return;
-    const dx=e.touches[0].clientX-sx, dy=e.touches[0].clientY-sy;
-    if(Math.abs(dy)>Math.abs(dx)+8){ live=false; return; }
-    if(dir===0 && Math.abs(dx)>4) dir=dx>0?1:-1;
-    if(dir!==-1) return; // only allow left swipe
-    if(dx>0&&cx>=0) return;
-    cx=Math.max(MAX_L,Math.min(0,dx));
-    card.style.transform=`translateX(${cx}px)`;
-  },{passive:true});
-
-  wrap.addEventListener('touchend',()=>{
-    live=false;
-    card.style.transition='transform .22s ease';
-    if(dir!==-1){ cx=0; openWrap=null; card.style.transform=''; return; } // right swipe: snap back
-    if(cx<MAX_L*.45){ cx=MAX_L; openWrap=wrap; haptic(); }
-    else { cx=0; openWrap=null; }
-    card.style.transform=cx?`translateX(${cx}px)`:'';
-  });
-}
-
-document.addEventListener('touchstart',e=>{
-  if(openWrap&&!openWrap.contains(e.target)){ openWrap._closeSwipe?.(); openWrap=null; }
-},{passive:true});
 
 /* ══ Today-done accordion state ════════ */
 let _todayDoneOpen = false;
@@ -4813,10 +4778,14 @@ function rUpcoming(list){
   const usedTagIds=new Set();
   list.forEach(u=>(u.tags||[]).forEach(tid=>usedTagIds.add(tid)));
   const availTags=TAGS.filter(t=>usedTagIds.has(t.id));
+  const todoChipHtml = TODOS.length ? `<button class="tagf-chip todo-chip" onclick="openTodoAllSheet()">
+    <span class="tagf-dot" style="background:#F59E0B"></span>ToDo${TODOS.filter(x=>!x.done).length?` (${TODOS.filter(x=>!x.done).length})`:''}
+  </button>` : '';
 
-  const tagFilterHtml = availTags.length ? `<div class="tagf-wrap">
+  const tagFilterHtml = (availTags.length || todoChipHtml) ? `<div class="tagf-wrap">
     <div class="tagf-scroll">
       <button class="tagf-chip all${!filterTagId?' active':''}" onclick="setUpcomingTagFilter(null)">すべて</button>
+      ${todoChipHtml}
       ${availTags.map(t=>{
         const isActive=filterTagId===t.id;
         const st=isActive?`background:${t.color};border-color:${t.color};color:#fff`:'';
@@ -4868,7 +4837,6 @@ function rUpcoming(list){
   el.innerHTML=barHtml+addReviewCtaHtml+adjHtml+cardsHtml;
   const _tf=el.querySelector('.tagf-scroll');
   if(_tf) _tf.scrollLeft=_tagfScrollLeft;
-  document.querySelectorAll('#p-upcoming .cw[data-id]').forEach(w=>initSwipeDeleteOnly(w));
 }
 
 function setUpcomingTagFilter(tagId){
@@ -5931,13 +5899,13 @@ function planCalDate(p){
 
 /* 日付ごとのタスク情報を返す純粋関数 */
 function _calEventMap(){
-  // { 'YYYY-MM-DD': { count: number, overdue: bool, colors: string[], planColors: string[] } }
+  // { 'YYYY-MM-DD': { count: number, overdue: bool, colors: string[], planColors: string[], todoColors: string[] } }
   const map = {};
   const today = td();
   U.filter(u => !u.done).forEach(u => {
     const d = u.nextDate;
     if(!d) return;
-    if(!map[d]) map[d] = { count: 0, overdue: d < today, colors: [], planColors: [] };
+    if(!map[d]) map[d] = { count: 0, overdue: d < today, colors: [], planColors: [], todoColors: [] };
     map[d].count++;
     // タグの色を収集（タグなし → グレー）
     const tagColors = (u.tags || []).map(tid => { const t = getTag(tid); return t ? t.color : null; }).filter(Boolean);
@@ -5951,7 +5919,7 @@ function _calEventMap(){
   PLAN.filter(p=>!p.done && planInPeriod(p)).forEach(p=>{
     const d = planCalDate(p);
     if(!d) return;
-    if(!map[d]) map[d] = { count: 0, overdue: false, colors: [], planColors: [] };
+    if(!map[d]) map[d] = { count: 0, overdue: false, colors: [], planColors: [], todoColors: [] };
     map[d].count++;
     if(p.type!=='daily' && d < today) map[d].overdue = true;
     const tagColors = (p.tags || []).map(tid => { const t = getTag(tid); return t ? t.color : null; }).filter(Boolean);
@@ -5960,6 +5928,15 @@ function _calEventMap(){
     } else if(!map[d].planColors.includes('#7C3AED')) {
       map[d].planColors.push('#7C3AED');
     }
+  });
+  // ToDo: 日付が設定されている未完了のToDoをカレンダーに表示
+  TODOS.filter(x=>!x.done).forEach(x=>{
+    const d = x.date;
+    if(!d) return;
+    if(!map[d]) map[d] = { count: 0, overdue: false, colors: [], planColors: [], todoColors: [] };
+    map[d].count++;
+    if(d < today) map[d].overdue = true;
+    if(!map[d].todoColors.includes('#F59E0B')) map[d].todoColors.push('#F59E0B');
   });
   return map;
 }
@@ -6045,13 +6022,15 @@ function _buildCalGridHtml(year, month){
     if(dow === 6 && !isToday) cls += ' sat';
 
     // 件数に関わらず、復習がある日はすべてシートを開く（過去日はジャンプのみ）
+    // ただしToDoのみの日は「今日」タブへジャンプしても表示されないため、ずらせるシートを開く
+    const onlyTodoOverdue = isOverdue && ev && ev.colors.length===0 && ev.planColors.length===0 && (ev.todoColors||[]).length>0;
     const onclick = (dateStr && hasEvent)
-      ? isOverdue
+      ? (isOverdue && !onlyTodoOverdue)
         ? `onclick="calJumpToDate('${dateStr}')"`
         : `onclick="openDenseSheet('${dateStr}')"`
       : '';
 
-    // タグ色の四角ピップ（最大4個表示、超過は +N）／計画タスクは丸ピップ
+    // タグ色の四角ピップ（最大4個表示、超過は +N）／計画タスクは丸ピップ／ToDoはひし形ピップ
     let pipsHtml = '';
     if(hasEvent && !isOther){
       const MAX_PIPS = 4;
@@ -6063,13 +6042,19 @@ function _buildCalGridHtml(year, month){
         ? (ev.planColors||[]).map(() => '#EF4444')
         : (ev.planColors||[])
       ).slice(0, MAX_PIPS);
-      const shown = colors.slice(0, Math.max(0, MAX_PIPS - planColors.length));
-      const shownPipCount = Math.min(count, shown.length + planColors.length);
+      const todoColors = (isOverdue
+        ? (ev.todoColors||[]).map(() => '#EF4444')
+        : (ev.todoColors||[])
+      ).slice(0, MAX_PIPS);
+      const shown = colors.slice(0, Math.max(0, MAX_PIPS - planColors.length - todoColors.length));
+      const shownPipCount = Math.min(count, shown.length + planColors.length + todoColors.length);
       const rest  = count - shownPipCount; // 表示しきれないタスク数
       const pips  = shown.map(c =>
         `<div class="cal-pip" style="background:${c}"></div>`
       ).join('') + planColors.map(c =>
         `<div class="cal-pip plan" style="background:${c}"></div>`
+      ).join('') + todoColors.map(c =>
+        `<div class="cal-pip todo" style="background:${c}"></div>`
       ).join('');
       const more  = rest > 0 ? `<span class="cal-pip-more">+${rest}</span>` : '';
       pipsHtml = `<div class="cal-pips">${pips}${more}</div>`;
@@ -6108,7 +6093,8 @@ function _renderDenseSheet(){
   const reviewCands = U.filter(u => !u.done && u.nextDate === dateStr);
   // 計画: 毎日タスクは常に「今日」なので今日の日付のときのみ、日付固定移動はできない（除外）
   const planCands = PLAN.filter(p => !p.done && p.type!=='daily' && planCalDate(p) === dateStr);
-  const allCount = reviewCands.length + planCands.length;
+  const todoCands = TODOS.filter(x => !x.done && x.date === dateStr);
+  const allCount = reviewCands.length + planCands.length + todoCands.length;
 
   // ヘッダー
   document.getElementById('dense-sheet-ttl').textContent =
@@ -6123,17 +6109,18 @@ function _renderDenseSheet(){
   }
 
   // 移動先の候補日ボタンを生成（-3〜+3日、過去・当日は除外）
-  function shiftBtns(id, isPlan){
+  function shiftBtns(id, kind){
     const deltas = [-3,-2,-1,1,2,3];
     return deltas.map(d => {
       const dest = addD(dateStr, d);
       if(dest <= today) return ''; // 過去はスキップ
       if(dest === dateStr) return '';
       const destCount = U.filter(u => !u.done && u.nextDate === dest).length
-        + PLAN.filter(p => !p.done && p.type!=='daily' && planCalDate(p) === dest).length;
+        + PLAN.filter(p => !p.done && p.type!=='daily' && planCalDate(p) === dest).length
+        + TODOS.filter(x => !x.done && x.date === dest).length;
       const warn = destCount >= CAL_DENSE_OVER ? '⚠️' : '';
       const label = (d > 0 ? '+' : '') + d + '日' + warn;
-      const fn = isPlan ? `denseShiftPlan('${id}','${dest}')` : `denseShiftUnit('${id}','${dest}')`;
+      const fn = kind==='plan' ? `denseShiftPlan('${id}','${dest}')` : kind==='todo' ? `denseShiftTodo('${id}','${dest}')` : `denseShiftUnit('${id}','${dest}')`;
       return `<button class="dense-shift-btn" onclick="${fn}">${label}</button>`;
     }).join('');
   }
@@ -6145,7 +6132,7 @@ function _renderDenseSheet(){
         <div class="dense-row-name">${esc(u.name)}</div>
         <div class="dense-row-step">${stepLabel}</div>
       </div>
-      <div class="dense-row-btns">${shiftBtns(u.id,false)}</div>
+      <div class="dense-row-btns">${shiftBtns(u.id,'review')}</div>
     </div>`;
   }).join('');
 
@@ -6156,11 +6143,31 @@ function _renderDenseSheet(){
         <div class="dense-row-name">${esc(planDisplayName(p))}</div>
         <div class="dense-row-step" style="color:var(--plan-d)">${stepLabel}</div>
       </div>
-      <div class="dense-row-btns">${shiftBtns(p.id,true)}</div>
+      <div class="dense-row-btns">${shiftBtns(p.id,'plan')}</div>
     </div>`;
   }).join('');
 
-  scroll.innerHTML = reviewHtml + planHtml;
+  const todoHtml = todoCands.map(x => {
+    return `<div class="dense-row" id="dense-row-${x.id}">
+      <div class="dense-row-top">
+        <div class="dense-row-name">${esc(x.text)}</div>
+        <div class="dense-row-step" style="color:#B45309">ToDo</div>
+      </div>
+      <div class="dense-row-btns">${shiftBtns(x.id,'todo')}</div>
+    </div>`;
+  }).join('');
+
+  scroll.innerHTML = reviewHtml + planHtml + todoHtml;
+}
+
+function denseShiftTodo(id, destDate){
+  const x = TODOS.find(t => t.id === id);
+  if(!x) return;
+  x.date = destDate;
+  saveTodos();
+  haptic('medium');
+  toast(IC.check, esc(x.text) + ' を ' + fmtShortText(destDate) + ' へ移動しました');
+  _denseShiftRowOut(id);
 }
 
 function denseShiftUnit(uid, destDate){
@@ -6200,7 +6207,8 @@ function _denseShiftRowOut(id){
     setTimeout(() => {
       // 残件数が0になったらシートを閉じる
       const remaining = U.filter(u => !u.done && u.nextDate === _denseDate).length
-        + PLAN.filter(p => !p.done && p.type!=='daily' && p.nextDate === _denseDate).length;
+        + PLAN.filter(p => !p.done && p.type!=='daily' && p.nextDate === _denseDate).length
+        + TODOS.filter(x => !x.done && x.date === _denseDate).length;
       if(remaining === 0){
         closeDenseSheet();
         _renderCalGrid();
@@ -6772,7 +6780,17 @@ function selectTodoDateSeg(btn){
   document.querySelectorAll('#todo-date-seg .seg-btn').forEach(b=>b.classList.toggle('on',b===btn));
   _todoDateMode = btn.dataset.val;
   const customInp=document.getElementById('todo-date-custom-inp');
-  if(customInp) customInp.style.display = _todoDateMode==='custom' ? 'block' : 'none';
+  if(customInp){
+    customInp.style.display = _todoDateMode==='custom' ? 'block' : 'none';
+    if(_todoDateMode==='custom'){
+      setTimeout(()=>{
+        customInp.focus();
+        if(typeof customInp.showPicker==='function'){
+          try{ customInp.showPicker(); }catch(_){}
+        }
+      },50);
+    }
+  }
   haptic();
   _updateTodoSegNote();
 }
@@ -6958,6 +6976,76 @@ function renderTodoSectionHtml(){
   const list = TODOS.filter(x=>x.date===t && !x.done).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
   if(!list.length) return '';
   return list.map(x=>todoCardHtml(x)).join('');
+}
+
+/* ══ ToDo一覧シート（予定タブのタグバー「ToDo」チップから開く） ══
+   日付をまたいで全ToDoをまとめて確認できるようにする */
+function openTodoAllSheet(){
+  renderTodoAllSheet();
+  document.getElementById('todo-all-overlay').classList.add('on');
+  document.getElementById('todo-all-sheet').classList.add('on');
+  haptic();
+}
+
+function closeTodoAllSheet(){
+  document.getElementById('todo-all-overlay').classList.remove('on');
+  document.getElementById('todo-all-sheet').classList.remove('on');
+}
+
+function renderTodoAllSheet(){
+  const scroll = document.getElementById('todo-all-sheet-scroll');
+  const sub = document.getElementById('todo-all-sheet-sub');
+  if(!scroll) return;
+  const t = td();
+  const pendingCount = TODOS.filter(x=>!x.done).length;
+  if(sub) sub.textContent = `未完了 ${pendingCount}件 ・ 全${TODOS.length}件`;
+
+  if(!TODOS.length){
+    scroll.innerHTML = '<div class="dense-empty">ToDoはまだありません。</div>';
+    return;
+  }
+
+  const sorted = [...TODOS].sort((a,b)=>{
+    if(a.done!==b.done) return a.done?1:-1;
+    const da=a.date||'', db=b.date||'';
+    if(da!==db) return da.localeCompare(db);
+    return (a.createdAt||0)-(b.createdAt||0);
+  });
+
+  let html='', lastG='';
+  sorted.forEach(x=>{
+    let g;
+    if(x.done) g='完了済み';
+    else if(!x.date) g='日付未設定';
+    else if(x.date < t) g='期限超過';
+    else if(x.date === t) g='今日';
+    else g='今後';
+    if(g!==lastG){ html+=`<div class="sec" style="padding:10px 0 4px;margin:0">${g}</div>`; lastG=g; }
+    html += todoAllRowHtml(x);
+  });
+  scroll.innerHTML = html;
+}
+
+function todoAllRowHtml(x){
+  const dateLbl = x.date ? fmtShortText(x.date) : '';
+  return `<div class="todo-all-row" id="todo-all-row-${x.id}">
+    <button class="todo-all-check${x.done?' on':''}" onclick="toggleTodoInAllSheet('${x.id}')" aria-label="${x.done?'未完了に戻す':'完了にする'}">${x.done?IC.check:''}</button>
+    <div class="todo-all-body">
+      <div class="todo-all-name${x.done?' done':''}">${esc(x.text)}${(x.half&&!x.done)?'<span class="todo-half-tag">途中まで</span>':''}</div>
+      ${dateLbl?`<div class="todo-all-date">${dateLbl}</div>`:''}
+    </div>
+    <button class="today-done-item-del" onclick="deleteTodoFromAllSheet('${x.id}')" aria-label="削除">${IC.trash}</button>
+  </div>`;
+}
+
+function toggleTodoInAllSheet(id){
+  toggleTodo(id);
+  renderTodoAllSheet();
+}
+
+function deleteTodoFromAllSheet(id){
+  deleteTodo(id);
+  renderTodoAllSheet();
 }
 
 function openBackupSheet(){
@@ -7702,6 +7790,18 @@ if('serviceWorker' in navigator){
   <button class="dense-close-btn" onclick="closeDenseSheet()">閉じる</button>
 </div>
 
+<!-- ToDo一覧シート（タグバーの「ToDo」チップから開く。全ToDoをまとめて確認） -->
+<div class="overlay" id="todo-all-overlay" onclick="closeTodoAllSheet()" style="z-index:119"></div>
+<div class="dense-sheet" id="todo-all-sheet">
+  <div class="dense-sheet-pull"></div>
+  <div class="dense-sheet-head">
+    <div class="dense-sheet-ttl">ToDo一覧</div>
+    <div class="dense-sheet-sub" id="todo-all-sheet-sub"></div>
+  </div>
+  <div class="dense-sheet-scroll" id="todo-all-sheet-scroll"></div>
+  <button class="dense-close-btn" onclick="closeTodoAllSheet()">閉じる</button>
+</div>
+
 <!-- Tag manager sheet -->
 <div class="overlay" id="tag-overlay" onclick="closeTagMgr()" style="z-index:109"></div>
 <div class="tag-mgr-sheet" id="tag-mgr-sheet">
@@ -7788,7 +7888,7 @@ if('serviceWorker' in navigator){
       <button class="seg-btn" data-val="tomorrow" onclick="selectTodoDateSeg(this)">明日</button>
       <button class="seg-btn" data-val="custom" onclick="selectTodoDateSeg(this)">日付指定</button>
     </div>
-    <input type="date" id="todo-date-custom-inp" style="display:none;margin-top:10px;width:100%;background:var(--fill);border:none;border-radius:12px;padding:12px 14px;font-family:inherit;font-size:16px;color:var(--lbl);outline:none;-webkit-appearance:none" oninput="_updateTodoSegNote()">
+    <input type="date" id="todo-date-custom-inp" style="display:none;margin-top:10px;width:100%;background:var(--fill);border:1.5px solid var(--sep);border-radius:12px;padding:12px 14px;font-family:inherit;font-size:16px;color:var(--lbl);outline:none" oninput="_updateTodoSegNote()">
     <div class="todo-seg-note" id="todo-seg-note"></div>
     <div id="todo-tag-sel-wrap"></div>
     <button class="sheet-ok" onclick="addTodo()">追加する</button>
