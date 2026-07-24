@@ -682,23 +682,6 @@ button,a,input,[role="button"]{touch-action:manipulation}
   position:sticky;top:0;z-index:10;
   padding:10px 0 8px;background:var(--bg)
 }
-.search-box{
-  display:flex;align-items:center;gap:8px;
-  background:var(--fill);border-radius:12px;padding:8px 12px
-}
-.search-inp{
-  flex:1;background:none;border:none;outline:none;
-  font-family:inherit;font-size:16px;color:var(--lbl);min-width:0
-}
-.search-inp::placeholder{color:var(--lbl3)}
-.search-clear{
-  background:rgba(118,118,128,.35);border:none;border-radius:50%;
-  width:22px;height:22px;color:#fff;font-size:12px;font-weight:700;
-  cursor:pointer;display:flex;align-items:center;justify-content:center;
-  padding:0;flex-shrink:0
-}
-.search-cnt{font-size:12px;color:var(--lbl2);padding:0 4px;margin-top:5px}
-
 /* ══ Tag filter bar (予定タブ) ══════════ */
 .tagf-wrap{
   position:sticky;top:0;z-index:10;
@@ -1883,62 +1866,6 @@ button,a,input,[role="button"]{touch-action:manipulation}
   padding:7px 8px;font-family:inherit;font-size:13px;font-weight:600;
   color:var(--lbl);cursor:pointer;outline:none;flex-shrink:0
 }
-/* iOS-style toggle */
-.toggle-wrap{flex-shrink:0}
-.toggle{
-  position:relative;width:51px;height:31px;
-  background:#E5E5EA;border-radius:100px;
-  border:none;cursor:pointer;
-  transition:background .25s cubic-bezier(.25,.46,.45,.94);
-  -webkit-tap-highlight-color:transparent;flex-shrink:0
-}
-.toggle.on{background:#34C759}
-.toggle::after{
-  content:'';position:absolute;
-  width:27px;height:27px;border-radius:50%;
-  background:#fff;top:2px;left:2px;
-  box-shadow:0 2px 6px rgba(0,0,0,.22);
-  transition:transform .25s cubic-bezier(.25,.46,.45,.94)
-}
-.toggle.on::after{transform:translateX(20px)}
-/* Time picker row */
-.notif-time-row{
-  display:flex;align-items:center;gap:14px;
-  padding:14px 16px;
-  border-top:.5px solid var(--sep)
-}
-.notif-time-inp{
-  background:var(--fill);border:none;border-radius:10px;
-  padding:9px 14px;font-family:'Outfit',-apple-system,sans-serif;
-  font-size:17px;font-weight:600;color:var(--lbl);
-  outline:none;-webkit-appearance:none;cursor:pointer;
-  /* On iOS, use a larger touch target */
-  min-height:44px;text-align:center
-}
-.notif-status-badge{
-  display:inline-flex;align-items:center;gap:5px;
-  border-radius:100px;padding:4px 11px;
-  font-size:12px;font-weight:600;margin-top:6px
-}
-.notif-status-badge.granted{background:#D1FAE5;color:#065F46}
-.notif-status-badge.denied{background:#FEE2E2;color:#991B1B}
-.notif-status-badge.default{background:var(--fill);color:var(--lbl2)}
-.notif-test-btn{
-  background:var(--blue);border:none;
-  color:#fff;border-radius:10px;padding:9px 16px;
-  font-size:13px;font-weight:700;font-family:inherit;
-  cursor:pointer;white-space:nowrap;flex-shrink:0;
-  transition:opacity .12s,transform .1s,box-shadow .1s;
-  min-height:40px;
-  box-shadow:0 2px 8px rgba(37,99,235,.35),0 1px 2px rgba(37,99,235,.2);
-  -webkit-tap-highlight-color:transparent
-}
-.notif-test-btn:active{
-  opacity:.85;
-  transform:scale(.94);
-  box-shadow:0 1px 3px rgba(37,99,235,.2)
-}
-.notif-test-btn:disabled{opacity:.4;pointer-events:none;box-shadow:none}
 .settings-hero{
   background:linear-gradient(135deg,#1740B0 0%,#2563EB 55%,#4F8EF7 100%);
   border-radius:var(--r);padding:18px 20px;margin-bottom:12px;
@@ -1989,7 +1916,6 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .tag-add-btn{min-height:44px;padding:11px 18px}
 .cal-nav-btn{width:44px;height:44px;border-radius:12px}
 .dense-shift-btn{min-height:44px;padding:8px 13px}
-.search-clear{width:32px;height:32px}
 
 /* ── Active press feedback ── */
 .cw{-webkit-user-select:none;user-select:none}
@@ -2054,9 +1980,6 @@ button,a,input,[role="button"]{touch-action:manipulation}
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>ToDo
           </button>
           <div class="nav-date" id="nav-date"></div>
-          <button onclick="openBackupSheet()" aria-label="バックアップ" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--lbl3);display:flex;align-items:center;border-radius:8px;transition:color .12s" id="backup-btn">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          </button>
         </div>
       </div>
     </div>
@@ -2356,7 +2279,6 @@ const saveTags = () => safeSetItem(TAG_KEY, JSON.stringify(TAGS));
 const CAT_KEY = 'fukushu-categories-v1';
 let CATEGORIES = (() => { try { return JSON.parse(localStorage.getItem(CAT_KEY)) || []; } catch { return []; } })();
 const saveCategories = () => safeSetItem(CAT_KEY, JSON.stringify(CATEGORIES));
-function getCategory(id){ return CATEGORIES.find(c=>c.id===id); }
 
 
 /* ══ Study log data ═════════════════════
@@ -2543,13 +2465,6 @@ function planDelete(id){
     savePlan(); render();
   });
 }
-function planShift(id, days){
-  const p=PLAN.find(x=>x.id===id); if(!p) return;
-  const base = p.nextDate<td()?td():p.nextDate;
-  p.nextDate=addD(base,days);
-  savePlan(); haptic(); render(); _renderCalGrid();
-}
-
 /* ══════════════════════════════════════════
    計画（Plan）タブ
 ══════════════════════════════════════════ */
@@ -3289,20 +3204,6 @@ function planWizardJump(i){
   renderPlanModalBody();
   const box=document.querySelector('#plan-modal .edit-modal-box'); if(box) box.scrollTop=0;
 }
-function _readPlanNameFields(){
-  const mode=(_planDraft&&_planDraft.nameMode)||'fixed';
-  const out={nameMode:mode};
-  if(mode==='sequence'){
-    const s=document.getElementById('plan-seq-start-inp');
-    const u=document.getElementById('plan-seq-unit-inp');
-    out.seqStart = s ? (parseInt(s.value,10)||0) : (_planDraft.seqStart!=null?_planDraft.seqStart:1);
-    out.seqUnit = u ? u.value.trim() : (_planDraft.seqUnit||'');
-  } else if(mode==='custom'){
-    const inps=document.querySelectorAll('.plan-custom-label-inp');
-    out.customLabels = inps.length ? Array.from(inps).map(i=>i.value.trim()) : (_planDraft.customLabels||['']);
-  }
-  return out;
-}
 function savePlanTask(){
   if(!_planDraft) return;
   const d=_planDraft;
@@ -4027,7 +3928,6 @@ function getStreak(){
 
 const ADJ_DISMISSED_KEY = 'fukushu-adj-dismissed';
 let adjDismissed = (() => { try { return localStorage.getItem(ADJ_DISMISSED_KEY) === '1'; } catch { return false; } })();
-let searchQ = '';
 let filterTagId = null;
 const TODO_FILTER_ID = '__todo__';
 let _tagfScrollLeft = 0;
@@ -4871,14 +4771,6 @@ function setUpcomingTodoFilter(){
 }
 
 /* ── Done/Achievement panel ── */
-let _tagProgOpen = {}; // { [tagId]: bool } — open state per tag card
-
-function toggleTagProg(tagId){
-  _tagProgOpen[tagId] = !_tagProgOpen[tagId];
-  const card = document.getElementById('tp-'+tagId);
-  if(card){ card.classList.toggle('open', !!_tagProgOpen[tagId]); haptic(); }
-}
-
 
 /* ══ Study panel renderer ══════════════════════════════════════════ */
 let _studyWeekTrendOpen = false;
@@ -5060,12 +4952,14 @@ function _studyLogRowHtml(l){
   const avatarHtml = APP_ICON
     ? `<img src="${APP_ICON}">`
     : `<span>📚</span>`;
+  const timeStr = l.createdAt ? (()=>{ const dt=new Date(l.createdAt); return `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`; })() : '';
   return `<div class="chat-msg" id="sl-${l.id}">
     <div class="chat-avatar">${avatarHtml}</div>
     <div class="chat-bubble" onclick="openEditStudyLog('${l.id}')" style="cursor:pointer">
       <div class="chat-bubble-title">${esc(titleDisp)}</div>
       <div class="chat-bubble-meta">
         <span style="font-family:'Outfit',sans-serif;font-weight:800;font-size:13px;color:#7C3AED">⏱ ${fmtMinutes(l.minutes)}</span>
+        ${timeStr ? `<span style="color:var(--lbl3)">・${timeStr}記録</span>` : ''}
         ${l.note ? `<span>・${esc(l.note)}</span>` : ''}
       </div>
       ${tagChips ? `<div class="chat-bubble-tags">${tagChips}</div>` : ''}
@@ -5811,7 +5705,8 @@ function saveStudyRecord(){
     title:title||null,
     tagIds:[..._studySheetTags],
     minutes,
-    note:note||null
+    note:note||null,
+    createdAt:Date.now()
   });
   closeStudySheet();
   if(_savedUnitId){
@@ -5859,7 +5754,8 @@ function saveStudyRecordForTodo(isComplete){
     title:title||null,
     tagIds:[],
     minutes,
-    note:note||null
+    note:note||null,
+    createdAt:Date.now()
   });
   closeStudySheet();
   if(item){
@@ -6420,32 +6316,6 @@ function cHtmlUpcoming(u){
   </div>`;
 }
 
-function bindSearch(el){
-  const inp=el.querySelector('#search-inp'); if(!inp) return;
-  if(searchQ && document.activeElement !== document.body){
-    Promise.resolve().then(()=>{
-      if(!document.querySelector('#search-inp')) return;
-      inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length);
-    });
-  }
-  let _composing = false;
-  inp.addEventListener('compositionstart', ()=>{ _composing=true; });
-  inp.addEventListener('compositionend',e=>{
-    _composing=false;
-    searchQ=e.target.value; render();
-  });
-  inp.addEventListener('input',e=>{
-    if(_composing || e.isComposing) return;
-    searchQ=e.target.value; render();
-  });
-  inp.addEventListener('search',e=>{ searchQ=e.target.value; render(); });
-  const clr=el.querySelector('#search-clear');
-  if(clr) clr.addEventListener('click',()=>{
-    searchQ=''; render();
-    setTimeout(()=>document.querySelector('#search-inp')?.focus(),50);
-  });
-}
-
 /* ══ Tab switch ════════════════════════ */
 let currentTabIdx=0;
 function switchTab(btn){
@@ -6485,11 +6355,9 @@ function switchTab(btn){
   });
 
   document.getElementById('nav-title').textContent=TABS[id];
-  // Hide tag/backup nav buttons on settings tab (they're accessible from settings panel itself)
+  // Hide tag nav button on settings tab (it's accessible from settings panel itself)
   const tagBtn    = document.getElementById('tag-mgr-btn');
-  const backupBtn = document.getElementById('backup-btn');
   if(tagBtn)    tagBtn.style.display    = id === 'settings' ? 'none' : '';
-  if(backupBtn) backupBtn.style.display = id === 'settings' ? 'none' : '';
   currentTabIdx=newIdx;
 
   // Hide FAB on settings/study/plan tabs (plan tab has its own in-panel add button)
@@ -6920,55 +6788,6 @@ function deleteTodo(id){
   render();
 }
 
-// タスクの経過時間の計測を開始/停止する（同時に計測できるのは1件のみ）
-function toggleTodoTimer(id){
-  const item=TODOS.find(x=>x.id===id);
-  if(!item) return;
-  if(item.timerStart){
-    item.elapsedMs=(item.elapsedMs||0)+(Date.now()-item.timerStart);
-    item.timerStart=null;
-  } else {
-    TODOS.forEach(x=>{ if(x.id!==id && x.timerStart){ x.elapsedMs=(x.elapsedMs||0)+(Date.now()-x.timerStart); x.timerStart=null; } });
-    item.timerStart=Date.now();
-  }
-  saveTodos();
-  haptic();
-  render();
-}
-
-// 「半分やった」の状態を切り替える（半分にすると完了は解除される）
-function toggleTodoHalf(id){
-  const item=TODOS.find(x=>x.id===id);
-  if(!item) return;
-  item.half=!item.half;
-  if(item.half) item.done=false;
-  saveTodos();
-  haptic();
-  render();
-}
-
-// 同じ内容のToDoを「明日」にも追加する（今日やったけど明日もやる場合）
-function postponeTodo(id){
-  const item=TODOS.find(x=>x.id===id);
-  if(!item) return;
-  const tomorrow=addD(td(),1);
-  TODOS.unshift({id:Date.now().toString()+'_p', text:item.text, date:tomorrow, done:false, half:false, elapsedMs:0, timerStart:null, createdAt:Date.now()});
-  saveTodos();
-  haptic('medium');
-  render();
-  setTimeout(()=>toast(IC.checkCircle, '明日のToDoにも追加'), 340);
-}
-
-// 経過時間をmm:ss / h:mm:ss形式にフォーマットする
-function fmtElapsed(ms){
-  const totalSec=Math.floor((ms||0)/1000);
-  const h=Math.floor(totalSec/3600);
-  const m=Math.floor((totalSec%3600)/60);
-  const s=totalSec%60;
-  const pad=n=>String(n).padStart(2,'0');
-  return h>0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
-}
-
 // 今日タブに表示するToDoセクションのHTMLを生成（date===今日のToDoのみ）
 function todoCardHtml(x){
   const tagsHtml = (x.tags&&x.tags.length)?`<div class="card-tags-row">${x.tags.map(tid=>tagHtml(tid)).join('')}</div>`:'';
@@ -7227,159 +7046,6 @@ function confirmImport(){
     toast(IC.checkCircle, `${U.length} 件のデータを読み込みました ✅`);
     haptic('heavy');
   } catch { toast(IC.alert, '読み込みに失敗しました。もう一度試してください'); }
-}
-
-/* ══════════════════════════════════════════
-   NOTIFICATION SYSTEM
-   Strategy: Service Worker shows notifications via showNotification().
-   We schedule a daily alarm using setTimeout calculated from the
-   user-configured time. On each page open we reschedule.
-══════════════════════════════════════════ */
-const NOTIF_KEY = 'fukushu-notif-v1'; // { enabled, hour, minute }
-
-function loadNotifSettings(){
-  try { return JSON.parse(localStorage.getItem(NOTIF_KEY)) || {enabled:false, hour:8, minute:0}; }
-  catch { return {enabled:false, hour:8, minute:0}; }
-}
-function saveNotifSettings(s){ localStorage.setItem(NOTIF_KEY, JSON.stringify(s)); }
-
-let _notifTimer = null;
-
-function msUntilTime(hour, minute){
-  const now = new Date();
-  const target = new Date();
-  target.setHours(hour, minute, 0, 0);
-  if(target <= now) target.setDate(target.getDate() + 1); // next day
-  return target - now;
-}
-
-function scheduleNotification(){
-  if(_notifTimer) clearTimeout(_notifTimer);
-  if(!('Notification' in window)) return; // unsupported browser
-  const s = loadNotifSettings();
-  if(!s.enabled || Notification.permission !== 'granted') return;
-
-  const ms = msUntilTime(s.hour, s.minute);
-  _notifTimer = setTimeout(async () => {
-    await fireNotification();
-    scheduleNotification(); // reschedule for the next day
-  }, ms);
-}
-
-async function fireNotification(){
-  const todayCount = U.filter(u => !u.done && u.nextDate <= td()).length;
-  const body = todayCount > 0
-    ? `今日の復習が ${todayCount} 件あります。忘れずにチェックしよう！`
-    : '今日の復習は完了済みです。お疲れさまでした！';
-
-  const NOTIF_OPTS = {
-    body,
-    icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%232563EB'/%3E%3Cpath d='M28 22h32a6 6 0 0 1 6 6v44a6 6 0 0 1-6 6H28a6 6 0 0 1-6-6V28a6 6 0 0 1 6-6z' fill='none' stroke='white' stroke-width='4'/%3E%3Cpath d='M34 42h32M34 54h22' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E",
-    badge: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%232563EB'/%3E%3C/svg%3E",
-    tag: 'fukushu-daily',
-    renotify: true,
-    requireInteraction: false,
-    vibrate: [100, 50, 100],
-  };
-
-  // Try Service Worker (with timeout to avoid hanging on blob:-registered SW)
-  if('serviceWorker' in navigator){
-    try {
-      const reg = await Promise.race([
-        navigator.serviceWorker.ready,
-        new Promise((_, rej) => setTimeout(() => rej(new Error('SW timeout')), 2000))
-      ]);
-      await reg.showNotification('復習マネージャー 📚', NOTIF_OPTS);
-      return; // success
-    } catch(e){
-      console.warn('[fukushu] SW notification failed, falling back to direct API:', e.message);
-      // fall through to direct Notification API
-    }
-  }
-
-  // Fallback: direct Notification API
-  if('Notification' in window && Notification.permission === 'granted'){
-    new Notification('復習マネージャー 📚', { body: NOTIF_OPTS.body, tag: NOTIF_OPTS.tag });
-  } else {
-    throw new Error('Notification permission not granted');
-  }
-}
-
-async function requestNotifPermission(){
-  if(!('Notification' in window)) return 'unsupported';
-  if(Notification.permission === 'granted') return 'granted';
-  if(Notification.permission === 'denied') return 'denied';
-  const result = await Notification.requestPermission();
-  return result;
-}
-
-async function toggleNotification(enabled){
-  if(!('Notification' in window)){ toast(IC.alert, 'このブラウザは通知に対応していません'); return; }
-  const s = loadNotifSettings();
-  if(enabled && Notification.permission !== 'granted'){
-    const result = await requestNotifPermission();
-    if(result !== 'granted'){
-      toast(IC.alert, '通知が許可されていません。設定から許可してください');
-      renderSettings(); // re-render to reset toggle visual
-      return;
-    }
-  }
-  s.enabled = enabled;
-  saveNotifSettings(s);
-  if(enabled){
-    scheduleNotification();
-    toast(IC.checkCircle, `毎朝 ${String(s.hour).padStart(2,'0')}:${String(s.minute).padStart(2,'0')} に通知します`);
-  } else {
-    if(_notifTimer) clearTimeout(_notifTimer);
-    toast(IC.moon, '通知をオフにしました');
-  }
-  renderSettings();
-  haptic('medium');
-}
-
-function updateNotifTime(val){
-  if(!val || !val.includes(':')) return;
-  const parts = val.split(':');
-  const h = parseInt(parts[0]), m = parseInt(parts[1]);
-  if(isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) return;
-  const s = loadNotifSettings();
-  s.hour = h; s.minute = m;
-  saveNotifSettings(s);
-  if(s.enabled){
-    scheduleNotification();
-    toast(IC.check, `通知時刻を ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')} に変更しました`);
-  }
-}
-
-async function sendTestNotification(){
-  if(Notification.permission !== 'granted'){
-    const r = await requestNotifPermission();
-    if(r !== 'granted'){ toast(IC.alert, '通知が許可されていません'); return; }
-  }
-  // Immediate visual feedback
-  const btn = document.querySelector('.notif-test-btn');
-  if(btn){
-    btn.disabled = true;
-    btn.textContent = '送信中…';
-  }
-  haptic('medium');
-  try {
-    await fireNotification();
-    if(btn){ btn.textContent = '✓ 送信しました'; btn.style.background = '#10B981'; }
-    toast(IC.checkCircle, 'テスト通知を送信しました');
-  } catch(e) {
-    console.warn('[fukushu] sendTestNotification failed:', e.message);
-    if(btn){ btn.textContent = '✗ 失敗'; btn.style.background = 'var(--red)'; }
-    toast(IC.alert, '通知の送信に失敗しました。設定を確認してください');
-  }
-  // Reset button after 2s
-  setTimeout(() => {
-    if(btn){
-      btn.disabled = false;
-      btn.textContent = 'テスト送信';
-      btn.style.background = '';
-    }
-  }, 2000);
 }
 
 /* ══ Settings panel renderer ════════════ */
@@ -7757,7 +7423,6 @@ requestPersistentStorage();
       document.getElementById('nav-date').textContent=
         `${d.getMonth()+1}/${d.getDate()}（${DOW[d.getDay()]}）`;
       render();
-      scheduleNotification(); // 通知スケジュールを再設定
     }
   });
 
@@ -7765,7 +7430,6 @@ requestPersistentStorage();
   _updateNavIcon(); // アイコンをナビバーに反映
   render();
   renderSettings();
-  scheduleNotification(); // resume notification schedule on each page load
   setTimeout(checkBackupReminder, 800); // slight delay so UI is settled
 })();
 
@@ -8059,9 +7723,6 @@ function _isStandalone(){
 }
 function _isIOS(){
   return /iphone|ipad|ipod/i.test(navigator.userAgent);
-}
-function _isAndroid(){
-  return /android/i.test(navigator.userAgent);
 }
 
 /* ── PWA install sheet ── */
