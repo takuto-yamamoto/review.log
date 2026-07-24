@@ -720,7 +720,13 @@ button,a,input,[role="button"]{touch-action:manipulation}
 }
 .tagf-chip:active{transform:scale(.96)}
 .tagf-chip.all.active{background:var(--blue);border-color:var(--blue);color:#fff}
-.tagf-chip.todo-chip{color:#B45309;background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.35)}
+.tagf-chip.todo-chip.active{background:#F59E0B;border-color:#F59E0B;color:#fff}
+
+/* ToDoフィルタ表示（予定タブ、ToDoチップをタップ時） */
+.todo-inline-card{
+  background:var(--card);border-radius:var(--r);
+  box-shadow:var(--shadow-sm);overflow:hidden;margin-bottom:14px;
+}
 .tagf-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 
 /* ══ Overlay ═══════════════════════════ */
@@ -1497,7 +1503,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .dense-empty{text-align:center;padding:32px 16px;color:var(--lbl2);font-size:14px;line-height:1.7}
 
 /* ToDo一覧シートの行 */
-.todo-all-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:.5px solid var(--sep)}
+.todo-all-row{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:.5px solid var(--sep)}
 .todo-all-row:last-child{border-bottom:none}
 .todo-all-check{
   width:24px;height:24px;border-radius:50%;flex-shrink:0;
@@ -4023,6 +4029,7 @@ const ADJ_DISMISSED_KEY = 'fukushu-adj-dismissed';
 let adjDismissed = (() => { try { return localStorage.getItem(ADJ_DISMISSED_KEY) === '1'; } catch { return false; } })();
 let searchQ = '';
 let filterTagId = null;
+const TODO_FILTER_ID = '__todo__';
 let _tagfScrollLeft = 0;
 
 /* ══ Sheet date state ══════════════════ */
@@ -4778,8 +4785,9 @@ function rUpcoming(list){
   const usedTagIds=new Set();
   list.forEach(u=>(u.tags||[]).forEach(tid=>usedTagIds.add(tid)));
   const availTags=TAGS.filter(t=>usedTagIds.has(t.id));
-  const todoChipHtml = TODOS.length ? `<button class="tagf-chip todo-chip" onclick="openTodoAllSheet()">
-    <span class="tagf-dot" style="background:#F59E0B"></span>ToDo${TODOS.filter(x=>!x.done).length?` (${TODOS.filter(x=>!x.done).length})`:''}
+  const todoActive = filterTagId===TODO_FILTER_ID;
+  const todoChipHtml = TODOS.length ? `<button class="tagf-chip todo-chip${todoActive?' active':''}" onclick="setUpcomingTodoFilter()">
+    <span class="tagf-dot" style="background:${todoActive?'#fff':'#F59E0B'}"></span>ToDo${TODOS.filter(x=>!x.done).length?` (${TODOS.filter(x=>!x.done).length})`:''}
   </button>` : '';
 
   const tagFilterHtml = (availTags.length || todoChipHtml) ? `<div class="tagf-wrap">
@@ -4795,6 +4803,13 @@ function rUpcoming(list){
   </div>` : '';
 
   const barHtml=calHtml+tagFilterHtml;
+
+  if(todoActive){
+    el.innerHTML=barHtml+todoFilterListHtml();
+    const _tf=el.querySelector('.tagf-scroll');
+    if(_tf) _tf.scrollLeft=_tagfScrollLeft;
+    return;
+  }
 
   const addReviewCtaHtml = `<button class="plan-add-cta" onclick="openSheet()">
     <span class="plan-add-cta-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
@@ -4843,6 +4858,14 @@ function setUpcomingTagFilter(tagId){
   const _tf=document.querySelector('#p-upcoming .tagf-scroll');
   if(_tf) _tagfScrollLeft=_tf.scrollLeft;
   filterTagId = tagId;
+  haptic();
+  render();
+}
+
+function setUpcomingTodoFilter(){
+  const _tf=document.querySelector('#p-upcoming .tagf-scroll');
+  if(_tf) _tagfScrollLeft=_tf.scrollLeft;
+  filterTagId = (filterTagId===TODO_FILTER_ID) ? null : TODO_FILTER_ID;
   haptic();
   render();
 }
@@ -6978,33 +7001,17 @@ function renderTodoSectionHtml(){
   return list.map(x=>todoCardHtml(x)).join('');
 }
 
-/* ══ ToDo一覧シート（予定タブのタグバー「ToDo」チップから開く） ══
-   日付をまたいで全ToDoをまとめて確認できるようにする */
-function openTodoAllSheet(){
-  renderTodoAllSheet();
-  document.getElementById('todo-all-overlay').classList.add('on');
-  document.getElementById('todo-all-sheet').classList.add('on');
-  haptic();
-}
-
-function closeTodoAllSheet(){
-  document.getElementById('todo-all-overlay').classList.remove('on');
-  document.getElementById('todo-all-sheet').classList.remove('on');
-}
-
-function renderTodoAllSheet(){
-  const scroll = document.getElementById('todo-all-sheet-scroll');
-  const sub = document.getElementById('todo-all-sheet-sub');
-  if(!scroll) return;
-  const t = td();
-  const pendingCount = TODOS.filter(x=>!x.done).length;
-  if(sub) sub.textContent = `未完了 ${pendingCount}件 ・ 全${TODOS.length}件`;
-
+/* ══ ToDoフィルタ（予定タブのタグバー「ToDo」チップ） ══
+   タップすると復習カードの代わりに全ToDoを日付をまたいでまとめて表示する */
+function todoFilterListHtml(){
   if(!TODOS.length){
-    scroll.innerHTML = '<div class="dense-empty">ToDoはまだありません。</div>';
-    return;
+    return `<div class="empty" style="padding:28px 0">
+      <div class="empty-icon" style="background:rgba(245,158,11,.12)">${IC.searchLg}</div>
+      <h3>ToDoはまだありません</h3>
+      <p>右上の「+ ToDo」から追加できます</p>
+    </div>`;
   }
-
+  const t = td();
   const sorted = [...TODOS].sort((a,b)=>{
     if(a.done!==b.done) return a.done?1:-1;
     const da=a.date||'', db=b.date||'';
@@ -7012,7 +7019,7 @@ function renderTodoAllSheet(){
     return (a.createdAt||0)-(b.createdAt||0);
   });
 
-  let html='', lastG='';
+  const groups=[];
   sorted.forEach(x=>{
     let g;
     if(x.done) g='完了済み';
@@ -7020,32 +7027,28 @@ function renderTodoAllSheet(){
     else if(x.date < t) g='期限超過';
     else if(x.date === t) g='今日';
     else g='今後';
-    if(g!==lastG){ html+=`<div class="sec" style="padding:10px 0 4px;margin:0">${g}</div>`; lastG=g; }
-    html += todoAllRowHtml(x);
+    let grp = groups[groups.length-1];
+    if(!grp || grp.label!==g){ grp={label:g, items:[]}; groups.push(grp); }
+    grp.items.push(x);
   });
-  scroll.innerHTML = html;
+
+  return groups.map((grp,i)=>{
+    const rows = grp.items.map(x=>todoAllRowHtml(x)).join('');
+    return `<div class="sec${i===0?' sec-first':''}">${grp.label}</div>
+    <div class="todo-inline-card">${rows}</div>`;
+  }).join('');
 }
 
 function todoAllRowHtml(x){
   const dateLbl = x.date ? fmtShortText(x.date) : '';
   return `<div class="todo-all-row" id="todo-all-row-${x.id}">
-    <button class="todo-all-check${x.done?' on':''}" onclick="toggleTodoInAllSheet('${x.id}')" aria-label="${x.done?'未完了に戻す':'完了にする'}">${x.done?IC.check:''}</button>
+    <button class="todo-all-check${x.done?' on':''}" onclick="toggleTodo('${x.id}')" aria-label="${x.done?'未完了に戻す':'完了にする'}">${x.done?IC.check:''}</button>
     <div class="todo-all-body">
       <div class="todo-all-name${x.done?' done':''}">${esc(x.text)}${(x.half&&!x.done)?'<span class="todo-half-tag">途中まで</span>':''}</div>
       ${dateLbl?`<div class="todo-all-date">${dateLbl}</div>`:''}
     </div>
-    <button class="today-done-item-del" onclick="deleteTodoFromAllSheet('${x.id}')" aria-label="削除">${IC.trash}</button>
+    <button class="today-done-item-del" onclick="deleteTodo('${x.id}')" aria-label="削除">${IC.trash}</button>
   </div>`;
-}
-
-function toggleTodoInAllSheet(id){
-  toggleTodo(id);
-  renderTodoAllSheet();
-}
-
-function deleteTodoFromAllSheet(id){
-  deleteTodo(id);
-  renderTodoAllSheet();
 }
 
 function openBackupSheet(){
@@ -7788,18 +7791,6 @@ if('serviceWorker' in navigator){
   </div>
   <div class="dense-sheet-scroll" id="dense-sheet-scroll"></div>
   <button class="dense-close-btn" onclick="closeDenseSheet()">閉じる</button>
-</div>
-
-<!-- ToDo一覧シート（タグバーの「ToDo」チップから開く。全ToDoをまとめて確認） -->
-<div class="overlay" id="todo-all-overlay" onclick="closeTodoAllSheet()" style="z-index:119"></div>
-<div class="dense-sheet" id="todo-all-sheet">
-  <div class="dense-sheet-pull"></div>
-  <div class="dense-sheet-head">
-    <div class="dense-sheet-ttl">ToDo一覧</div>
-    <div class="dense-sheet-sub" id="todo-all-sheet-sub"></div>
-  </div>
-  <div class="dense-sheet-scroll" id="todo-all-sheet-scroll"></div>
-  <button class="dense-close-btn" onclick="closeTodoAllSheet()">閉じる</button>
 </div>
 
 <!-- Tag manager sheet -->
