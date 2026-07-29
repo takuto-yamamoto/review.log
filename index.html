@@ -19,7 +19,11 @@
 <link rel="icon" id="app-favicon-link" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%232563EB'/%3E%3Ctext x='50' y='68' font-size='56' text-anchor='middle'%3E%F0%9F%93%9A%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=M+PLUS+Rounded+1c:wght@700;800;900&display=swap" rel="stylesheet">
+<!-- 初回描画をブロックしないよう、フォントCSSは非同期で読み込む。
+     読み込みが終わるまでは -apple-system 等のフォールバック書体で即座に表示され、
+     完了後にこのフォントへ切り替わる（font-display:swapとの二段構え）。 -->
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=M+PLUS+Rounded+1c:wght@700;800;900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=M+PLUS+Rounded+1c:wght@700;800;900&display=swap" rel="stylesheet"></noscript>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
 :root{
@@ -4491,10 +4495,18 @@ function render(){
   if(totalBadge>0){ tb.textContent=totalBadge; tb.classList.remove('h'); }
   else tb.classList.add('h');
 
-  rToday(todayL, active.length > 0, doneL);
-  rUpcoming(upL);
-  rPlan();
-  rStudy();
+  // パフォーマンス対策: これまでは今日/予定/計画/勉強の4タブすべてを毎回のrender()で
+  // 組み立て直していたため、ちょっとした操作（タスク完了・延期・追加など）のたびに
+  // 見えていないタブの重い処理（特にカレンダーの再集計や、増え続けるSTUDY_LOGS全体を
+  // 何度も走査する勉強タブの集計）まで実行されていた。使い込むほど体感が遅くなる
+  // 主な原因になっていたため、実際に表示中のタブだけを組み立てるようにする。
+  // 他のタブはswitchTab()側でタブ切替時に組み立てられるため、内容が古いまま
+  // 表示されることはない。
+  const activeTab = document.querySelector('.tab-btn.on')?.dataset?.tab || 'today';
+  if(activeTab==='today')    rToday(todayL, active.length > 0, doneL);
+  if(activeTab==='upcoming') rUpcoming(upL);
+  if(activeTab==='plan')     rPlan();
+  if(activeTab==='study')    rStudy();
 
   // Clear isNew flags after first render
   let _hadNew = false;
@@ -4708,7 +4720,7 @@ function rUpcoming(list){
       <div id="cal-title" class="cal-title">${_calYear}年 ${months[_calMonth]}</div>
       <button class="cal-nav-btn" onclick="calNav(1)" aria-label="次の月">›</button>
     </div>
-    <div id="cal-grid" class="cal-grid">${_buildCalGridHtml(_calYear, _calMonth)}</div>
+    <div id="cal-grid" class="cal-grid">${_calOpen ? _buildCalGridHtml(_calYear, _calMonth) : ''}</div>
   </div>`;
 
   const usedTagIds=new Set();
@@ -5825,6 +5837,8 @@ function calToggle(){
     const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
     sub.textContent = `${_calYear}年 ${months[_calMonth]}`;
   }
+  // グリッドは閉じている間は組み立てを省いているため、開いた時に最新の内容で描画する
+  if(_calOpen) _renderCalGrid();
   haptic();
 }
 
