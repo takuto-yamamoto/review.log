@@ -2340,10 +2340,16 @@ function planOccurrenceIdx(p){
   // 0始まりの「今回・次回」インデックス
   return p.type==='goal' ? (p.doneCount||0) : (p.occurrenceCount||0);
 }
-function planDisplayName(p){
+function planCompletedOccurrenceIdx(p){
+  // 完了直後の「今回終わったばかりの」インデックス（表示用。occurrenceCountは
+  // 完了時にインクリメント済みのため、1つ前を指す）
+  if(p.type==='goal') return planOccurrenceIdx(p);
+  return Math.max(0, (p.occurrenceCount||0) - 1);
+}
+function planDisplayName(p, idxOverride){
   const mode = p.nameMode || 'fixed';
   if(mode==='fixed') return p.name;
-  const idx = planOccurrenceIdx(p);
+  const idx = (idxOverride!=null) ? idxOverride : planOccurrenceIdx(p);
   if(mode==='sequence'){
     const start = (p.seqStart!=null && p.seqStart!=='') ? Number(p.seqStart) : 1;
     const unit = p.seqUnit && p.seqUnit.trim() ? p.seqUnit.trim() : '回';
@@ -2525,6 +2531,8 @@ function planCardHtml(p, opts){
   const over = planIsOverdue(p);
   const due = planIsDueToday(p);
   const doneToday = p.type==='daily' ? p.lastDoneDate===td() : (p.lastDoneDate===td() && !due && !over);
+  // 完了済みの表示では「今回終わった分」の番号を出す（次回分の番号にずれないように）
+  const dispNameToday = doneToday ? planDisplayName(p, planCompletedOccurrenceIdx(p)) : dispName;
   const showComplete = opts.hideComplete ? false : (p.type==='daily' ? !doneToday : (due||over));
   const showSnooze = opts.hideSnooze ? false : (p.type==='daily' ? !doneToday : (opts.alwaysSnooze || due || over));
   const typeSub = p.type==='daily' ? '毎日'
@@ -2540,7 +2548,7 @@ function planCardHtml(p, opts){
   return `<div class="cw" id="w-${p.id}" data-id="${p.id}">
     <div class="card plan${over?' over':due?' due':''}" id="c-${p.id}">
       <div class="card-top">
-        <div class="card-name">${esc(dispName)}</div>
+        <div class="card-name">${esc(dispNameToday)}</div>
         <div class="card-icon-row">
           <button class="btn-edit" onclick="openPlanSheet('${p.id}')" aria-label="編集">${IC.pencil}</button>
           <button class="btn-del" onclick="planDelete('${p.id}')" aria-label="削除">${IC.trash}</button>
@@ -4099,6 +4107,10 @@ function openPlanSnooze(id){
   const p=PLAN.find(x=>x.id===id); if(!p) return;
   _openSnoozePicker('plan', id, p.name);
 }
+function openTodoSnooze(id){
+  const x=TODOS.find(t=>t.id===id); if(!x) return;
+  _openSnoozePicker('todo', id, x.text);
+}
 function applySnooze(days){
   if(!_snoozeId) return;                         // Bug3 fix: guard double-tap
   const id = _snoozeId, kind=_snoozeKind;
@@ -4112,6 +4124,16 @@ function applySnooze(days){
     haptic('medium'); render(); _renderCalGrid();
     const label=days===1?'明日':days===7?'1週間後':`${days}日後`;
     toast(IC.moon, esc(planDisplayName(p))+`を${label}に延期しました`);
+    return;
+  }
+  if(kind==='todo'){
+    const x=TODOS.find(t=>t.id===id); if(!x) return;
+    x.date=addD(td(),days);
+    saveTodos();
+    haptic('medium');
+    shrinkOut('w-todo-'+x.id,()=>render());
+    const label=days===1?'明日':days===7?'1週間後':`${days}日後`;
+    toast(IC.moon, esc(x.text)+`を${label}に延期しました`);
     return;
   }
   const u=U.find(x=>x.id===id); if(!u) return;
@@ -4387,7 +4409,7 @@ function undoCompleteFromDone(id){
 function undoPlanCompleteFromDone(id){
   const p = PLAN.find(x => x.id === id);
   if(!p) return;
-  const doneLabel = planDisplayName(p);
+  const doneLabel = planDisplayName(p, planCompletedOccurrenceIdx(p));
   if(p.type==='goal'){
     // 今日分の記録をすべて取り消す
     const todayCount = p.todayCount||0;
@@ -4514,7 +4536,14 @@ function rToday(list, hasActive, allDone){
   const planDoneToday = getPlanDoneTodayList();
 
   // 今日完了したToDoも完了済みに含める（他のカードと同様、丸ボタンではなくここに移動する）
-  const todoDoneToday = TODOS.filter(x=>x.date===t && x.done).sort((a,b)=>(b.completedAt||0)-(a.completedAt||0));
+  // 元の予定日(date)ではなく「実際に完了した日(completedAt)」で判定する。
+  // そうしないと、期限超過から引き継がれたToDoを今日完了しても一覧から消えてしまう。
+  const todoDoneToday = TODOS.filter(x=>{
+    if(!x.done || !x.completedAt) return false;
+    const d = new Date(x.completedAt);
+    const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    return ds === t;
+  }).sort((a,b)=>(b.completedAt||0)-(a.completedAt||0));
 
   // Build accordion HTML (rendered regardless of pending list)
   function todayDoneAccHtml(){
@@ -4539,7 +4568,7 @@ function rToday(list, hasActive, allDone){
         </div>
       </div>`;
     }).join('') + planDoneToday.map(p => {
-      const name = planDisplayName(p);
+      const name = planDisplayName(p, planCompletedOccurrenceIdx(p));
       const metaLabel = p.type==='goal'
         ? (p.done ? '目標を達成しました！' : `今日分の目安を達成 · 通算 ${p.doneCount||0}/${p.totalCount}`)
         : '計画タスク完了';
@@ -5941,10 +5970,9 @@ function _buildCalGridHtml(year, month){
     if(dow === 6 && !isToday) cls += ' sat';
 
     // 件数に関わらず、復習がある日はすべてシートを開く（過去日はジャンプのみ）
-    // ただしToDoのみの日は「今日」タブへジャンプしても表示されないため、ずらせるシートを開く
-    const onlyTodoOverdue = isOverdue && ev && ev.colors.length===0 && ev.planColors.length===0 && (ev.todoColors||[]).length>0;
+    // ToDoも今日タブに引き継がれるようになったため、ToDoのみの超過日もジャンプで表示できる
     const onclick = (dateStr && hasEvent)
-      ? (isOverdue && !onlyTodoOverdue)
+      ? isOverdue
         ? `onclick="calJumpToDate('${dateStr}')"`
         : `onclick="openDenseSheet('${dateStr}')"`
       : '';
@@ -6161,11 +6189,13 @@ function calJumpToDate(dateStr){
   if(filterTagId !== null) filterTagId = null;
   if(needRebuild) render();
 
-  // 3. 期限切れのタスクは「今日のタスク」タブ（復習）または「計画」タブ（計画タスク）に
+  // 3. 期限切れのタスクは「今日のタスク」タブ（復習・ToDo）または「計画」タブ（計画タスク）に
   //    表示されるため、該当するタブへ切り替える
   const reviewTargets = U.filter(u => !u.done && u.nextDate === dateStr);
+  const todoTargets = TODOS.filter(x => !x.done && x.date === dateStr);
   const planTargets = PLAN.filter(p => !p.done && p.type!=='daily' && planCalDate(p) === dateStr);
-  const destTabName = reviewTargets.length ? 'today' : (planTargets.length ? 'plan' : 'today');
+  const todayTargets = [...reviewTargets, ...todoTargets];
+  const destTabName = todayTargets.length ? 'today' : (planTargets.length ? 'plan' : 'today');
   const destTabBtn = document.querySelector(`.tab-btn[data-tab="${destTabName}"]`);
   if(destTabBtn && !destTabBtn.classList.contains('on')){
     switchTab(destTabBtn);
@@ -6176,7 +6206,7 @@ function calJumpToDate(dateStr){
     const panel = document.getElementById('p-'+destTabName);
     if(!panel) return;
     // 同日に複数ユニットある場合も全件ハイライトし、先頭へスクロール
-    const targets = destTabName==='plan' ? planTargets : reviewTargets;
+    const targets = destTabName==='plan' ? planTargets : todayTargets;
     if(!targets.length) return;
     let firstCard = null;
     targets.forEach(target => {
@@ -6791,8 +6821,13 @@ function deleteTodo(id){
 // 今日タブに表示するToDoセクションのHTMLを生成（date===今日のToDoのみ）
 function todoCardHtml(x){
   const tagsHtml = (x.tags&&x.tags.length)?`<div class="card-tags-row">${x.tags.map(tid=>tagHtml(tid)).join('')}</div>`:'';
+  const t = td();
+  const over = x.date && x.date < t;
+  const whenChip = over
+    ? `<div class="card-when-chip over">${IC.alert} ${Math.abs(diff(x.date))}日超過</div>`
+    : `<div class="card-when-chip">${IC.calendar} 今日やること</div>`;
   return `<div class="cw" id="w-todo-${x.id}" data-id="${x.id}">
-    <div class="card todo" id="c-todo-${x.id}">
+    <div class="card todo${over?' over':''}" id="c-todo-${x.id}">
       <div class="card-top">
         <div class="card-name">${esc(x.text)}${x.half?'<span class="todo-half-tag">途中まで</span>':''}</div>
         <div class="card-icon-row">
@@ -6801,10 +6836,11 @@ function todoCardHtml(x){
       </div>
       ${tagsHtml}
       <div class="card-status-row">
-        <div class="card-when-chip">${IC.calendar} 今日やること</div>
+        ${whenChip}
       </div>
       <div class="acts">
         <button class="btn-ok" onclick="openStudyTimerForTodo('${x.id}')">${IC.timerSm} 時間を記録して完了</button>
+        <button class="btn-snooze" onclick="openTodoSnooze('${x.id}')">${IC.moon} 延期</button>
       </div>
     </div>
   </div>`;
@@ -6815,7 +6851,7 @@ function todoCardHtml(x){
 // 完了済みのToDoはここには含めず、他のカードと同様に「完了済み」アコーディオンへ移す。
 function renderTodoSectionHtml(){
   const t = td();
-  const list = TODOS.filter(x=>x.date===t && !x.done).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+  const list = TODOS.filter(x=>x.date && x.date<=t && !x.done).sort((a,b)=>(a.date||'').localeCompare(b.date||'')||(a.createdAt||0)-(b.createdAt||0));
   if(!list.length) return '';
   return list.map(x=>todoCardHtml(x)).join('');
 }
