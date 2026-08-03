@@ -206,6 +206,27 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .hero-msg{font-size:18px;font-weight:700;color:#fff;position:relative;z-index:1;line-height:1.3}
 .hero-sub{font-size:13px;color:rgba(255,255,255,.8);margin-top:4px;position:relative;z-index:1;line-height:1.5}
 
+/* ══ 総勉強時間ヒーロー: 100hごとに豪華になる演出（最大1000h） ═══ */
+.hero.study-hero-shine{animation:studyHeroShine 2.4s ease-in-out infinite}
+@keyframes studyHeroShine{0%,100%{filter:brightness(1) saturate(1)}50%{filter:brightness(1.16) saturate(1.25)}}
+.hero.study-hero-rainbow{background-size:260% 260%;animation:studyHeroRainbow 6s ease-in-out infinite,studyHeroShine 2.4s ease-in-out infinite}
+@keyframes studyHeroRainbow{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+.study-hero-badge{
+  position:absolute;top:12px;right:14px;z-index:2;
+  display:flex;align-items:center;gap:4px;
+  background:rgba(255,255,255,.22);backdrop-filter:blur(2px);
+  border-radius:100px;padding:5px 10px 5px 8px;
+  font-size:11px;font-weight:800;color:#fff;letter-spacing:.3px;
+  box-shadow:0 2px 8px rgba(0,0,0,.15)
+}
+.study-hero-badge .emj{font-size:14px;line-height:1}
+.study-hero-sparkle{position:absolute;border-radius:50%;pointer-events:none;background:rgba(255,255,255,.9);animation:studyHeroSparkle 2.2s ease-in-out infinite}
+@keyframes studyHeroSparkle{0%,100%{opacity:0;transform:scale(.4)}50%{opacity:1;transform:scale(1)}}
+.study-hero-progress-wrap{position:relative;z-index:1;margin-top:12px}
+.study-hero-progress-bar{height:6px;border-radius:100px;background:rgba(255,255,255,.22);overflow:hidden}
+.study-hero-progress-fill{height:100%;border-radius:100px;background:rgba(255,255,255,.9);transition:width .4s ease}
+.study-hero-progress-lbl{font-size:11px;color:rgba(255,255,255,.85);margin-top:5px;font-weight:600}
+
 /* ══ ToDo card (今日タブ: 他の復習カードと同じ .cw/.card を1件ずつ使用) ══════ */
 .card.todo{border-left:3px solid #F59E0B;padding-left:11px}
 .todo-half-tag{
@@ -427,7 +448,14 @@ button,a,input,[role="button"]{touch-action:manipulation}
 }
 .plan-row.over .plan-row-icon{background:rgba(255,59,48,.1);color:var(--red)}
 .plan-row.due .plan-row-icon{background:var(--blue-bg);color:var(--blue)}
-.plan-row-main{flex:1;min-width:0}
+.plan-row-main{flex:1;min-width:0;cursor:pointer}
+.plan-detail-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:.5px solid var(--sep)}
+.plan-detail-row:last-child{border-bottom:none}
+.plan-detail-label{font-size:13px;color:var(--lbl2);flex-shrink:0}
+.plan-detail-value{font-size:14px;font-weight:700;color:var(--lbl);text-align:right}
+.plan-detail-value.over{color:var(--red)}
+.plan-detail-progress{padding:4px 0 14px}
+.plan-detail-tags{display:flex;gap:5px;flex-wrap:wrap;padding:10px 0 2px}
 .plan-row-name{font-size:14.5px;font-weight:700;color:var(--lbl);line-height:1.3;letter-spacing:-.1px}
 .plan-row-meta{
   font-size:11.5px;color:var(--lbl2);margin-top:2px;
@@ -1499,6 +1527,24 @@ button,a,input,[role="button"]{touch-action:manipulation}
   outline:2px solid #F59E0B;outline-offset:1px;
 }
 .cal-cell.dense .cal-dense-badge{display:block}
+
+/* 日表示（横スワイプで前後の日に移動） */
+.cal-grid.cal-grid-day{display:block;padding:2px 16px 16px}
+.cal-day-view{display:flex;flex-direction:column;align-items:center}
+.cal-day-head{font-size:11px;font-weight:700;color:var(--lbl3);letter-spacing:.5px;margin-bottom:8px}
+.cal-day-head.sun{color:#EF4444}
+.cal-day-head.sat{color:#3B82F6}
+.cal-day-cell-wrap{margin-bottom:6px}
+.cal-day-view .cal-cell{width:76px;height:76px;aspect-ratio:unset}
+.cal-day-view .cal-num{width:36px;height:36px;font-size:17px}
+.cal-day-list{width:100%;display:flex;flex-direction:column;margin-top:6px}
+.cal-day-item{display:flex;align-items:center;gap:8px;padding:9px 2px;border-bottom:.5px solid var(--sep)}
+.cal-day-item:last-child{border-bottom:none}
+.cal-day-item-dot{width:7px;height:7px;border-radius:2px;flex-shrink:0}
+.cal-day-item-name{flex:1;min-width:0;font-size:13.5px;font-weight:600;color:var(--lbl);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cal-day-item-label{font-size:11px;color:var(--lbl3);flex-shrink:0}
+.cal-day-empty{width:100%;text-align:center;padding:20px 0 4px;color:var(--lbl3);font-size:13px}
+
 .dense-sheet{
   position:fixed;bottom:0;left:0;right:0;z-index:120;
   background:var(--card);border-radius:24px 24px 0 0;
@@ -2219,8 +2265,8 @@ button,a,input,[role="button"]{touch-action:manipulation}
    B5 fix: define proper large/small variants, no string.replace() hacks
 ══════════════════════════════════════════ */
 /* ══ App version ════════════════════════ */
-const APP_VERSION = 'v2.6.0';
-const APP_BUILD   = '2026-07-21';
+const APP_VERSION = 'v2.7.0';
+const APP_BUILD   = '2026-08-03';
 
 const IC = {
   check:      `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
@@ -2251,6 +2297,7 @@ const IC = {
   lockOpen:   `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/></svg>`,
   play:       `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6 3 20 12 6 21 6 3"/></svg>`,
   pause:      `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>`,
+  info:       `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`,
 };
 
 /* ══════════════════════════════════════════
@@ -2648,13 +2695,14 @@ function planOverviewRowHtml(p){
       : `1日${pace.perDay}個必要 · ${fmtShort(p.deadline)}まで`;
     return `<div class="plan-row${over?' over':''}" data-id="${p.id}">
       <div class="plan-row-icon">${icon}</div>
-      <div class="plan-row-main">
+      <div class="plan-row-main" onclick="openPlanDetailSheet('${p.id}')" role="button" aria-label="詳細を見る">
         <div class="plan-row-name">${esc(dispName)}</div>
         <div class="plan-row-meta">${over?IC.alertSm:''} ${p.doneCount||0}/${p.totalCount} · ${metaText}</div>
         <div class="plan-row-bar-track"><div class="plan-row-bar-fill" style="width:${pct}%"></div></div>
         ${(p.tags&&p.tags.length)?`<div class="plan-row-tags">${p.tags.map(tid=>tagHtml(tid)).join('')}</div>`:''}
       </div>
       <div class="plan-row-acts">
+        <button class="plan-row-btn" onclick="openPlanDetailSheet('${p.id}')" aria-label="詳細">${IC.info}</button>
         <button class="plan-row-btn" onclick="openPlanSheet('${p.id}')" aria-label="編集">${IC.pencil}</button>
         <button class="plan-row-btn" onclick="planDelete('${p.id}')" aria-label="削除">${IC.trash}</button>
       </div>
@@ -2675,16 +2723,93 @@ function planOverviewRowHtml(p){
     : fmtShort(p.nextDate);
   return `<div class="plan-row${over?' over':due?' due':''}" data-id="${p.id}">
     <div class="plan-row-icon">${icon}</div>
-    <div class="plan-row-main">
+    <div class="plan-row-main" onclick="openPlanDetailSheet('${p.id}')" role="button" aria-label="詳細を見る">
       <div class="plan-row-name">${esc(dispName)}</div>
       <div class="plan-row-meta">${over?IC.alertSm:due?IC.clock:''} ${esc(typeSub)} · ${statusText}</div>
       ${(p.tags&&p.tags.length)?`<div class="plan-row-tags">${p.tags.map(tid=>tagHtml(tid)).join('')}</div>`:''}
     </div>
     <div class="plan-row-acts">
+      <button class="plan-row-btn" onclick="openPlanDetailSheet('${p.id}')" aria-label="詳細">${IC.info}</button>
       <button class="plan-row-btn" onclick="openPlanSheet('${p.id}')" aria-label="編集">${IC.pencil}</button>
       <button class="plan-row-btn" onclick="planDelete('${p.id}')" aria-label="削除">${IC.trash}</button>
     </div>
   </div>`;
+}
+
+/* ══ 計画タブ：詳細をパッと確認できるシート ══
+   編集モーダルを開かなくても、進捗・期限・実施状況などをまとめて確認できるようにする */
+let _planDetailId=null;
+
+function openPlanDetailSheet(id){
+  const p=PLAN.find(x=>x.id===id); if(!p) return;
+  _planDetailId=id;
+  _renderPlanDetailSheet();
+  document.getElementById('plan-detail-overlay').classList.add('on');
+  document.getElementById('plan-detail-sheet').classList.add('on');
+  haptic();
+}
+function closePlanDetailSheet(){
+  document.getElementById('plan-detail-overlay').classList.remove('on');
+  document.getElementById('plan-detail-sheet').classList.remove('on');
+  _planDetailId=null;
+}
+function _planDetailEditFromSheet(){
+  const id=_planDetailId;
+  closePlanDetailSheet();
+  openPlanSheet(id);
+}
+function _renderPlanDetailSheet(){
+  const p=PLAN.find(x=>x.id===_planDetailId); if(!p) return;
+  const dispName=planDisplayName(p);
+  document.getElementById('plan-detail-sheet-ttl').textContent=dispName;
+
+  const tagsHtml=(p.tags&&p.tags.length)?`<div class="plan-detail-tags">${p.tags.map(tid=>tagHtml(tid)).join('')}</div>`:'';
+  let bodyHtml='';
+
+  if(p.type==='goal'){
+    const pace=planPace(p);
+    const pct=Math.min(100,Math.round(((p.doneCount||0)/p.totalCount)*100));
+    const over=!p.done && diff(p.deadline)<0;
+    const daysLeft=Math.max(diff(p.deadline),0);
+    const paceText = p.done ? '🎉 目標を達成しました'
+      : over ? '期限を過ぎています'
+      : pace.remain<=0 ? '達成済みです'
+      : pace.daysPerOne>0 ? `${pace.daysPerOne}日に1個のペース`
+      : `1日${pace.perDay}個 必要`;
+    document.getElementById('plan-detail-sheet-sub').textContent = `目標 · ${fmtShort(p.deadline)}まで`;
+    bodyHtml=`
+      <div class="plan-detail-progress">
+        <div class="plan-progress-lbl"><span>${p.doneCount||0} / ${p.totalCount}</span><span>${pct}%</span></div>
+        <div class="plan-progress-track"><div class="plan-progress-fill" style="width:${pct}%"></div></div>
+      </div>
+      <div class="plan-detail-row"><span class="plan-detail-label">状況</span><span class="plan-detail-value${over?' over':''}">${esc(paceText)}</span></div>
+      <div class="plan-detail-row"><span class="plan-detail-label">期限</span><span class="plan-detail-value">${fmtShort(p.deadline)}${p.done?'':`（残り${daysLeft}日）`}</span></div>
+      <div class="plan-detail-row"><span class="plan-detail-label">開始日</span><span class="plan-detail-value">${fmtShort(p.startDate||p.createdDate||p.deadline)}</span></div>
+      <div class="plan-detail-row"><span class="plan-detail-label">前回の記録</span><span class="plan-detail-value">${p.lastDoneDate?fmtShort(p.lastDoneDate):'まだありません'}</span></div>
+      ${tagsHtml}
+    `;
+  } else {
+    const over=planIsOverdue(p);
+    const due=planIsDueToday(p);
+    const typeSub = p.type==='daily' ? '毎日'
+      : p.type==='weekday' ? '毎週 '+(p.weekdays||[]).slice().sort().map(d=>WD_LABELS[d]).join('・')
+      : `${p.intervalDays}日ごと`;
+    const statusText = p.type==='daily'
+      ? (p.lastDoneDate===td() ? '今日は完了済み' : '今日のタスク')
+      : over ? `${Math.abs(diff(p.nextDate))}日超過中`
+      : due ? '今日が期限'
+      : `次回 ${fmtShort(p.nextDate)}`;
+    document.getElementById('plan-detail-sheet-sub').textContent = `${PLAN_TYPE_LABEL[p.type]} · ${typeSub}`;
+    bodyHtml=`
+      <div class="plan-detail-row"><span class="plan-detail-label">状況</span><span class="plan-detail-value${over?' over':''}">${esc(statusText)}</span></div>
+      <div class="plan-detail-row"><span class="plan-detail-label">くり返し</span><span class="plan-detail-value">${esc(typeSub)}</span></div>
+      <div class="plan-detail-row"><span class="plan-detail-label">実施期間</span><span class="plan-detail-value">${fmtShort(p.startDate||p.createdDate||td())} 〜 ${p.endDate?fmtShort(p.endDate):'終了日未設定'}</span></div>
+      <div class="plan-detail-row"><span class="plan-detail-label">これまでの完了回数</span><span class="plan-detail-value">${p.occurrenceCount||0} 回</span></div>
+      <div class="plan-detail-row"><span class="plan-detail-label">前回実施日</span><span class="plan-detail-value">${p.lastDoneDate?fmtShort(p.lastDoneDate):'まだありません'}</span></div>
+      ${tagsHtml}
+    `;
+  }
+  document.getElementById('plan-detail-sheet-scroll').innerHTML=bodyHtml;
 }
 
 function rPlan(){
@@ -4772,6 +4897,7 @@ function rUpcoming(list){
       <div class="cal-mode-toggle">
         <button class="cal-mode-btn${_calViewMode==='month'?' active':''}" data-mode="month" onclick="calSetViewMode('month')">月</button>
         <button class="cal-mode-btn${_calViewMode==='week'?' active':''}" data-mode="week" onclick="calSetViewMode('week')">週</button>
+        <button class="cal-mode-btn${_calViewMode==='day'?' active':''}" data-mode="day" onclick="calSetViewMode('day')">日</button>
       </div>
     </div>
     <div class="cal-header">
@@ -4779,7 +4905,7 @@ function rUpcoming(list){
       <div id="cal-title" class="cal-title">${_calTitleText()}</div>
       <button class="cal-nav-btn" onclick="calNav(1)" aria-label="次へ">›</button>
     </div>
-    <div id="cal-grid" class="cal-grid">${_calOpen ? (_calViewMode==='week' ? _buildCalWeekGridHtml(_calWeekStart, _calEvMapForTpl) : _buildCalMonthGridHtml(_calYear, _calMonth, _calEvMapForTpl)) : ''}</div>
+    <div id="cal-grid" class="cal-grid${_calViewMode==='day'?' cal-grid-day':''}">${_calOpen ? (_calViewMode==='day' ? _buildCalDayGridHtml(_calDayDate, _calEvMapForTpl) : _calViewMode==='week' ? _buildCalWeekGridHtml(_calWeekStart, _calEvMapForTpl) : _buildCalMonthGridHtml(_calYear, _calMonth, _calEvMapForTpl)) : ''}</div>
     <div id="cal-legend" class="cal-legend">${_calOpen ? _calLegendHtml() : ''}</div>
   </div>`;
 
@@ -4879,6 +5005,35 @@ function setUpcomingTodoFilter(){
 /* ══ Study panel renderer ══════════════════════════════════════════ */
 let _studyWeekTrendOpen = false;
 
+/* 総勉強時間の「豪華さ」段階。100hごとにレベルアップ、1000hで最高段階（打ち止め） */
+const STUDY_HERO_TIERS = [
+  {min:0,   grad:'linear-gradient(135deg,#1740B0 0%,#2563EB 55%,#4F8EF7 100%)', shadow:'rgba(37,99,235,.28)',  emj:'',   name:''},
+  {min:100, grad:'linear-gradient(135deg,#0F766E 0%,#14B8A6 55%,#5EEAD4 100%)', shadow:'rgba(20,184,166,.35)', emj:'🌱', name:'ビギナー'},
+  {min:200, grad:'linear-gradient(135deg,#166534 0%,#22C55E 55%,#86EFAC 100%)', shadow:'rgba(34,197,94,.35)',  emj:'🌿', name:'継続の力'},
+  {min:300, grad:'linear-gradient(135deg,#9A3412 0%,#F97316 55%,#FDBA74 100%)', shadow:'rgba(249,115,22,.4)',  emj:'🔥', name:'情熱'},
+  {min:400, grad:'linear-gradient(135deg,#3730A3 0%,#6366F1 55%,#A5B4FC 100%)', shadow:'rgba(99,102,241,.4)',  emj:'⭐', name:'エキスパート'},
+  {min:500, grad:'linear-gradient(135deg,#0E7490 0%,#06B6D4 50%,#67E8F9 100%)', shadow:'rgba(6,182,212,.45)',  emj:'💎', name:'クリスタル', shine:true},
+  {min:600, grad:'linear-gradient(135deg,#78350F 0%,#B45309 45%,#F59E0B 75%,#FDE68A 100%)', shadow:'rgba(180,83,9,.45)', emj:'🏅', name:'ブロンズマスター', shine:true},
+  {min:700, grad:'linear-gradient(135deg,#475569 0%,#94A3B8 45%,#E2E8F0 75%,#F8FAFC 100%)', shadow:'rgba(148,163,184,.5)', emj:'🥈', name:'シルバーマスター', shine:true},
+  {min:800, grad:'linear-gradient(135deg,#92400E 0%,#F59E0B 40%,#FDE047 75%,#FEF9C3 100%)', shadow:'rgba(245,158,11,.55)', emj:'🥇', name:'ゴールドマスター', shine:true},
+  {min:900, grad:'linear-gradient(135deg,#581C87 0%,#9333EA 40%,#F59E0B 75%,#FDE68A 100%)', shadow:'rgba(147,51,234,.55)', emj:'👑', name:'ロイヤル', shine:true, sparkle:true},
+  {min:1000,grad:'linear-gradient(120deg,#F43F5E,#F59E0B,#22C55E,#06B6D4,#6366F1,#EC4899,#F43F5E)', shadow:'rgba(236,72,153,.55)', emj:'🏆', name:'レジェンド', shine:true, sparkle:true, rainbow:true}
+];
+function _studyHeroTierInfo(totalMins){
+  const hours = totalMins/60;
+  let idx=0;
+  for(let i=0;i<STUDY_HERO_TIERS.length;i++){ if(hours>=STUDY_HERO_TIERS[i].min) idx=i; }
+  const tier = STUDY_HERO_TIERS[idx];
+  const next  = STUDY_HERO_TIERS[idx+1];
+  let progressPct=100;
+  if(next){
+    const span = next.min - tier.min;
+    const into = hours - tier.min;
+    progressPct = Math.max(0,Math.min(100, into/span*100));
+  }
+  return Object.assign({tierLevel:idx, progressPct, hasNext:!!next}, tier);
+}
+
 function rStudy(){
   const el = document.getElementById('p-study'); if(!el) return;
   const t = td();
@@ -4898,8 +5053,19 @@ function rStudy(){
     ? `<img src="${APP_ICON}" style="width:44px;height:44px;border-radius:12px;object-fit:cover;flex-shrink:0">`
     : `<div style="width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">📚</div>`;
 
-  // ヒーローカード
-  let html = `<div class="hero" style="margin-bottom:12px">
+  // ヒーローカード（総勉強時間：100hごとに豪華になる演出、最大1000h）
+  const heroTier = _studyHeroTierInfo(totalAllMins);
+  const heroClasses = ['hero'];
+  if(heroTier.shine) heroClasses.push('study-hero-shine');
+  if(heroTier.rainbow) heroClasses.push('study-hero-rainbow');
+  const sparkleHtml = heroTier.sparkle ? `
+    <span class="study-hero-sparkle" style="width:6px;height:6px;top:18px;left:70%;animation-delay:0s"></span>
+    <span class="study-hero-sparkle" style="width:4px;height:4px;top:50px;left:85%;animation-delay:.6s"></span>
+    <span class="study-hero-sparkle" style="width:5px;height:5px;top:75px;left:60%;animation-delay:1.2s"></span>` : '';
+  const badgeHtml = heroTier.tierLevel>0 ? `<div class="study-hero-badge"><span class="emj">${heroTier.emj}</span>${heroTier.name}</div>` : '';
+  let html = `<div class="${heroClasses.join(' ')}" style="margin-bottom:12px;background:${heroTier.grad};box-shadow:0 4px 24px ${heroTier.shadow}">
+    ${sparkleHtml}
+    ${badgeHtml}
     <div style="display:flex;align-items:flex-start;gap:12px;position:relative;z-index:1">
       ${iconHtml}
       <div style="min-width:0;flex:1">
@@ -4908,7 +5074,6 @@ function rStudy(){
         <div style="font-size:30px;font-weight:800;color:#fff;font-family:'Outfit',sans-serif;line-height:1.15;margin-top:6px">${fmtMinutesJa(totalAllMins)}</div>
       </div>
     </div>
-
   </div>`;
 
   // 新規勉強記録ボタン
@@ -5902,8 +6067,9 @@ function saveStudyRecordForTodo(isComplete){
 let _calOpen  = false;   // トグル開閉
 let _calYear  = null;    // 表示中の年（null = 初期化前）
 let _calMonth = null;    // 表示中の月（0-11）
-let _calViewMode  = 'month'; // 'month' | 'week'
+let _calViewMode  = 'month'; // 'month' | 'week' | 'day'
 let _calWeekStart = null;    // 週表示中の日曜日 'YYYY-MM-DD'（null = 初期化前）
+let _calDayDate = null;      // 日表示中の日付 'YYYY-MM-DD'（null = 初期化前）
 
 function _weekStartOf(dateStr){
   const dow = new Date(dateStr+'T00:00:00').getDay();
@@ -5916,18 +6082,25 @@ function _calInit(){
   _calYear  = now.getFullYear();
   _calMonth = now.getMonth();
   _calWeekStart = _weekStartOf(td());
+  _calDayDate = td();
 }
 
-/* 前へボタンを無効化すべきか（月表示・週表示共通） */
+/* 前へボタンを無効化すべきか（月表示・週表示・日表示共通） */
 function _calPrevDisabled(){
+  if(_calViewMode === 'day') return _calDayDate <= td();
   if(_calViewMode === 'week') return _calWeekStart <= _weekStartOf(td());
   const now = new Date();
   return _calYear === now.getFullYear() && _calMonth === now.getMonth();
 }
 
-/* ヘッダー・サブタイトルに表示するテキスト（月表示・週表示共通） */
+/* ヘッダー・サブタイトルに表示するテキスト（月表示・週表示・日表示共通） */
 function _calTitleText(){
   const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  const dowLabels = ['日','月','火','水','木','金','土'];
+  if(_calViewMode === 'day'){
+    const d = new Date(_calDayDate+'T00:00:00');
+    return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${dowLabels[d.getDay()]}）`;
+  }
   if(_calViewMode === 'week'){
     const start = _calWeekStart, end = addD(_calWeekStart, 6);
     const sd = new Date(start+'T00:00:00'), ed = new Date(end+'T00:00:00');
@@ -5941,14 +6114,25 @@ function _calTitleText(){
 function calSetViewMode(mode){
   _calInit();
   if(_calViewMode === mode) return;
+  const now = new Date();
   if(mode === 'week'){
-    const now = new Date();
-    const anchor = (_calYear === now.getFullYear() && _calMonth === now.getMonth())
-      ? td()
-      : `${_calYear}-${String(_calMonth+1).padStart(2,'0')}-01`;
+    const anchor = _calViewMode === 'day'
+      ? _calDayDate
+      : (_calYear === now.getFullYear() && _calMonth === now.getMonth())
+        ? td()
+        : `${_calYear}-${String(_calMonth+1).padStart(2,'0')}-01`;
     _calWeekStart = _weekStartOf(anchor);
+  } else if(mode === 'day'){
+    if(_calViewMode === 'week'){
+      _calDayDate = _calWeekStart < td() ? td() : _calWeekStart;
+    } else {
+      _calDayDate = (_calYear === now.getFullYear() && _calMonth === now.getMonth())
+        ? td()
+        : `${_calYear}-${String(_calMonth+1).padStart(2,'0')}-01`;
+    }
   } else {
-    const d = new Date(_calWeekStart+'T00:00:00');
+    const base = _calViewMode === 'day' ? _calDayDate : _calWeekStart;
+    const d = new Date(base+'T00:00:00');
     _calYear  = d.getFullYear();
     _calMonth = d.getMonth();
   }
@@ -5974,7 +6158,10 @@ function calToggle(){
 
 function calNav(delta){
   _calInit();
-  if(_calViewMode === 'week'){
+  if(_calViewMode === 'day'){
+    if(delta < 0 && _calPrevDisabled()) return;
+    _calDayDate = addD(_calDayDate, delta);
+  } else if(_calViewMode === 'week'){
     if(delta < 0 && _calPrevDisabled()) return;
     _calWeekStart = addD(_calWeekStart, delta * 7);
   } else {
@@ -6059,8 +6246,12 @@ function _renderCalGrid(){
     });
   }
 
+  gridEl.classList.toggle('cal-grid-day', _calViewMode === 'day');
+
   const evMap = _calEventMap();
-  gridEl.innerHTML = _calViewMode === 'week'
+  gridEl.innerHTML = _calViewMode === 'day'
+    ? _buildCalDayGridHtml(_calDayDate, evMap)
+    : _calViewMode === 'week'
     ? _buildCalWeekGridHtml(_calWeekStart, evMap)
     : _buildCalMonthGridHtml(_calYear, _calMonth, evMap);
 
@@ -6273,6 +6464,43 @@ function _buildCalWeekGridHtml(weekStart, evMap){
     html += _buildCalCellHtml(dateStr, cellDate, i, { isOther:false, evMap, today, gapDates });
   }
   return html;
+}
+
+/* その日の復習・計画タスク・ToDoを一覧テキストで返す（日表示でパッと内容が分かるように） */
+function _calDayItemsHtml(dateStr){
+  const reviewCands = U.filter(u => !u.done && u.nextDate === dateStr);
+  const planCands = PLAN.filter(p => !p.done && p.type!=='daily' && planCalDate(p) === dateStr);
+  const todoCands = TODOS.filter(x => !x.done && x.date === dateStr);
+  const rows = [
+    ...reviewCands.map(u => ({ name: u.name, label: STEPS[u.step] || `${u.step}回目`, color: 'var(--blue)' })),
+    ...planCands.map(p => ({ name: planDisplayName(p), label: p.type==='goal' ? '目標の期限' : PLAN_TYPE_LABEL[p.type], color: '#7C3AED' })),
+    ...todoCands.map(x => ({ name: x.text, label: 'ToDo', color: '#F59E0B' })),
+  ];
+  if(!rows.length){
+    return `<div class="cal-day-empty">この日に予定はありません</div>`;
+  }
+  return `<div class="cal-day-list">${rows.map(r => `
+    <div class="cal-day-item">
+      <span class="cal-day-item-dot" style="background:${r.color}"></span>
+      <span class="cal-day-item-name">${esc(r.name)}</span>
+      <span class="cal-day-item-label">${esc(r.label)}</span>
+    </div>`).join('')}</div>`;
+}
+
+/* 日表示グリッドのHTML文字列を生成する純粋関数。横スワイプで前後の日に移動できる（_calAttachSwipeを共用） */
+function _buildCalDayGridHtml(dayDate, evMap){
+  const today = td();
+  evMap = evMap || _calEventMap();
+  const gapDates = _calGapDates(evMap);
+  const d = new Date(dayDate+'T00:00:00');
+  const dow = d.getDay();
+  const dowLabels = ['日','月','火','水','木','金','土'];
+  const cellHtml = _buildCalCellHtml(dayDate, d.getDate(), dow, { isOther:false, evMap, today, gapDates });
+  return `<div class="cal-day-view">
+    <div class="cal-day-head${dow===0?' sun':dow===6?' sat':''}">${dowLabels[dow]}曜日</div>
+    <div class="cal-day-cell-wrap">${cellHtml}</div>
+    ${_calDayItemsHtml(dayDate)}
+  </div>`;
 }
 
 /* ══ Dense-day manual spread sheet ════════════════ */
@@ -7211,6 +7439,7 @@ function todoAllRowHtml(x){
       ${dateLbl?`<div class="todo-all-date">${dateLbl}</div>`:''}
       ${tagsHtml}
     </div>
+    ${x.done?'':`<button class="btn-edit" onclick="openStudyTimerForTodo('${x.id}')" aria-label="時間を記録して完了">${IC.timerSm}</button>`}
     <button class="btn-edit" onclick="openTodoEditSheet('${x.id}')" aria-label="編集">${IC.pencil}</button>
     <button class="today-done-item-del" onclick="deleteTodo('${x.id}')" aria-label="削除">${IC.trash}</button>
   </div>`;
@@ -7808,6 +8037,21 @@ if('serviceWorker' in navigator){
   <button class="dense-close-btn" onclick="closeDenseSheet()">閉じる</button>
 </div>
 
+<!-- 計画タブ：詳細をパッと確認できるシート -->
+<div class="overlay" id="plan-detail-overlay" onclick="closePlanDetailSheet()" style="z-index:119"></div>
+<div class="dense-sheet" id="plan-detail-sheet">
+  <div class="dense-sheet-pull"></div>
+  <div class="dense-sheet-head">
+    <div class="dense-sheet-ttl" id="plan-detail-sheet-ttl"></div>
+    <div class="dense-sheet-sub" id="plan-detail-sheet-sub"></div>
+  </div>
+  <div class="dense-sheet-scroll" id="plan-detail-sheet-scroll"></div>
+  <div style="display:flex;gap:8px;padding:0 16px 8px;flex-shrink:0">
+    <button class="dense-close-btn" style="flex:1;margin:0" onclick="closePlanDetailSheet()">閉じる</button>
+    <button class="dense-close-btn" style="flex:1;margin:0;background:var(--blue-bg);color:var(--blue)" onclick="_planDetailEditFromSheet()">編集する</button>
+  </div>
+</div>
+
 <!-- Tag manager sheet -->
 <div class="overlay" id="tag-overlay" onclick="closeTagMgr()" style="z-index:109"></div>
 <div class="tag-mgr-sheet" id="tag-mgr-sheet">
@@ -8006,6 +8250,14 @@ if('serviceWorker' in navigator){
     const p = denseSheet.querySelector('.dense-sheet-pull');
     const sc = document.getElementById('dense-sheet-scroll');
     if(p) bindPullToClose(denseSheet, p, closeDenseSheet, sc);
+  }
+
+  // plan-detail-sheet（計画の詳細をパッと確認）
+  const planDetailSheet = document.getElementById('plan-detail-sheet');
+  if(planDetailSheet){
+    const p = planDetailSheet.querySelector('.dense-sheet-pull');
+    const sc = document.getElementById('plan-detail-sheet-scroll');
+    if(p) bindPullToClose(planDetailSheet, p, closePlanDetailSheet, sc);
   }
 
   // tag-mgr-sheet（タグを管理）
