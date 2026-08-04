@@ -461,6 +461,16 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .plan-wizard-dot.done{background:var(--plan-bd)}
 .plan-wizard-dot.on{background:var(--plan);transform:scale(1.35)}
 .plan-wizard-q{font-size:17px;font-weight:800;color:var(--lbl);margin-bottom:14px;letter-spacing:.1px;line-height:1.35}
+
+/* ══ 計画タスクの編集: 1画面フォーム ══
+   新規追加はQ&A形式のウィザードのまま、既存タスクの編集だけは
+   全項目を1画面にまとめて一覧できるようにする */
+.plan-edit-sec{
+  font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;
+  color:var(--lbl3);margin:22px 0 8px;padding-top:16px;border-top:1px solid var(--sep);
+}
+.plan-edit-sec:first-child{margin-top:0;padding-top:0;border-top:none}
+
 .plan-type-seg button{
   flex:1;border:none;background:none;border-radius:9px;padding:9px 4px;font-size:12.5px;font-weight:600;
   color:var(--lbl2);cursor:pointer;font-family:inherit;transition:background .12s,color .12s
@@ -1610,11 +1620,19 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .cal-day-view .cal-cell{width:76px;height:76px;aspect-ratio:unset}
 .cal-day-view .cal-num{width:36px;height:36px;font-size:17px}
 .cal-day-list{width:100%;display:flex;flex-direction:column;margin-top:6px}
-.cal-day-item{display:flex;align-items:center;gap:8px;padding:9px 2px;border-bottom:.5px solid var(--sep)}
+.cal-day-item{display:flex;flex-direction:column;gap:7px;padding:10px 2px;border-bottom:.5px solid var(--sep)}
 .cal-day-item:last-child{border-bottom:none}
+.cal-day-item-top{display:flex;align-items:center;gap:8px}
 .cal-day-item-dot{width:7px;height:7px;border-radius:2px;flex-shrink:0}
 .cal-day-item-name{flex:1;min-width:0;font-size:13.5px;font-weight:600;color:var(--lbl);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cal-day-item-label{font-size:11px;color:var(--lbl3);flex-shrink:0}
+.cal-day-item-edit{
+  width:26px;height:26px;border-radius:50%;flex-shrink:0;border:none;
+  background:var(--fill);color:var(--lbl2);display:flex;align-items:center;justify-content:center;
+  cursor:pointer;padding:0
+}
+.cal-day-item-edit:active{opacity:.6}
+.cal-day-item-btns{display:flex;gap:6px;flex-wrap:wrap;padding-left:15px}
 .cal-day-empty{width:100%;text-align:center;padding:20px 0 4px;color:var(--lbl3);font-size:13px}
 
 .dense-sheet{
@@ -1670,6 +1688,13 @@ button,a,input,[role="button"]{touch-action:manipulation}
   transition:background .12s,border-color .12s;padding:0
 }
 .todo-all-check.on{background:#059669;border-color:#059669}
+.todo-all-timer{
+  width:24px;height:24px;border-radius:50%;flex-shrink:0;
+  border:1.5px solid var(--blue-bd);background:var(--blue-bg);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;color:var(--blue-d);
+  transition:opacity .12s;padding:0
+}
+.todo-all-timer:active{opacity:.6}
 .todo-all-body{flex:1;min-width:0}
 .todo-all-name{font-size:14px;font-weight:600;color:var(--lbl);word-break:break-word;overflow-wrap:break-word}
 .todo-all-name.done{color:var(--lbl3);text-decoration:line-through}
@@ -3359,7 +3384,7 @@ function _planStepPeriodHtml(d){
       </div>`:''}
     </div>`;
 }
-function _planStepRepeatHtml(d){
+function _planStepRepeatHtml(d, singleScreen){
   const typeSegHtml = `<div class="plan-type-seg">
     <button class="${d.type==='daily'?'on':''}" onclick="selectPlanType('daily')">毎日</button>
     <button class="${d.type==='weekday'?'on':''}" onclick="selectPlanType('weekday')">曜日指定</button>
@@ -3381,10 +3406,11 @@ function _planStepRepeatHtml(d){
   } else if(d.type==='daily'){
     repeatSubHtml=`<div style="font-size:12.5px;color:var(--lbl2)">毎日「今日」タブに表示されます</div>`;
   } else if(d.type==='goal'){
-    repeatSubHtml=`<div style="font-size:12.5px;color:var(--lbl2)">曜日や間隔を決めず、前の画面で入力した期限・個数だけで進捗を管理します</div>`;
+    repeatSubHtml=`<div style="font-size:12.5px;color:var(--lbl2)">曜日や間隔を決めず、${singleScreen?'上の':'前の画面で入力した'}期限・個数だけで進捗を管理します</div>`;
   }
+  const topSub = singleScreen ? '上の実施期間を参考に、実施パターンを選んでください' : '前の画面のペースを参考に、実施パターンを選んでください';
   return `
-    <div class="plan-sec-sub" style="margin-top:-6px">前の画面のペースを参考に、実施パターンを選んでください</div>
+    <div class="plan-sec-sub" style="margin-top:-6px">${topSub}</div>
     ${typeSegHtml}
     <div class="plan-sub-card">${repeatSubHtml}</div>`;
 }
@@ -3442,6 +3468,33 @@ function _planStepConfirmHtml(d){
     </div>
     <div class="plan-sec-sub" style="margin-top:10px">内容を確認して「${_planEditId?'保存する':'追加する'}」を押してください。前の画面に戻って修正することもできます。</div>`;
 }
+// 既存タスクの編集用: ウィザードの各ステップの中身を、見出し付きで
+// 1画面に縦に並べて表示する（確認ステップは不要なので省略）
+function _planEditFormHtml(d){
+  return `
+    <div class="plan-edit-sec">タスク名</div>
+    ${_planStepNameHtml(d)}
+
+    <div class="plan-edit-sec">タグ</div>
+    ${_planStepTagsHtml(d)}
+
+    <div class="plan-edit-sec">実施期間</div>
+    ${_planStepPeriodHtml(d)}
+
+    <div class="plan-edit-sec">くり返し方</div>
+    ${_planStepRepeatHtml(d, true)}
+
+    <div class="plan-edit-sec">表示名の付け方</div>
+    ${_planStepNameModeHtml(d)}
+  `;
+}
+function _renderPlanEditActions(){
+  const wrap=document.getElementById('plan-modal-actions'); if(!wrap) return;
+  wrap.innerHTML = `
+    <button class="edit-cancel" onclick="closePlanModal()">キャンセル</button>
+    <button class="edit-save" style="background:var(--plan)" onclick="savePlanTask()">保存する</button>
+  `;
+}
 function _renderPlanWizardActions(stepKey){
   const wrap=document.getElementById('plan-modal-actions'); if(!wrap) return;
   const isFirst = _planStep===0;
@@ -3454,6 +3507,16 @@ function _renderPlanWizardActions(stepKey){
 function renderPlanModalBody(){
   const body=document.getElementById('plan-modal-body'); if(!body||!_planDraft) return;
   const d=_planDraft;
+
+  // 既存タスクの編集は1画面フォームで表示する（一覧性を優先）。
+  // 新規追加はこれまで通りQ&A形式のウィザードのまま。
+  if(_planEditId){
+    body.innerHTML = _planEditFormHtml(d);
+    renderPlanTagSel();
+    _renderPlanEditActions();
+    return;
+  }
+
   const steps=PLAN_WIZARD_STEPS;
   if(_planStep==null||_planStep<0) _planStep=0;
   if(_planStep>steps.length-1) _planStep=steps.length-1;
@@ -3519,10 +3582,13 @@ function planWizardJump(i){
 }
 function savePlanTask(){
   if(!_planDraft) return;
+  // 1画面フォームではステップ遷移時の同期が無いため、保存前に必ずDOMの最新値を取り込む
+  _syncPlanDraftFromDom();
+  _syncPlanNameFieldsFromDom();
   const d=_planDraft;
   const name=(d.name||'').trim();
   if(!name){
-    _planStep=0; renderPlanModalBody();
+    if(!_planEditId){ _planStep=0; renderPlanModalBody(); }
     setTimeout(()=>{
       const inp=document.getElementById('plan-name-inp');
       if(inp){ inp.classList.remove('shake'); void inp.offsetWidth; inp.classList.add('shake'); inp.focus(); }
@@ -3530,7 +3596,7 @@ function savePlanTask(){
     haptic('medium'); return;
   }
   if(d.type==='weekday' && !d.weekdays.length){
-    _planStep=PLAN_WIZARD_STEPS.indexOf('repeat'); renderPlanModalBody();
+    if(!_planEditId){ _planStep=PLAN_WIZARD_STEPS.indexOf('repeat'); renderPlanModalBody(); }
     toast(IC.alertSm,'曜日を1つ以上選んでください'); haptic('medium'); return;
   }
   const tags=[...d.tags];
@@ -6610,25 +6676,54 @@ function _buildCalWeekGridHtml(weekStart, evMap){
   return html;
 }
 
-/* その日の復習・計画タスク・ToDoを一覧テキストで返す（日表示でパッと内容が分かるように） */
+/* 移動先候補ボタン（-3〜+3日、過去・当日は除外）。日表示・過密シート共通で使う */
+function _calShiftBtnsHtml(dateStr, id, kind){
+  const today = td();
+  const deltas = [-3,-2,-1,1,2,3];
+  return deltas.map(d => {
+    const dest = addD(dateStr, d);
+    if(dest <= today) return ''; // 過去はスキップ
+    if(dest === dateStr) return '';
+    const destCount = U.filter(u => !u.done && u.nextDate === dest).length
+      + PLAN.filter(p => !p.done && p.type!=='daily' && planCalDate(p) === dest).length
+      + TODOS.filter(x => !x.done && x.date === dest).length;
+    const warn = destCount >= CAL_DENSE_OVER ? '⚠️' : '';
+    const label = (d > 0 ? '+' : '') + d + '日' + warn;
+    const fn = kind==='plan' ? `denseShiftPlan('${id}','${dest}')` : kind==='todo' ? `denseShiftTodo('${id}','${dest}')` : `denseShiftUnit('${id}','${dest}')`;
+    return `<button class="dense-shift-btn" onclick="${fn}">${label}</button>`;
+  }).join('');
+}
+
+/* その日の復習・計画タスク・ToDoを一覧で返す（日表示の画面上でそのまま移動・編集できる） */
 function _calDayItemsHtml(dateStr){
   const reviewCands = U.filter(u => !u.done && u.nextDate === dateStr);
   const planCands = PLAN.filter(p => !p.done && p.type!=='daily' && planCalDate(p) === dateStr);
   const todoCands = TODOS.filter(x => !x.done && x.date === dateStr);
   const rows = [
-    ...reviewCands.map(u => ({ name: u.name, label: STEPS[u.step] || `${u.step}回目`, color: 'var(--blue)' })),
-    ...planCands.map(p => ({ name: planDisplayName(p), label: p.type==='goal' ? '目標の期限' : PLAN_TYPE_LABEL[p.type], color: '#7C3AED' })),
-    ...todoCands.map(x => ({ name: x.text, label: 'ToDo', color: '#F59E0B' })),
+    ...reviewCands.map(u => ({ id: u.id, kind: 'review', name: u.name, label: STEPS[u.step] || `${u.step}回目`, color: 'var(--blue)' })),
+    ...planCands.map(p => ({ id: p.id, kind: 'plan', name: planDisplayName(p), label: p.type==='goal' ? '目標の期限' : PLAN_TYPE_LABEL[p.type], color: '#7C3AED' })),
+    ...todoCands.map(x => ({ id: x.id, kind: 'todo', name: x.text, label: 'ToDo', color: '#F59E0B' })),
   ];
   if(!rows.length){
     return `<div class="cal-day-empty">この日に予定はありません</div>`;
   }
-  return `<div class="cal-day-list">${rows.map(r => `
+  return `<div class="cal-day-list">${rows.map(r => {
+    // 復習カード（単語・暗記カード）は編集機能が無いため移動のみ。計画・ToDoは編集ボタンも出す
+    const editFn = r.kind==='todo' ? `openTodoEditSheet('${r.id}')`
+      : r.kind==='plan' ? `openPlanDetailSheet('${r.id}')`
+      : '';
+    const editBtn = editFn ? `<button class="cal-day-item-edit" onclick="event.stopPropagation();${editFn}" aria-label="編集">${IC.pencil}</button>` : '';
+    return `
     <div class="cal-day-item">
-      <span class="cal-day-item-dot" style="background:${r.color}"></span>
-      <span class="cal-day-item-name">${esc(r.name)}</span>
-      <span class="cal-day-item-label">${esc(r.label)}</span>
-    </div>`).join('')}</div>`;
+      <div class="cal-day-item-top">
+        <span class="cal-day-item-dot" style="background:${r.color}"></span>
+        <span class="cal-day-item-name">${esc(r.name)}</span>
+        <span class="cal-day-item-label">${esc(r.label)}</span>
+        ${editBtn}
+      </div>
+      <div class="cal-day-item-btns">${_calShiftBtnsHtml(dateStr, r.id, r.kind)}</div>
+    </div>`;
+  }).join('')}</div>`;
 }
 
 /* 日表示グリッドのHTML文字列を生成する純粋関数。横スワイプで前後の日に移動できる（_calAttachSwipeを共用） */
@@ -6688,21 +6783,7 @@ function _renderDenseSheet(){
   }
 
   // 移動先の候補日ボタンを生成（-3〜+3日、過去・当日は除外）
-  function shiftBtns(id, kind){
-    const deltas = [-3,-2,-1,1,2,3];
-    return deltas.map(d => {
-      const dest = addD(dateStr, d);
-      if(dest <= today) return ''; // 過去はスキップ
-      if(dest === dateStr) return '';
-      const destCount = U.filter(u => !u.done && u.nextDate === dest).length
-        + PLAN.filter(p => !p.done && p.type!=='daily' && planCalDate(p) === dest).length
-        + TODOS.filter(x => !x.done && x.date === dest).length;
-      const warn = destCount >= CAL_DENSE_OVER ? '⚠️' : '';
-      const label = (d > 0 ? '+' : '') + d + '日' + warn;
-      const fn = kind==='plan' ? `denseShiftPlan('${id}','${dest}')` : kind==='todo' ? `denseShiftTodo('${id}','${dest}')` : `denseShiftUnit('${id}','${dest}')`;
-      return `<button class="dense-shift-btn" onclick="${fn}">${label}</button>`;
-    }).join('');
-  }
+  function shiftBtns(id, kind){ return _calShiftBtnsHtml(dateStr, id, kind); }
 
   const reviewHtml = reviewCands.map(u => {
     const stepLabel = STEPS[u.step] || (u.step + '回目');
@@ -7623,14 +7704,16 @@ function todoFilterListHtml(){
 function todoAllRowHtml(x){
   const dateLbl = x.date ? fmtShortText(x.date) : '';
   const tagsHtml = (x.tags&&x.tags.length) ? `<div class="card-tags-row" style="margin-top:3px">${x.tags.map(tid=>tagHtml(tid)).join('')}</div>` : '';
+  const leadBtn = x.done
+    ? `<button class="todo-all-check on" onclick="toggleTodo('${x.id}')" aria-label="未完了に戻す">${IC.check}</button>`
+    : `<button class="todo-all-timer" onclick="openStudyTimerForTodo('${x.id}')" aria-label="時間を記録して完了">${IC.timerSm}</button>`;
   return `<div class="todo-all-row" id="todo-all-row-${x.id}">
-    <button class="todo-all-check${x.done?' on':''}" onclick="toggleTodo('${x.id}')" aria-label="${x.done?'未完了に戻す':'完了にする'}">${x.done?IC.check:''}</button>
+    ${leadBtn}
     <div class="todo-all-body">
       <div class="todo-all-name${x.done?' done':''}">${esc(x.text)}${(x.half&&!x.done)?'<span class="todo-half-tag">途中まで</span>':''}</div>
       ${dateLbl?`<div class="todo-all-date">${dateLbl}</div>`:''}
       ${tagsHtml}
     </div>
-    ${x.done?'':`<button class="btn-edit" onclick="openStudyTimerForTodo('${x.id}')" aria-label="時間を記録して完了">${IC.timerSm}</button>`}
     <button class="btn-edit" onclick="openTodoEditSheet('${x.id}')" aria-label="編集">${IC.pencil}</button>
     <button class="today-done-item-del" onclick="deleteTodo('${x.id}')" aria-label="削除">${IC.trash}</button>
   </div>`;
