@@ -308,12 +308,16 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .today-grid .sec{grid-column:1/-1;margin:14px 2px 2px}
 .today-grid .sec.sec-first{margin-top:2px}
 
-/* カード本体を縦に伸ばし、下部のボタンを底辺に揃える */
+/* カード本体を正方形に揃える。行ごとにバラバラの高さにならないよう、
+   縦横比を固定して常に同じ大きさの正方形として並べる */
+.today-grid .cw{aspect-ratio:1/1}
 .today-grid .card{
   padding:12px 11px 11px;
   border-radius:14px;
   display:flex;flex-direction:column;
   height:100%;
+  aspect-ratio:1/1;
+  overflow:hidden;
   box-shadow:0 1px 2px rgba(0,0,0,.04),0 3px 10px rgba(0,0,0,.05);
   transition:box-shadow .15s ease;
 }
@@ -2734,7 +2738,7 @@ function planCardHtml(p, opts){
           <div class="plan-type-badge">${IC.calendar} 目標 · ${fmtShort(p.deadline)}まで</div>
         </div>
         <div class="plan-progress-lbl"><span>${p.doneCount||0} / ${p.totalCount}</span><span>${pct}%</span></div>
-        <div class="plan-progress-track"><div class="plan-progress-fill" style="width:${pct}%"></div></div>
+        ${compact ? '' : `<div class="plan-progress-track"><div class="plan-progress-fill" style="width:${pct}%"></div></div>`}
         ${paceLbl?`<div class="plan-pace">${IC.zap.replace('white','currentColor')}${paceLbl}</div>`:''}
         ${(p.done||opts.hideComplete)?'':`<div class="acts">
           <button class="btn-plan-ok" onclick="${opts.todayMode?`openStudyTimerForPlan('${p.id}')`:`planComplete('${p.id}')`}">${opts.todayMode?IC.timerSm:IC.check} ${okLabel}</button>
@@ -5096,7 +5100,6 @@ function rUpcoming(list){
       <div id="cal-forecast" class="cal-forecast" style="display:${_calOpen && _calForecastText(_calEvMapForTpl||{}) ? 'flex':'none'}">${_calOpen ? _calForecastText(_calEvMapForTpl||{}) : ''}</div>
       <div class="cal-mode-toggle">
         <button class="cal-mode-btn${_calViewMode==='month'?' active':''}" data-mode="month" onclick="calSetViewMode('month')">月</button>
-        <button class="cal-mode-btn${_calViewMode==='week'?' active':''}" data-mode="week" onclick="calSetViewMode('week')">週</button>
         <button class="cal-mode-btn${_calViewMode==='day'?' active':''}" data-mode="day" onclick="calSetViewMode('day')">日</button>
       </div>
     </div>
@@ -5105,7 +5108,7 @@ function rUpcoming(list){
       <div id="cal-title" class="cal-title">${_calTitleText()}</div>
       <button class="cal-nav-btn" onclick="calNav(1)" aria-label="次へ">›</button>
     </div>
-    <div id="cal-grid" class="cal-grid${_calViewMode==='day'?' cal-grid-day':''}">${_calOpen ? (_calViewMode==='day' ? _buildCalDayGridHtml(_calDayDate, _calEvMapForTpl) : _calViewMode==='week' ? _buildCalWeekGridHtml(_calWeekStart, _calEvMapForTpl) : _buildCalMonthGridHtml(_calYear, _calMonth, _calEvMapForTpl)) : ''}</div>
+    <div id="cal-grid" class="cal-grid${_calViewMode==='day'?' cal-grid-day':''}">${_calOpen ? (_calViewMode==='day' ? _buildCalDayGridHtml(_calDayDate, _calEvMapForTpl) : _buildCalMonthGridHtml(_calYear, _calMonth, _calEvMapForTpl)) : ''}</div>
     <div id="cal-legend" class="cal-legend">${_calOpen ? _calLegendHtml() : ''}</div>
   </div>`;
 
@@ -6235,30 +6238,29 @@ function saveStudyRecordForTodo(isComplete){
     const totalSec=_timerElapsed + currentSec;
     if(totalSec>0) minutes=Math.max(1,Math.ceil(totalSec/60));
   }
-  if(minutes<=0){
-    toast(IC.alert,'分数を入力してください');
-    haptic('medium'); return;
-  }
+  // 0分（記録なし）でも、ToDoの完了操作自体は妨げない。時間の記録だけスキップする。
   const noteInp=document.getElementById('study-note-inp');
   const note=noteInp?.value.trim()||'';
   const _savedTodoId=_timerTodoId;
   const item=TODOS.find(x=>x.id===_savedTodoId);
   const title=item?item.text:'';
   const resolvedDate=_resolveStudyDate();
-  if(!resolvedDate){
+  if(minutes>0 && !resolvedDate){
     toast(IC.alert,'日付を選択してください');
     haptic('medium'); return;
   }
-  addStudyLog({
-    date:resolvedDate,
-    unitId:null,
-    planId:null,
-    title:title||null,
-    tagIds:[],
-    minutes,
-    note:note||null,
-    createdAt:Date.now()
-  });
+  if(minutes>0){
+    addStudyLog({
+      date:resolvedDate,
+      unitId:null,
+      planId:null,
+      title:title||null,
+      tagIds:[],
+      minutes,
+      note:note||null,
+      createdAt:Date.now()
+    });
+  }
   closeStudySheet();
   if(item){
     item.done=isComplete;
@@ -6268,7 +6270,7 @@ function saveStudyRecordForTodo(isComplete){
     saveTodos();
   }
   render();
-  toast(IC.checkCircle, fmtMinutes(minutes)+'を記録しました ✅');
+  toast(IC.checkCircle, minutes>0 ? (fmtMinutes(minutes)+'を記録しました ✅') : (isComplete?'完了にしました ✅':'途中までに設定しました'));
   haptic('medium');
 }
 
@@ -6277,46 +6279,31 @@ function saveStudyRecordForTodo(isComplete){
 let _calOpen  = false;   // トグル開閉
 let _calYear  = null;    // 表示中の年（null = 初期化前）
 let _calMonth = null;    // 表示中の月（0-11）
-let _calViewMode  = 'month'; // 'month' | 'week' | 'day'
-let _calWeekStart = null;    // 週表示中の日曜日 'YYYY-MM-DD'（null = 初期化前）
+let _calViewMode  = 'month'; // 'month' | 'day'
 let _calDayDate = null;      // 日表示中の日付 'YYYY-MM-DD'（null = 初期化前）
-
-function _weekStartOf(dateStr){
-  const dow = new Date(dateStr+'T00:00:00').getDay();
-  return addD(dateStr, -dow);
-}
 
 function _calInit(){
   if(_calYear !== null) return;
   const now = new Date();
   _calYear  = now.getFullYear();
   _calMonth = now.getMonth();
-  _calWeekStart = _weekStartOf(td());
   _calDayDate = td();
 }
 
-/* 前へボタンを無効化すべきか（月表示・週表示・日表示共通） */
+/* 前へボタンを無効化すべきか（月表示・日表示共通） */
 function _calPrevDisabled(){
   if(_calViewMode === 'day') return _calDayDate <= td();
-  if(_calViewMode === 'week') return _calWeekStart <= _weekStartOf(td());
   const now = new Date();
   return _calYear === now.getFullYear() && _calMonth === now.getMonth();
 }
 
-/* ヘッダー・サブタイトルに表示するテキスト（月表示・週表示・日表示共通） */
+/* ヘッダー・サブタイトルに表示するテキスト（月表示・日表示共通） */
 function _calTitleText(){
   const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
   const dowLabels = ['日','月','火','水','木','金','土'];
   if(_calViewMode === 'day'){
     const d = new Date(_calDayDate+'T00:00:00');
     return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${dowLabels[d.getDay()]}）`;
-  }
-  if(_calViewMode === 'week'){
-    const start = _calWeekStart, end = addD(_calWeekStart, 6);
-    const sd = new Date(start+'T00:00:00'), ed = new Date(end+'T00:00:00');
-    return sd.getMonth() === ed.getMonth()
-      ? `${sd.getFullYear()}年${sd.getMonth()+1}月 ${sd.getDate()}〜${ed.getDate()}日`
-      : `${sd.getMonth()+1}/${sd.getDate()}〜${ed.getMonth()+1}/${ed.getDate()}`;
   }
   return `${_calYear}年 ${months[_calMonth]}`;
 }
@@ -6325,23 +6312,12 @@ function calSetViewMode(mode){
   _calInit();
   if(_calViewMode === mode) return;
   const now = new Date();
-  if(mode === 'week'){
-    const anchor = _calViewMode === 'day'
-      ? _calDayDate
-      : (_calYear === now.getFullYear() && _calMonth === now.getMonth())
-        ? td()
-        : `${_calYear}-${String(_calMonth+1).padStart(2,'0')}-01`;
-    _calWeekStart = _weekStartOf(anchor);
-  } else if(mode === 'day'){
-    if(_calViewMode === 'week'){
-      _calDayDate = _calWeekStart < td() ? td() : _calWeekStart;
-    } else {
-      _calDayDate = (_calYear === now.getFullYear() && _calMonth === now.getMonth())
-        ? td()
-        : `${_calYear}-${String(_calMonth+1).padStart(2,'0')}-01`;
-    }
+  if(mode === 'day'){
+    _calDayDate = (_calYear === now.getFullYear() && _calMonth === now.getMonth())
+      ? td()
+      : `${_calYear}-${String(_calMonth+1).padStart(2,'0')}-01`;
   } else {
-    const base = _calViewMode === 'day' ? _calDayDate : _calWeekStart;
+    const base = _calDayDate;
     const d = new Date(base+'T00:00:00');
     _calYear  = d.getFullYear();
     _calMonth = d.getMonth();
@@ -6371,9 +6347,6 @@ function calNav(delta){
   if(_calViewMode === 'day'){
     if(delta < 0 && _calPrevDisabled()) return;
     _calDayDate = addD(_calDayDate, delta);
-  } else if(_calViewMode === 'week'){
-    if(delta < 0 && _calPrevDisabled()) return;
-    _calWeekStart = addD(_calWeekStart, delta * 7);
   } else {
     _calMonth += delta;
     if(_calMonth < 0){ _calMonth = 11; _calYear--; }
@@ -6461,8 +6434,6 @@ function _renderCalGrid(){
   const evMap = _calEventMap();
   gridEl.innerHTML = _calViewMode === 'day'
     ? _buildCalDayGridHtml(_calDayDate, evMap)
-    : _calViewMode === 'week'
-    ? _buildCalWeekGridHtml(_calWeekStart, evMap)
     : _buildCalMonthGridHtml(_calYear, _calMonth, evMap);
 
   if(forecastEl){
@@ -6657,21 +6628,6 @@ function _buildCalMonthGridHtml(year, month, evMap){
     const dow = i % 7; // 0=日,6=土
 
     html += _buildCalCellHtml(dateStr, cellDate, dow, { isOther, evMap, today, gapDates });
-  }
-  return html;
-}
-
-/* 週表示グリッドのHTML文字列を生成する純粋関数 */
-function _buildCalWeekGridHtml(weekStart, evMap){
-  const today = td();
-  evMap = evMap || _calEventMap();
-  const gapDates = _calGapDates(evMap);
-
-  let html = DOW_LABELS_HTML;
-  for(let i = 0; i < 7; i++){
-    const dateStr = addD(weekStart, i);
-    const cellDate = new Date(dateStr+'T00:00:00').getDate();
-    html += _buildCalCellHtml(dateStr, cellDate, i, { isOther:false, evMap, today, gapDates });
   }
   return html;
 }
