@@ -40,6 +40,9 @@
   --safe-top:env(safe-area-inset-top,0px);
   --safe-left:env(safe-area-inset-left,0px);
   --safe-right:env(safe-area-inset-right,0px);
+  /* PC・タブレットなど画面が広い環境でも、スマホと同じ横幅のアプリ枠として
+     中央に表示するための基準幅。100vw を直接使っている箇所もこれで頭打ちにする */
+  --app-w:480px;
 }
 
 
@@ -59,7 +62,21 @@ body{
   overscroll-behavior:none;
   font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku Gothic ProN',sans-serif;
   color:var(--lbl);-webkit-font-smoothing:antialiased;
+  /* PC等の広い画面では、スマホ実機幅（--app-w）で中央寄せしたアプリ枠として表示する。
+     スマホ幅の画面では max-width が画面幅を超えないので、これまでと見た目は変わらない。
+     transform を持たせることで、このアプリ内の position:fixed な要素（シート／オーバーレイ／
+     FABなど）すべての基準がこのアプリ枠になり、ブラウザ全体に広がってしまうのを防ぐ */
+  max-width:var(--app-w);
+  margin:0 auto;
+  position:relative;
+  transform:translateZ(0);
+  box-shadow:0 0 0 1px rgba(0,0,0,.06);
 }
+/* アプリ枠の外側（PC等の余白部分）を少し暗いグレーにして、実機フレームっぽく見せる */
+@media (min-width:520px){
+  html{ background:#DADEE6; }
+}
+
 
 /* ══ App shell ═════════════════════════ */
 #app{
@@ -143,7 +160,7 @@ body.pwa .navbar{
 .icrop-overlay.on{background:rgba(0,0,0,.55);pointer-events:all}
 .icrop-modal{
   background:var(--card);border-radius:20px;
-  width:min(360px, calc(100vw - 40px));
+  width:min(360px, calc(min(100vw, var(--app-w)) - 40px));
   padding:18px 18px calc(18px + var(--safe-bottom));
   transform:scale(.92);opacity:0;transition:transform .25s cubic-bezier(.32,.72,0,1),opacity .2s;
   box-shadow:0 20px 60px rgba(0,0,0,.3);
@@ -965,7 +982,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
   font-size:14px;font-weight:500;z-index:999;
   opacity:0;transition:opacity .2s,transform .28s cubic-bezier(.34,1.56,.64,1);
   pointer-events:none;display:flex;align-items:center;gap:8px;
-  max-width:calc(100vw - 32px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+  max-width:calc(min(100vw, var(--app-w)) - 32px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis
 }
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 
@@ -1069,7 +1086,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
   background:#fff;
   border-radius:20px;
   padding:20px 20px 16px;
-  max-width:calc(100vw - 40px);
+  max-width:calc(min(100vw, var(--app-w)) - 40px);
   width:320px;
   box-shadow:0 8px 40px rgba(0,0,0,.20);
   pointer-events:none;
@@ -2376,8 +2393,8 @@ button,a,input,[role="button"]{touch-action:manipulation}
    B5 fix: define proper large/small variants, no string.replace() hacks
 ══════════════════════════════════════════ */
 /* ══ App version ════════════════════════ */
-const APP_VERSION = 'v2.7.0';
-const APP_BUILD   = '2026-08-03';
+const APP_VERSION = 'v2.8.0';
+const APP_BUILD   = '2026-08-04';
 
 const IC = {
   check:      `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
@@ -4811,7 +4828,7 @@ function celebrate(name){
   for(let i=0;i<28;i++){
     const el=document.createElement('div');
     el.className='confetti-piece';
-    el.style.left=Math.random()*100+'vw';
+    el.style.left=Math.random()*100+'%';
     el.style.top='-10px';
     el.style.background=COLORS[Math.floor(Math.random()*COLORS.length)];
     const dur=1.2+Math.random()*1.6;
@@ -8742,7 +8759,7 @@ function _showObStep(idx){
     const svgMaskW = document.getElementById('ob-svg-mask');
     if(svgMaskW){
       // Full dim with no cutout for welcome/pwa screens
-      svgMaskW.setAttribute('viewBox', `0 0 ${window.innerWidth} ${window.innerHeight}`);
+      svgMaskW.setAttribute('viewBox', `0 0 ${document.body.clientWidth} ${document.body.clientHeight}`);
       const cr = document.getElementById('ob-cutout-rect');
       if(cr){ cr.setAttribute('width','0'); cr.setAttribute('height','0'); }
       svgMaskW.classList.add('on');
@@ -8793,7 +8810,17 @@ function _showObStep(idx){
 }
 
 function _positionSpotlight(targetEl, step, bubble, spotlight, dotsHtml){
-    const rect = targetEl.getBoundingClientRect();
+    // PC等の広い画面では body がアプリ枠として中央寄せされており、fixed要素は
+    // viewport ではなく body 基準で配置されるため、getBoundingClientRect() の
+    // viewport座標から body の左上分を差し引いて body 相対座標に変換する
+    const bodyRect = document.body.getBoundingClientRect();
+    const rawRect = targetEl.getBoundingClientRect();
+    const rect = {
+      left: rawRect.left - bodyRect.left, top: rawRect.top - bodyRect.top,
+      right: rawRect.right - bodyRect.left, bottom: rawRect.bottom - bodyRect.top,
+      width: rawRect.width, height: rawRect.height
+    };
+    const frameW = document.body.clientWidth, frameH = document.body.clientHeight;
     const pad = 10;
     const sl = spotlight;
     sl.style.left   = (rect.left - pad) + 'px';
@@ -8806,7 +8833,7 @@ function _positionSpotlight(targetEl, step, bubble, spotlight, dotsHtml){
     const svgMask = document.getElementById('ob-svg-mask');
     const cutoutRect = document.getElementById('ob-cutout-rect');
     if(svgMask && cutoutRect){
-      svgMask.setAttribute('viewBox', `0 0 ${window.innerWidth} ${window.innerHeight}`);
+      svgMask.setAttribute('viewBox', `0 0 ${frameW} ${frameH}`);
       cutoutRect.setAttribute('x', rect.left - pad);
       cutoutRect.setAttribute('y', rect.top - pad);
       cutoutRect.setAttribute('width', rect.width + pad*2);
@@ -8828,14 +8855,14 @@ function _positionSpotlight(targetEl, step, bubble, spotlight, dotsHtml){
 
     // Position bubble — auto-detect above/below based on available space
     bubble.style.cssText = '';
-    const bubbleW = Math.min(320, window.innerWidth - 40);
+    const bubbleW = Math.min(320, frameW - 40);
     const bubbleEstH = 260; // estimated bubble height
 
     let bubbleLeft = rect.left + rect.width/2 - bubbleW/2;
-    bubbleLeft = Math.max(20, Math.min(bubbleLeft, window.innerWidth - bubbleW - 20));
+    bubbleLeft = Math.max(20, Math.min(bubbleLeft, frameW - bubbleW - 20));
 
     // Decide: place above if there's not enough room below, else place below
-    const spaceBelow = window.innerHeight - rect.bottom - pad - 16;
+    const spaceBelow = frameH - rect.bottom - pad - 16;
     const spaceAbove = rect.top - pad - 16;
     const placeAbove = spaceBelow < bubbleEstH && spaceAbove > spaceBelow;
 
@@ -8849,8 +8876,8 @@ function _positionSpotlight(targetEl, step, bubble, spotlight, dotsHtml){
       bubble.classList.add('arrow-up');
       bubbleTop = rect.bottom + pad + 16;
       // if still out of screen, clamp upward
-      if(bubbleTop + bubbleEstH > window.innerHeight - 20){
-        bubbleTop = window.innerHeight - bubbleEstH - 20;
+      if(bubbleTop + bubbleEstH > frameH - 20){
+        bubbleTop = frameH - bubbleEstH - 20;
       }
       bubbleTop = Math.max(60, bubbleTop);
     }
