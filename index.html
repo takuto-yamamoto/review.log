@@ -291,6 +291,78 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .step-mini-lbl{font-size:11.5px;color:var(--lbl2);font-weight:700;letter-spacing:.1px;white-space:nowrap}
 .step-mini-lbl.active{color:var(--blue)}
 
+/* ══════════════════════════════════════════════════════
+   今日タブ: 2カラム・グリッドレイアウト
+   一覧性を上げるため、今日タブのカードだけ横幅を半分にして
+   1行に2枚並べる。他タブ（予定・計画）のカードは対象外。
+   ══════════════════════════════════════════════════════ */
+.today-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:9px 9px;
+  margin-bottom:4px;
+  align-items:start;
+}
+.today-grid .cw{margin-bottom:0}
+/* 「今日が期限」等の見出しは2カラムをまたいで表示 */
+.today-grid .sec{grid-column:1/-1;margin:14px 2px 2px}
+.today-grid .sec.sec-first{margin-top:2px}
+
+/* カード本体を縦に伸ばし、下部のボタンを底辺に揃える */
+.today-grid .card{
+  padding:12px 11px 11px;
+  border-radius:14px;
+  display:flex;flex-direction:column;
+  height:100%;
+  box-shadow:0 1px 2px rgba(0,0,0,.04),0 3px 10px rgba(0,0,0,.05);
+  transition:box-shadow .15s ease;
+}
+.today-grid .card-top{margin-bottom:3px;gap:4px}
+.today-grid .card-name{
+  font-size:13.5px;line-height:1.3;letter-spacing:-.1px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.today-grid .card-icon-row{gap:0}
+.today-grid .btn-edit,.today-grid .btn-del{
+  min-width:27px;min-height:27px;padding:0;border-radius:7px;
+}
+.today-grid .btn-edit svg,.today-grid .btn-del svg{width:13px;height:13px}
+.today-grid .card-tags-row{gap:3px;margin-bottom:5px}
+.today-grid .card-tags-row .tag-chip{padding:2px 7px;font-size:9.5px;gap:3px}
+.today-grid .card-tags-row .tag-dot{width:5px;height:5px}
+
+.today-grid .card-status-row{margin-bottom:9px;gap:5px}
+.today-grid .card-when{margin-bottom:6px}
+.today-grid .card-when-chip{font-size:10px;padding:3px 7px;letter-spacing:0}
+.today-grid .card-when-chip svg{width:10px;height:10px}
+.today-grid .step-mini-lbl{font-size:10.5px}
+
+.today-grid .card-meta-row{margin-bottom:6px;gap:5px}
+.today-grid .plan-type-badge{font-size:9.5px;padding:2px 7px;margin-bottom:0}
+.today-grid .plan-type-badge svg{width:10px;height:10px}
+.today-grid .plan-progress-lbl{font-size:10px;margin-bottom:2px}
+.today-grid .plan-progress-track{height:5px;margin:5px 0 3px}
+.today-grid .plan-pace{font-size:10px;padding:6px 8px;margin:5px 0;gap:4px}
+.today-grid .plan-pace svg{width:11px;height:11px}
+
+/* アクション行: 「完了」ボタンを主役に、延期はアイコンのみの正方形に圧縮して
+   横幅が半分になっても2つのボタンが窮屈にならないようにする */
+.today-grid .acts{
+  margin-top:auto;padding-top:4px;gap:6px;
+}
+.today-grid .btn-ok,.today-grid .btn-plan-ok{
+  min-height:38px;padding:8px 4px;font-size:11.5px;border-radius:10px;gap:4px;
+  letter-spacing:0;line-height:1.2;
+  box-shadow:0 1px 3px rgba(0,0,0,.08);
+}
+.today-grid .btn-ok svg,.today-grid .btn-plan-ok svg{flex-shrink:0;width:13px;height:13px}
+/* バグ修正: アイコンのみのボタンは中身が1つだけになるため、
+   justify-content を明示しないと左端に寄ってしまう */
+.today-grid .btn-snooze{
+  flex:0 0 auto;width:38px;min-height:38px;padding:0;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+}
+.today-grid .todo-half-tag{font-size:9px;padding:1px 5px;margin-left:4px}
 
 /* U1 fix: 44px minimum touch target for buttons */
 .acts{display:flex;gap:7px}
@@ -1964,6 +2036,16 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .settings-row-body{flex:1;min-width:0}
 .settings-row-title{font-size:15px;font-weight:600;color:var(--lbl)}
 .settings-row-sub{font-size:12px;color:var(--lbl2);margin-top:2px;line-height:1.4}
+
+/* ══ 今日タブ レイアウト切替トグル（設定） ══ */
+.layout-toggle{display:flex;background:var(--fill);border-radius:11px;padding:3px;gap:3px;flex-shrink:0}
+.layout-toggle-btn{
+  border:none;background:none;border-radius:8px;width:40px;height:36px;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  color:var(--lbl3);transition:background .15s,color .15s,box-shadow .15s;
+}
+.layout-toggle-btn.on{background:var(--card);color:var(--blue);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.layout-toggle-btn:active{opacity:.7}
 .settings-select{
   background:var(--fill);border:none;border-radius:8px;
   padding:7px 8px;font-family:inherit;font-size:13px;font-weight:600;
@@ -2598,6 +2680,7 @@ function planPace(p){
 
 function planCardHtml(p, opts){
   opts = opts || {};
+  const compact = !!opts.compact;
   const dispName = planDisplayName(p);
   if(p.type==='goal'){
     const pace=planPace(p);
@@ -2608,6 +2691,10 @@ function planCardHtml(p, opts){
       : pace.remain<=0 ? ''
       : pace.daysPerOne>0 ? ''
       : `1日${pace.perDay}個 必要`;
+    const okLabel = compact ? '1個完了' : (opts.todayMode?'時間を記録して1個完了':'1個完了にする');
+    const snoozeBtn = opts.hideSnooze?'':(compact
+      ? `<button class="btn-snooze" onclick="openPlanSnooze('${p.id}')" aria-label="延期">${IC.moon}</button>`
+      : `<button class="btn-snooze" onclick="openPlanSnooze('${p.id}')">${IC.moon} 延期</button>`);
     return `<div class="cw" id="w-${p.id}" data-id="${p.id}">
       <div class="card plan${over?' over':''}${p.done?'':''}" id="c-${p.id}">
         <div class="card-top">
@@ -2625,8 +2712,8 @@ function planCardHtml(p, opts){
         <div class="plan-progress-track"><div class="plan-progress-fill" style="width:${pct}%"></div></div>
         ${paceLbl?`<div class="plan-pace">${IC.zap.replace('white','currentColor')}${paceLbl}</div>`:''}
         ${(p.done||opts.hideComplete)?'':`<div class="acts">
-          <button class="btn-plan-ok" onclick="${opts.todayMode?`openStudyTimerForPlan('${p.id}')`:`planComplete('${p.id}')`}">${opts.todayMode?IC.timerSm:IC.check} ${opts.todayMode?'時間を記録して1個完了':'1個完了にする'}</button>
-          ${opts.hideSnooze?'':`<button class="btn-snooze" onclick="openPlanSnooze('${p.id}')">${IC.moon} 延期</button>`}
+          <button class="btn-plan-ok" onclick="${opts.todayMode?`openStudyTimerForPlan('${p.id}')`:`planComplete('${p.id}')`}">${opts.todayMode?IC.timerSm:IC.check} ${okLabel}</button>
+          ${snoozeBtn}
         </div>`}
       </div>
     </div>`;
@@ -2642,6 +2729,42 @@ function planCardHtml(p, opts){
   const typeSub = p.type==='daily' ? '毎日'
     : p.type==='weekday' ? '毎週 '+(p.weekdays||[]).slice().sort().map(d=>WD_LABELS[d]).join('・')
     : `${p.intervalDays}日ごと`;
+  const okLabel2 = compact ? '完了にする' : (opts.todayMode?'時間を記録して完了':'完了にする');
+  const snoozeBtn2 = compact
+    ? `<button class="btn-snooze" onclick="openPlanSnooze('${p.id}')" aria-label="延期">${IC.moon}</button>`
+    : `<button class="btn-snooze" onclick="openPlanSnooze('${p.id}')">${IC.moon} 延期</button>`;
+
+  if(compact){
+    const when = p.type==='daily'
+      ? (doneToday?`<div class="card-when-chip">${IC.check} 完了済み</div>`:`<div class="card-when-chip due">${IC.clock} 今日のタスク</div>`)
+      : over
+      ? `<div class="card-when-chip over">${IC.alert} ${Math.abs(diff(p.nextDate))}日超過</div>`
+      : due
+      ? `<div class="card-when-chip due">${IC.clock} 今日が期限</div>`
+      : `<div class="card-when-chip">${IC.calendar} ${fmtShort(p.nextDate)}</div>`;
+    return `<div class="cw" id="w-${p.id}" data-id="${p.id}">
+      <div class="card plan${over?' over':due?' due':''}" id="c-${p.id}">
+        <div class="card-top">
+          <div class="card-name">${esc(dispNameToday)}</div>
+          <div class="card-icon-row">
+            <button class="btn-edit" onclick="openPlanSheet('${p.id}')" aria-label="編集">${IC.pencil}</button>
+            <button class="btn-del" onclick="planDelete('${p.id}')" aria-label="削除">${IC.trash}</button>
+          </div>
+        </div>
+        ${(p.tags&&p.tags.length)?`<div class="card-tags-row">${p.tags.map(tid=>tagHtml(tid)).join('')}</div>`:''}
+        <div class="card-status-row">
+          ${when}
+          <span class="step-mini-lbl">${PLAN_TYPE_LABEL[p.type]} · ${esc(typeSub)}</span>
+        </div>
+        ${(showComplete||showSnooze)?`<div class="acts">
+          ${showComplete?`<button class="btn-plan-ok" onclick="${opts.todayMode?`openStudyTimerForPlan('${p.id}')`:`planComplete('${p.id}')`}">${opts.todayMode?IC.timerSm:IC.check} ${okLabel2}</button>`:''}
+          ${showSnooze?snoozeBtn2:''}
+        </div>`:''}
+      </div>
+    </div>`;
+  }
+
+  // classic (1列): 従来通り、日付は通常テキスト・種別バッジは別行
   const when = p.type==='daily'
     ? (doneToday?`<div class="card-when due">${IC.check} 今日は完了済み</div>`:`<div class="card-when due">${IC.clock} 今日のタスク</div>`)
     : over
@@ -2664,8 +2787,8 @@ function planCardHtml(p, opts){
       </div>
       ${when}
       ${(showComplete||showSnooze)?`<div class="acts">
-        ${showComplete?`<button class="btn-plan-ok" onclick="${opts.todayMode?`openStudyTimerForPlan('${p.id}')`:`planComplete('${p.id}')`}">${opts.todayMode?IC.timerSm:IC.check} ${opts.todayMode?'時間を記録して完了':'完了にする'}</button>`:''}
-        ${showSnooze?`<button class="btn-snooze" onclick="openPlanSnooze('${p.id}')">${IC.moon} 延期</button>`:''}
+        ${showComplete?`<button class="btn-plan-ok" onclick="${opts.todayMode?`openStudyTimerForPlan('${p.id}')`:`planComplete('${p.id}')`}">${opts.todayMode?IC.timerSm:IC.check} ${okLabel2}</button>`:''}
+        ${showSnooze?snoozeBtn2:''}
       </div>`:''}
     </div>
   </div>`;
@@ -4698,14 +4821,15 @@ function render(){
 function rToday(list, hasActive, allDone){
   const el=document.getElementById('p-today');
   const bannerHtml = backupBannerHtml();
-  const todoCardsHtml = renderTodoSectionHtml(); // 復習カードと並列に、hero直下へ差し込むToDoカード群
+  const compact = isTodayGridLayout();
+  const todoCardsHtml = renderTodoSectionHtml(compact); // 復習カードと並列に、hero直下へ差し込むToDoカード群
 
   // 計画タブで作成したタスクのうち、今日やること（毎日/曜日指定/間隔/目標型）。
   // 通常の復習カードと見出しなしで同じリストに並べる
   const duePlan = getDuePlanList();
   function duePlanSecHtml(){
     if(!duePlan.length) return '';
-    return duePlan.map(p=>planCardHtml(p,{todayMode:true})).join('');
+    return duePlan.map(p=>planCardHtml(p,{todayMode:true, compact})).join('');
   }
 
   // Units completed today (step advanced today, not fully done — or fully completed today)
@@ -4805,6 +4929,10 @@ function rToday(list, hasActive, allDone){
     </div>`;
   }
 
+  // 2列表示のときだけ .today-grid でラップする。1列表示では従来通り
+  // ブロックが縦に並ぶだけなので、CSSの互換性はそのまま維持される。
+  const wrap = h => (compact && h) ? `<div class="today-grid">${h}</div>` : h;
+
   if(!list.length){
     // Different state: tasks exist but all done today vs truly empty app
     if(duePlan.length){
@@ -4813,7 +4941,7 @@ function rToday(list, hasActive, allDone){
       el.innerHTML=bannerHtml+`
         <div class="hero">
           <div class="hero-msg">${msg}</div>
-        </div>`+todoCardsHtml+duePlanSecHtml()+todayDoneAccHtml();
+        </div>`+wrap(todoCardsHtml+duePlanSecHtml())+todayDoneAccHtml();
       return;
     }
     if(hasActive){
@@ -4825,13 +4953,13 @@ function rToday(list, hasActive, allDone){
           ${allDoneIconHtml}
           <div class="hero-msg">今日もお疲れ様です</div>
           <div class="hero-sub" style="margin-top:6px">ナイスファイト！！</div>
-        </div>`+todoCardsHtml+todayDoneAccHtml();
+        </div>`+wrap(todoCardsHtml)+todayDoneAccHtml();
     } else {
       el.innerHTML=bannerHtml+`
         <div class="hero">
           <div class="hero-msg">単元を追加しましょう</div>
           <div class="hero-sub" style="margin-top:6px">＋ボタンから最初の単元を登録できます</div>
-        </div>`+todoCardsHtml+`
+        </div>`+wrap(todoCardsHtml)+`
         <div class="empty">
           <div class="empty-icon">${IC.calendarLg}</div>
           <p>復習したい単元を追加すると<br>スケジュールが自動で組まれます</p>
@@ -4847,23 +4975,29 @@ function rToday(list, hasActive, allDone){
     <div class="hero">
       <div class="hero-msg">${list.length} 件の復習があります</div>
       ${overSub}
-    </div>`+todoCardsHtml;
+    </div>`;
   const filteredOverdue=overdue;
   const filteredDueToday=dueToday;
 
   if(!filteredOverdue.length && !filteredDueToday.length){
+    html += wrap(todoCardsHtml);
     html+=`<div class="empty" style="padding:28px 0"><div class="empty-icon">${IC.searchLg}</div><h3>該当する単元がありません</h3><p>今日の復習はありません</p></div>`;
-    html += duePlanSecHtml() + todayDoneAccHtml();
+    html += wrap(duePlanSecHtml()) + todayDoneAccHtml();
     el.innerHTML=html; return;
   }
+  // 今日タブのメインカード群（ToDo・期限切れ・今日が期限・計画タスク）を
+  // 2列表示のときは1つのグリッドにまとめる。見出し（.sec）はCSS側で
+  // 2カラムをまたぐよう指定しているため、グリッドの途中に混ぜても崩れない。
+  let gridHtml = todoCardsHtml;
   if(filteredOverdue.length){
-    html+=filteredOverdue.map(u=>cHtml(u)).join('');
+    gridHtml+=filteredOverdue.map(u=>cHtml(u, compact)).join('');
   }
   if(filteredDueToday.length){
-    html+=`<div class="sec${filteredOverdue.length?'':' sec-first'}">今日が期限 · ${filteredDueToday.length}件</div>`;
-    html+=filteredDueToday.map(u=>cHtml(u)).join('');
+    gridHtml+=`<div class="sec${filteredOverdue.length?'':' sec-first'}">今日が期限 · ${filteredDueToday.length}件</div>`;
+    gridHtml+=filteredDueToday.map(u=>cHtml(u, compact)).join('');
   }
-  html += duePlanSecHtml();
+  gridHtml += duePlanSecHtml();
+  html += wrap(gridHtml);
   html += todayDoneAccHtml();
   el.innerHTML=html;
 }
@@ -6757,7 +6891,7 @@ function toggleSched(id){
 }
 
 /* ── Card HTML ── */
-function cHtml(u){
+function cHtml(u, compact){
   const d=diff(u.nextDate), over=d<0, due=d===0;
   const whenChip=over
     ?`<div class="card-when-chip over">${IC.alert} ${Math.abs(d)}日超過</div>`
@@ -6765,12 +6899,38 @@ function cHtml(u){
     ?`<div class="card-when-chip due">${IC.clock} 今日が期限</div>`
     :`<div class="card-when-chip">${IC.calendar} ${fmtShort(u.nextDate)}</div>`;
   const newCls = u.isNew ? ' new-card' : '';
+
+  if(compact){
+    // 2カラム表示では横幅が限られるため、ドットは省略し「n/8」の短い表記のみ表示する
+    const stepLbl = u.step<MAX_STEP ? `${u.step+1}/${MAX_STEP} · ${STEPS[u.step]}` : '全回完了';
+    return `<div class="cw${newCls}" id="w-${u.id}" data-id="${u.id}">
+      <div class="card${over?' over':due?' due':''}" id="c-${u.id}">
+        <div class="card-top">
+          <div class="card-name">${esc(u.name)}</div>
+          <div class="card-icon-row">
+            <button class="btn-edit" onclick="openEdit('${u.id}')" aria-label="編集">${IC.pencil}</button>
+            <button class="btn-del" onclick="del('${u.id}')" aria-label="削除">${IC.trash}</button>
+          </div>
+        </div>
+        ${(u.tags&&u.tags.length)?`<div class="card-tags-row">${u.tags.map(tid=>tagHtml(tid)).join('')}</div>`:''}
+        <div class="card-status-row">
+          ${whenChip}
+          <span class="step-mini-lbl${u.step<MAX_STEP?' active':''}">${stepLbl}</span>
+        </div>
+        <div class="acts">
+          <button class="btn-ok" onclick="openStudyTimer('${u.id}')">${IC.timerSm} 完了にする</button>
+          <button class="btn-snooze" onclick="openSnooze('${u.id}')" aria-label="延期">${IC.moon}</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // classic (1列): ドットで進捗を表現する従来デザイン
   const dotsHtml = STEPS.map((_,i)=>{
     const cls = i < u.step ? 'done' : i === u.step ? 'active' : '';
     return `<span class="step-dot ${cls}"></span>`;
   }).join('');
   const stepLbl = u.step<MAX_STEP ? STEPS[u.step] : '完了';
-
   return `<div class="cw${newCls}" id="w-${u.id}" data-id="${u.id}">
     <div class="card${over?' over':due?' due':''}" id="c-${u.id}">
       <div class="card-top">
@@ -7105,6 +7265,23 @@ function getLastBackupDate(){
 function setLastBackupDate(){
   try { localStorage.setItem(BACKUP_LAST_KEY, new Date().toISOString()); } catch {}
 }
+
+/* ══ 今日タブのレイアウト設定（1列 / 2列） ══
+   'grid' = 2カラム表示（一覧性重視）/ 'list' = 従来の1カラム表示 */
+const TODAY_LAYOUT_KEY = 'fukushu-today-layout-v1';
+function isTodayGridLayout(){
+  try {
+    return localStorage.getItem(TODAY_LAYOUT_KEY) !== 'list'; // 未設定時は2列をデフォルトに
+  } catch { return true; }
+}
+function setTodayLayout(mode){
+  if(mode!=='grid' && mode!=='list') return;
+  if(isTodayGridLayout() === (mode==='grid')) return;
+  try { localStorage.setItem(TODAY_LAYOUT_KEY, mode); } catch {}
+  haptic('light');
+  renderSettings();
+  render();
+}
 function daysSinceBackup(){
   const last = getLastBackupDate();
   if(!last) return Infinity;
@@ -7364,13 +7541,17 @@ function deleteTodo(id){
 }
 
 // 今日タブに表示するToDoセクションのHTMLを生成（date===今日のToDoのみ）
-function todoCardHtml(x){
+function todoCardHtml(x, compact){
   const tagsHtml = (x.tags&&x.tags.length)?`<div class="card-tags-row">${x.tags.map(tid=>tagHtml(tid)).join('')}</div>`:'';
   const t = td();
   const over = x.date && x.date < t;
   const whenChip = over
     ? `<div class="card-when-chip over">${IC.alert} ${Math.abs(diff(x.date))}日超過</div>`
     : `<div class="card-when-chip">${IC.calendar} 今日やること</div>`;
+  const okLabel = compact ? '完了にする' : '時間を記録して完了';
+  const snoozeBtn = compact
+    ? `<button class="btn-snooze" onclick="openTodoSnooze('${x.id}')" aria-label="延期">${IC.moon}</button>`
+    : `<button class="btn-snooze" onclick="openTodoSnooze('${x.id}')">${IC.moon} 延期</button>`;
   return `<div class="cw" id="w-todo-${x.id}" data-id="${x.id}">
     <div class="card todo${over?' over':''}" id="c-todo-${x.id}">
       <div class="card-top">
@@ -7384,8 +7565,8 @@ function todoCardHtml(x){
         ${whenChip}
       </div>
       <div class="acts">
-        <button class="btn-ok" onclick="openStudyTimerForTodo('${x.id}')">${IC.timerSm} 時間を記録して完了</button>
-        <button class="btn-snooze" onclick="openTodoSnooze('${x.id}')">${IC.moon} 延期</button>
+        <button class="btn-ok" onclick="openStudyTimerForTodo('${x.id}')">${IC.timerSm} ${okLabel}</button>
+        ${snoozeBtn}
       </div>
     </div>
   </div>`;
@@ -7394,11 +7575,11 @@ function todoCardHtml(x){
 // 復習カード（cHtml）・計画カード（planCardHtml）と同じ .cw/.card 構造で、
 // ToDo1件につき1枚のカードを独立して出力する（まとめず並列に並ぶ）。
 // 完了済みのToDoはここには含めず、他のカードと同様に「完了済み」アコーディオンへ移す。
-function renderTodoSectionHtml(){
+function renderTodoSectionHtml(compact){
   const t = td();
   const list = TODOS.filter(x=>x.date && x.date<=t && !x.done).sort((a,b)=>(a.date||'').localeCompare(b.date||'')||(a.createdAt||0)-(b.createdAt||0));
   if(!list.length) return '';
-  return list.map(x=>todoCardHtml(x)).join('');
+  return list.map(x=>todoCardHtml(x, compact)).join('');
 }
 
 /* ══ ToDoフィルタ（予定タブのタグバー「ToDo」チップ） ══
@@ -7651,6 +7832,25 @@ function renderSettings(){
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--lbl3)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
 
+    </div>
+
+    <div class="sec">表示</div>
+    <div class="settings-section" style="margin-bottom:12px">
+      <div class="settings-row">
+        <div class="settings-row-icon" style="background:#EEF2FF">🗂️</div>
+        <div class="settings-row-body">
+          <div class="settings-row-title">今日タブのレイアウト</div>
+          <div class="settings-row-sub">カードを1列 or 2列で表示します</div>
+        </div>
+        <div class="layout-toggle" role="group" aria-label="今日タブのレイアウト">
+          <button class="layout-toggle-btn${isTodayGridLayout()?'':' on'}" onclick="setTodayLayout('list')" aria-label="1列で表示" aria-pressed="${isTodayGridLayout()?'false':'true'}">
+            <svg width="18" height="14" viewBox="0 0 18 14" fill="none"><rect x="0" y="0" width="18" height="6" rx="1.8" fill="currentColor"/><rect x="0" y="8" width="18" height="6" rx="1.8" fill="currentColor"/></svg>
+          </button>
+          <button class="layout-toggle-btn${isTodayGridLayout()?' on':''}" onclick="setTodayLayout('grid')" aria-label="2列で表示" aria-pressed="${isTodayGridLayout()?'true':'false'}">
+            <svg width="18" height="14" viewBox="0 0 18 14" fill="none"><rect x="0" y="0" width="8" height="14" rx="1.8" fill="currentColor"/><rect x="10" y="0" width="8" height="14" rx="1.8" fill="currentColor"/></svg>
+          </button>
+        </div>
+      </div>
     </div>
 
     <div class="sec">データ管理</div>
