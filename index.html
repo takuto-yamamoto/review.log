@@ -2393,8 +2393,8 @@ button,a,input,[role="button"]{touch-action:manipulation}
    B5 fix: define proper large/small variants, no string.replace() hacks
 ══════════════════════════════════════════ */
 /* ══ App version ════════════════════════ */
-const APP_VERSION = 'v2.8.1';
-const APP_BUILD   = '2026-08-06';
+const APP_VERSION = 'v2.9.0';
+const APP_BUILD   = '2026-08-07';
 
 const IC = {
   check:      `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
@@ -5948,19 +5948,20 @@ function _renderStudySheet(){
   const u=_timerUnitId?U.find(x=>x.id===_timerUnitId):null;
   const p=_timerPlanId?PLAN.find(x=>x.id===_timerPlanId):null;
   const td_=_timerTodoId?TODOS.find(x=>x.id===_timerTodoId):null;
-  const tagSelHtml = _studySheetMode==='review'
-    ? (_studySheetTags.length ? `<div style="margin-bottom:14px">
-        <div style="font-size:13px;font-weight:600;color:var(--lbl2);margin-bottom:8px">タグ</div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap">${_studySheetTags.map(id=>{
-          const t=TAGS.find(x=>x.id===id); if(!t) return '';
-          return `<span class="tag-sel-btn on" style="background:${t.color};border-color:${t.color};cursor:default"><span class="tag-dot" style="background:#fff"></span>${esc(t.name)}</span>`;
-        }).join('')}</div></div>` : '')
-    : (TAGS.length?`<div style="margin-bottom:14px">
+  const isTagEditable = _studySheetMode==='new' || (_studySheetMode==='review' && td_);
+  const tagSelHtml = isTagEditable
+    ? (TAGS.length?`<div style="margin-bottom:14px">
     <div style="font-size:13px;font-weight:600;color:var(--lbl2);margin-bottom:8px">タグ</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">${TAGS.map(t=>{
       const on=_studySheetTags.includes(t.id);
       return `<button class="tag-sel-btn${on?' on':''}" style="${on?`background:${t.color};border-color:${t.color}`:''}" onclick="toggleStudyTag('${t.id}')"><span class="tag-dot" style="background:${on?'#fff':t.color}"></span>${esc(t.name)}</button>`;
-    }).join('')}</div></div>`:'');
+    }).join('')}</div></div>`:'')
+    : (_studySheetTags.length ? `<div style="margin-bottom:14px">
+        <div style="font-size:13px;font-weight:600;color:var(--lbl2);margin-bottom:8px">タグ</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">${_studySheetTags.map(id=>{
+          const t=TAGS.find(x=>x.id===id); if(!t) return '';
+          return `<span class="tag-sel-btn on" style="background:${t.color};border-color:${t.color};cursor:default"><span class="tag-dot" style="background:#fff"></span>${esc(t.name)}</span>`;
+        }).join('')}</div></div>` : '');
 
   sh.querySelector('.sheet-body').innerHTML=`
     <div class="sheet-ttl">${_studySheetMode==='review'&&u?'復習時間を記録':_studySheetMode==='review'&&p?'計画タスクの時間を記録':_studySheetMode==='review'&&td_?'ToDoの時間を記録':'勉強時間を記録'}</div>
@@ -7450,20 +7451,46 @@ function toggleTagTodo(id){
   _todoDraftTags = _todoDraftTags.includes(id) ? _todoDraftTags.filter(x=>x!==id) : [..._todoDraftTags,id];
   renderTodoTagSel();
 }
+let _todoTagAddOpen=false; // ToDoシート内の「新しいタグ」入力欄が開いているか
+function toggleTodoTagAdd(){
+  _todoTagAddOpen=!_todoTagAddOpen;
+  renderTodoTagSel();
+  if(_todoTagAddOpen) setTimeout(()=>document.getElementById('todo-tag-new-inp')?.focus(),50);
+}
+// ToDo追加/編集シートを離れずにその場で新しいタグを作り、そのToDoに自動で選択する
+function addTagFromTodoSheet(){
+  const inp=document.getElementById('todo-tag-new-inp');
+  const name=inp?.value.trim(); if(!name) return;
+  if(TAGS.some(t=>t.name===name)){ inp.classList.add('shake'); setTimeout(()=>inp.classList.remove('shake'),400); haptic('medium'); return; }
+  const color=TAG_COLORS[TAGS.length % TAG_COLORS.length];
+  const newTag={id:Date.now().toString(), name, color};
+  TAGS.push(newTag); saveTags();
+  _todoDraftTags=[..._todoDraftTags, newTag.id];
+  _todoTagAddOpen=false;
+  renderTodoTagSel();
+  renderSheetTagSel(); renderEditTagSel();
+  haptic('medium');
+}
 function renderTodoTagSel(){
   const wrap=document.getElementById('todo-tag-sel-wrap'); if(!wrap) return;
-  if(!TAGS.length){ wrap.innerHTML=''; return; }
+  const existingBtns = TAGS.map(t=>{
+    const on=_todoDraftTags.includes(t.id);
+    return `<button class="tag-sel-btn${on?' on':''}"
+      style="${on?`background:${t.color};border-color:${t.color}`:''}"
+      onclick="toggleTagTodo('${t.id}')">
+      <span class="tag-dot" style="background:${on?'#fff':t.color}"></span>${esc(t.name)}
+    </button>`;
+  }).join('');
+  const addBtn = `<button class="tag-sel-btn" onclick="toggleTodoTagAdd()" style="border-style:dashed">＋ 新しいタグ</button>`;
+  const addRow = _todoTagAddOpen ? `<div style="display:flex;gap:8px;margin-top:8px">
+      <input class="tag-add-inp" id="todo-tag-new-inp" type="text" placeholder="新しいタグ名" maxlength="20" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();addTagFromTodoSheet();}" style="flex:1">
+      <button class="tag-add-btn" onclick="addTagFromTodoSheet()">追加</button>
+    </div>` : '';
   wrap.innerHTML=`
     <div class="tag-sel-wrap">
       <div class="tag-sel-label"><span>タグ</span></div>
-      <div class="tag-sel-list">${TAGS.map(t=>{
-        const on=_todoDraftTags.includes(t.id);
-        return `<button class="tag-sel-btn${on?' on':''}"
-          style="${on?`background:${t.color};border-color:${t.color}`:''}"
-          onclick="toggleTagTodo('${t.id}')">
-          <span class="tag-dot" style="background:${on?'#fff':t.color}"></span>${esc(t.name)}
-        </button>`;
-      }).join('')}</div>
+      <div class="tag-sel-list">${existingBtns}${addBtn}</div>
+      ${addRow}
     </div>`;
 }
 
@@ -7471,6 +7498,7 @@ function openTodoAddSheet(){
   _todoEditId=null;
   _todoDateMode='today';
   _todoDraftTags=[];
+  _todoTagAddOpen=false;
   document.querySelectorAll('#todo-date-seg .seg-btn').forEach(b=>b.classList.toggle('on',b.dataset.val==='today'));
   document.getElementById('todo-inp').value='';
   const customInp=document.getElementById('todo-date-custom-inp');
@@ -7499,6 +7527,7 @@ function openTodoEditSheet(id){
   const x=TODOS.find(t=>t.id===id); if(!x) return;
   _todoEditId=id;
   _todoDraftTags=[...(x.tags||[])];
+  _todoTagAddOpen=false;
   document.getElementById('todo-inp').value=x.text;
 
   const tomorrow=addD(td(),1);
@@ -7533,6 +7562,7 @@ function closeTodoAddSheet(){
   inp.blur(); inp.classList.remove('shake');
   _todoDateMode='today';
   _todoEditId=null;
+  _todoTagAddOpen=false;
   setFabHidden(false);
 }
 
