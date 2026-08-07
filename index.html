@@ -2393,7 +2393,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
    B5 fix: define proper large/small variants, no string.replace() hacks
 ══════════════════════════════════════════ */
 /* ══ App version ════════════════════════ */
-const APP_VERSION = 'v2.9.0';
+const APP_VERSION = 'v2.9.1';
 const APP_BUILD   = '2026-08-07';
 
 const IC = {
@@ -2970,7 +2970,7 @@ function _renderPlanDetailSheet(){
       : `次回 ${fmtShort(p.nextDate)}`;
     document.getElementById('plan-detail-sheet-sub').textContent = `${PLAN_TYPE_LABEL[p.type]} · ${typeSub}`;
     bodyHtml=`
-      <div class="plan-detail-row"><span class="plan-detail-label">状況</span><span class="plan-detail-value${over?' over':''}">${esc(statusText)}</span></div>
+      <div class="plan-detail-row"><span class="plan-detail-label">状況</span><span class="plan-detail-value${over?' over':''}">${statusText}</span></div>
       <div class="plan-detail-row"><span class="plan-detail-label">くり返し</span><span class="plan-detail-value">${esc(typeSub)}</span></div>
       <div class="plan-detail-row"><span class="plan-detail-label">実施期間</span><span class="plan-detail-value">${fmtShort(p.startDate||p.createdDate||td())} 〜 ${p.endDate?fmtShort(p.endDate):'終了日未設定'}</span></div>
       <div class="plan-detail-row"><span class="plan-detail-label">これまでの完了回数</span><span class="plan-detail-value">${p.occurrenceCount||0} 回</span></div>
