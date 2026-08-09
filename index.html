@@ -3143,6 +3143,8 @@ function onPlanDeadlineInput(){
 function onPlanStartInput(){
   if(!_planDraft) return;
   _syncPlanDraftFromDom();
+  const deadlineInp=document.getElementById('plan-deadline-inp');
+  if(deadlineInp) deadlineInp.min=_planDraft.startDate||td();
   if(_planDraft.nameMode==='custom'){
     _syncPlanNameFieldsFromDom();
     if(syncPlanCustomLabelCountToPeriod()){ renderPlanModalBody(); }
@@ -3383,7 +3385,7 @@ function _planStepPeriodHtml(d){
         </div>
         <div class="plan-goal-field">
           <label for="plan-deadline-inp">${isGoal?'いつまでに終わらせる？':'いつまで？'}</label>
-          <input type="date" id="plan-deadline-inp" value="${paceDeadline}" oninput="onPlanDeadlineInput()" ${noEnd?'disabled':''}>
+          <input type="date" id="plan-deadline-inp" value="${paceDeadline}" min="${d.startDate||td()}" oninput="onPlanDeadlineInput()" ${noEnd?'disabled':''}>
           ${isGoal?'':`<label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--lbl2);cursor:pointer;margin-top:6px">
             <input type="checkbox" id="plan-noend-chk" ${noEnd?'checked':''} onchange="togglePlanNoEnd(this.checked)" style="width:16px;height:16px;flex-shrink:0">
             終了日を設定しない
@@ -3627,6 +3629,12 @@ function savePlanTask(){
   const isGoalType=d.type==='goal';
   const noEndVal=isGoalType?false:(d.noEnd!==false);
   const endVal=noEndVal?'':(d.deadline||'');
+  // 期限が開始日より前になっている（矛盾した期間）場合は保存させない
+  const deadlineForCheck=isGoalType?(d.deadline||''):endVal;
+  if(deadlineForCheck && deadlineForCheck<startVal){
+    if(!_planEditId){ _planStep=PLAN_WIZARD_STEPS.indexOf('period'); renderPlanModalBody(); }
+    toast(IC.alertSm,'期限は開始日より後の日付にしてください'); haptic('medium'); return;
+  }
 
   if(_planEditId){
     const p=PLAN.find(x=>x.id===_planEditId); if(!p) return;
@@ -6362,8 +6370,10 @@ function calToggle(){
 
 function calNav(delta){
   _calInit();
+  // スワイプ操作はボタンのdisabled属性を無視して呼ばれるため、
+  // ここでも明示的に「今月／今日より前」への移動をブロックする
+  if(delta < 0 && _calPrevDisabled()) return;
   if(_calViewMode === 'day'){
-    if(delta < 0 && _calPrevDisabled()) return;
     _calDayDate = addD(_calDayDate, delta);
   } else {
     _calMonth += delta;
@@ -7575,11 +7585,13 @@ function addTodo(){
     inp.classList.add('shake');
     haptic('medium'); inp.focus(); return;
   }
-  const date=_todoDateFromMode(_todoDateMode);
+  let date=_todoDateFromMode(_todoDateMode);
   if(!date){
     toast(IC.alert,'日付を選択してください');
     haptic('medium'); return;
   }
+  // input要素のmin属性はUIの目安に過ぎず、手入力等で回避され得るため保存時にも再検証する
+  if(date<td()) date=td();
   if(_todoEditId){
     const x=TODOS.find(t=>t.id===_todoEditId);
     if(!x){ closeTodoAddSheet(); return; }
@@ -9013,3 +9025,4 @@ function _finishOnboarding(){
 })();
 </script>
 </body>
+</html>
