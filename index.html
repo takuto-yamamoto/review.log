@@ -5066,9 +5066,16 @@ function rToday(list, hasActive, allDone){
   const overdue = list.filter(u=>diff(u.nextDate)<0);
   const dueToday = list.filter(u=>diff(u.nextDate)===0);
   const overSub = overdue.length > 0 ? `<div class="hero-sub" style="margin-top:6px">うち ${overdue.length} 件が期限超過</div>` : '';
+  // 「今日タブ」の見出し件数は復習カードだけでなく、その日にやるべきタスク全体（計画タスク・ToDo含む）を数える
+  const todoTodayCount = TODOS.filter(x=>x.date && x.date<=t && !x.done).length;
+  const totalTaskCount = list.length + duePlan.length + todoTodayCount;
+  const isRareMsg = Math.random() < 0.01;
+  const heroMsgText = isRareMsg
+    ? `${totalTaskCount} 件のタスクがあるZOY⭐️（レア）`
+    : `${totalTaskCount} 件のタスクがあります`;
   let html=bannerHtml+`
     <div class="hero">
-      <div class="hero-msg">${list.length} 件の復習があります</div>
+      <div class="hero-msg">${heroMsgText}</div>
       ${overSub}
     </div>`;
   const filteredOverdue=overdue;
