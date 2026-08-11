@@ -6011,7 +6011,7 @@ function _renderStudySheet(){
       <input type="number" id="study-manual-inp" min="1" max="600" placeholder="例：30" oninput="_manualInpEdited=true" style="flex:1;background:var(--fill);border:none;border-radius:12px;padding:13px 14px;font-family:'Outfit',inherit;font-size:18px;font-weight:700;color:var(--lbl);outline:none;text-align:center">
       <span style="color:var(--lbl2);font-size:14px;font-weight:600;flex-shrink:0">分</span>
     </div>
-    ${td_?'':`<input type="text" id="study-note-inp" placeholder="メモ（任意）" maxlength="60" autocomplete="off" style="width:100%;background:var(--fill);border:none;border-radius:12px;padding:12px 14px;font-family:inherit;font-size:16px;color:var(--lbl);outline:none;margin-bottom:14px">`}
+    ${(td_||u)?'':`<input type="text" id="study-note-inp" placeholder="メモ（任意）" maxlength="60" autocomplete="off" style="width:100%;background:var(--fill);border:none;border-radius:12px;padding:12px 14px;font-family:inherit;font-size:16px;color:var(--lbl);outline:none;margin-bottom:14px">`}
     ${td_?'':`<div style="margin-bottom:16px">
       <div style="font-size:13px;font-weight:600;color:var(--lbl2);margin-bottom:8px">📅 記録する日付</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap" id="study-date-btns">
@@ -6023,8 +6023,8 @@ function _renderStudySheet(){
   `;
   const footer=sh.querySelector('#study-sheet-footer');
   if(footer){
-    if(_studySheetMode==='review' && td_){
-      // ToDoは「復習が完了」のような一意の完了概念が無いため、記録時に
+    if(_studySheetMode==='review' && (td_||u||p)){
+      // ToDo・復習（ユニット）・計画タスクは「完了」が一意に決まらない場合があるため、記録時に
       // 途中まで／完了のどちらかを選べるようにする
       footer.innerHTML=`
         <div style="display:flex;flex-direction:column;gap:8px;width:100%">
@@ -6260,8 +6260,8 @@ function saveStudyRecord(){
   haptic('medium');
 }
 
-// ToDoカードの「時間を記録して完了」から開いた記録シート専用の保存処理。
-// 復習・計画タスクと違い、記録後に「途中までやった（半分）」か「完了」かを選べる。
+// ToDo／復習（ユニット）／計画タスクの記録シートで共通の保存処理。
+// これらは記録後に「途中までやった（半分）」か「完了」かを選べる。
 function saveStudyRecordForTodo(isComplete){
   if(_timerInterval){ clearInterval(_timerInterval); _timerInterval=null; }
   const manualInp=document.getElementById('study-manual-inp');
@@ -6271,12 +6271,22 @@ function saveStudyRecordForTodo(isComplete){
     const totalSec=_timerElapsed + currentSec;
     if(totalSec>0) minutes=Math.max(1,Math.ceil(totalSec/60));
   }
-  // 0分（記録なし）でも、ToDoの完了操作自体は妨げない。時間の記録だけスキップする。
-  const noteInp=document.getElementById('study-note-inp');
-  const note=noteInp?.value.trim()||'';
+  const _savedQty=_studySheetQty;
+  const _savedUnitId=_timerUnitId;
+  const _savedPlanId=_timerPlanId;
   const _savedTodoId=_timerTodoId;
-  const item=TODOS.find(x=>x.id===_savedTodoId);
-  const title=item?item.text:'';
+  const u=_savedUnitId?U.find(x=>x.id===_savedUnitId):null;
+  const p=_savedPlanId?PLAN.find(x=>x.id===_savedPlanId):null;
+  const item=_savedTodoId?TODOS.find(x=>x.id===_savedTodoId):null;
+
+  // 0分（記録なし）でも、完了／途中の操作自体は妨げない。時間の記録だけスキップする。
+  const noteInp=document.getElementById('study-note-inp');
+  const note=(item||u)?'':(noteInp?.value.trim()||'');
+  let title='';
+  if(u) title=`${u.name} - ${STEPS[u.step]||`${u.step}回目`}`;
+  else if(p){ title=planDisplayName(p); if(p.type==='goal' && _savedQty>1) title += ` ×${_savedQty}`; }
+  else if(item) title=item.text;
+
   const resolvedDate=_resolveStudyDate();
   if(minutes>0 && !resolvedDate){
     toast(IC.alert,'日付を選択してください');
@@ -6285,8 +6295,8 @@ function saveStudyRecordForTodo(isComplete){
   if(minutes>0){
     addStudyLog({
       date:resolvedDate,
-      unitId:null,
-      planId:null,
+      unitId:_savedUnitId||null,
+      planId:_savedPlanId||null,
       title:title||null,
       tagIds:[..._studySheetTags],
       minutes,
@@ -6295,14 +6305,29 @@ function saveStudyRecordForTodo(isComplete){
     });
   }
   closeStudySheet();
+
   if(item){
     item.done=isComplete;
     item.half=!isComplete;
     item.timerStart=null;
     if(isComplete) item.completedAt=Date.now(); else delete item.completedAt;
     saveTodos();
+    render();
+  } else if(u){
+    if(isComplete){
+      complete(_savedUnitId); // complete()内でrender()まで行う
+    } else {
+      render();
+    }
+  } else if(p){
+    if(isComplete){
+      planComplete(_savedPlanId, _savedQty); // planComplete()内でrender()まで行う
+    } else {
+      render();
+    }
+  } else {
+    render();
   }
-  render();
   toast(IC.checkCircle, minutes>0 ? (fmtMinutes(minutes)+'を記録しました ✅') : (isComplete?'完了にしました ✅':'途中までに設定しました'));
   haptic('medium');
 }
