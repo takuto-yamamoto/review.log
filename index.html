@@ -1640,7 +1640,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .cal-day-cell-wrap{margin-bottom:6px}
 .cal-day-view .cal-cell{width:76px;height:76px;aspect-ratio:unset}
 .cal-day-view .cal-num{width:36px;height:36px;font-size:17px}
-.cal-day-list{width:100%;display:flex;flex-direction:column;margin-top:6px}
+.cal-day-list{width:100%;display:flex;flex-direction:column;margin-top:6px;max-height:320px;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .cal-day-item{display:flex;flex-direction:column;gap:7px;padding:10px 2px;border-bottom:.5px solid var(--sep)}
 .cal-day-item:last-child{border-bottom:none}
 .cal-day-item-top{display:flex;align-items:center;gap:8px}
@@ -2612,6 +2612,29 @@ function planIsDueToday(p){
   if(p.type==='daily') return p.lastDoneDate!==td();
   if(p.type==='goal') return false;
   return p.nextDate<=td();
+}
+/* ══ 実施期間が終了した計画の自動チェック ══
+   毎日/曜日指定/間隔タイプの計画は endDate を過ぎると自動的に「今日」タブに出てこなくなるが、
+   そのままでは計画タブに古い予定として残り続けてしまう。起動時・日付が変わったタイミングで
+   軽量にチェックし、削除するか完了扱いにするかを確認する。
+   ※ 勉強記録（STUDY_LOGS）は記録した時点の名前などをスナップショットとして保持しているため、
+     ここで計画を削除しても勉強記録タブの表示には影響しない。 */
+function checkExpiredPlans(){
+  const t=td();
+  const expired=PLAN.filter(p=>!p.done && p.type!=='goal' && p.endDate && p.endDate<t);
+  if(!expired.length) return;
+  let changed=false;
+  expired.forEach(p=>{
+    const period=`${fmtShort(p.startDate||p.createdDate||td())}〜${fmtShort(p.endDate)}`;
+    const ok=confirm(`「${planDisplayName(p)}」の実施期間（${period}）が終了しました。\nこの計画を削除しますか？\n\n「キャンセル」を選ぶと完了済みとして残します。`);
+    if(ok){
+      PLAN=PLAN.filter(x=>x.id!==p.id);
+    } else {
+      p.done=true; p.completedAt=Date.now();
+    }
+    changed=true;
+  });
+  if(changed){ savePlan(); render(); }
 }
 // 目標型プランの「今日分」の状況を算出。
 // today分の進捗（todayCount）を除いた時点のペースから、今日必要な件数（target）を固定して求める。
@@ -4616,7 +4639,7 @@ function analyzeLoad(){
     for(const id of [...(workMap[fromDate]||[])]){
       if((cnt[fromDate]||0)<OVER || proposed.length>=CAP) break;
       for(const {d:toDate} of cands){
-        if((cnt[toDate]||0)>=OVER) continue;
+        if((cnt[toDate]||0)+1>=OVER) continue; // 移動後にOVER件数へ達してしまう日は選ばない
         const u=U.find(x=>x.id===id); if(!u) continue;
         proposed.push({id,name:u.name,from:fromDate,to:toDate});
         cnt[fromDate]--; cnt[toDate]=(cnt[toDate]||0)+1;
@@ -8335,6 +8358,7 @@ requestPersistentStorage();
       document.getElementById('nav-date').textContent=
         `${d.getMonth()+1}/${d.getDate()}（${DOW[d.getDay()]}）`;
       render();
+      checkExpiredPlans();
     }
   }
   document.addEventListener('visibilitychange', ()=>{
@@ -8351,6 +8375,7 @@ requestPersistentStorage();
   render();
   renderSettings();
   setTimeout(checkBackupReminder, 800); // slight delay so UI is settled
+  setTimeout(checkExpiredPlans, 900); // 起動時に実施期間が終了した計画がないかチェック
 })();
 
 /* ══ PWA: オフラインキャッシュ (Service Worker) ══════════
