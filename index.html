@@ -301,6 +301,11 @@ button,a,input,[role="button"]{touch-action:manipulation}
 }
 .card-when-chip.due{color:var(--blue);background:var(--blue-bg);border:1px solid var(--blue-bd)}
 .card-when-chip.over{color:#C0392B;background:#FFF1F0;border:1px solid rgba(255,59,48,.18)}
+.card-snooze-note{
+  display:flex;align-items:center;gap:4px;font-size:11.5px;color:var(--lbl3);
+  margin-top:-2px;margin-bottom:10px
+}
+.card-snooze-note svg{width:12px;height:12px;flex-shrink:0}
 .step-mini{display:flex;align-items:center;gap:6px;flex-shrink:0}
 .step-mini-dots{display:flex;align-items:center;gap:3.5px}
 .step-mini .step-dot{width:6px;height:6px}
@@ -1647,6 +1652,12 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .cal-day-item-dot{width:7px;height:7px;border-radius:2px;flex-shrink:0}
 .cal-day-item-name{flex:1;min-width:0;font-size:13.5px;font-weight:600;color:var(--lbl);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cal-day-item-label{font-size:11px;color:var(--lbl3);flex-shrink:0}
+.cal-day-item-snooze{
+  display:inline-flex;align-items:center;gap:2px;font-size:10.5px;color:#B45309;
+  background:#FFF7ED;border:1px solid rgba(180,83,9,.18);border-radius:100px;
+  padding:1.5px 6px;flex-shrink:0
+}
+.cal-day-item-snooze svg{width:10px;height:10px}
 .cal-day-item-edit{
   width:26px;height:26px;border-radius:50%;flex-shrink:0;border:none;
   background:var(--fill);color:var(--lbl2);display:flex;align-items:center;justify-content:center;
@@ -2630,7 +2641,7 @@ function checkExpiredPlans(){
     if(ok){
       PLAN=PLAN.filter(x=>x.id!==p.id);
     } else {
-      p.done=true; p.completedAt=Date.now();
+      p.done=true; p.completedAt=Date.now(); delete p.origDueDate;
     }
     changed=true;
   });
@@ -2703,6 +2714,7 @@ function planComplete(id, qty){
     p.todayCount=(p.todayCount||0)+n;
     p.doneCount=Math.min((p.doneCount||0)+n,p.totalCount);
     p.lastDoneDate=t;
+    delete p.origDueDate;
     if(p.doneCount>=p.totalCount){ p.done=true; p.completedAt=Date.now(); }
     savePlan(); haptic('medium'); render();
     toast(IC.checkCircle, esc(doneLabel)+(p.done?'の目標を達成しました！':n>1?`を${n}件記録しました`:'を1件記録しました'));
@@ -2711,6 +2723,7 @@ function planComplete(id, qty){
   if(p.lastDoneDate===t) return; // already done today
   p.lastDoneDate=t;
   p.occurrenceCount=(p.occurrenceCount||0)+1;
+  delete p.origDueDate;
   if(p.type==='weekday'){ p.nextDate=planNextWeekday(t,p.weekdays); }
   else if(p.type==='interval'){ p.nextDate=addD(t,p.intervalDays); }
   savePlan(); haptic('medium'); render();
@@ -2780,6 +2793,7 @@ function planCardHtml(p, opts){
         <div class="plan-progress-lbl"><span>${p.doneCount||0} / ${p.totalCount}</span><span>${pct}%</span></div>
         ${compact ? '' : `<div class="plan-progress-track"><div class="plan-progress-fill" style="width:${pct}%"></div></div>`}
         ${paceLbl?`<div class="plan-pace">${IC.zap.replace('white','currentColor')}${paceLbl}</div>`:''}
+        ${snoozeNoteHtml(p.origDueDate, p.snoozeUntil)}
         ${(p.done||opts.hideComplete)?'':`<div class="acts">
           <button class="btn-plan-ok" onclick="${opts.todayMode?`openStudyTimerForPlan('${p.id}')`:`planComplete('${p.id}')`}">${opts.todayMode?IC.timerSm:IC.check} ${okLabel}</button>
           ${snoozeBtn}
@@ -2802,6 +2816,7 @@ function planCardHtml(p, opts){
   const snoozeBtn2 = compact
     ? `<button class="btn-snooze" onclick="openPlanSnooze('${p.id}')" aria-label="延期">${IC.moon}</button>`
     : `<button class="btn-snooze" onclick="openPlanSnooze('${p.id}')">${IC.moon} 延期</button>`;
+  const snoozeNote2 = snoozeNoteHtml(p.origDueDate, (p.type==='weekday'||p.type==='interval') ? p.nextDate : p.snoozeUntil);
 
   if(compact){
     const when = p.type==='daily'
@@ -2825,6 +2840,7 @@ function planCardHtml(p, opts){
           ${when}
           <span class="step-mini-lbl">${PLAN_TYPE_LABEL[p.type]} · ${esc(typeSub)}</span>
         </div>
+        ${snoozeNote2}
         ${(showComplete||showSnooze)?`<div class="acts">
           ${showComplete?`<button class="btn-plan-ok" onclick="${opts.todayMode?`openStudyTimerForPlan('${p.id}')`:`planComplete('${p.id}')`}">${opts.todayMode?IC.timerSm:IC.check} ${okLabel2}</button>`:''}
           ${showSnooze?snoozeBtn2:''}
@@ -2855,6 +2871,7 @@ function planCardHtml(p, opts){
         <div class="plan-type-badge">${PLAN_TYPE_LABEL[p.type]} · ${esc(typeSub)}</div>
       </div>
       ${when}
+      ${snoozeNote2}
       ${(showComplete||showSnooze)?`<div class="acts">
         ${showComplete?`<button class="btn-plan-ok" onclick="${opts.todayMode?`openStudyTimerForPlan('${p.id}')`:`planComplete('${p.id}')`}">${opts.todayMode?IC.timerSm:IC.check} ${okLabel2}</button>`:''}
         ${showSnooze?snoozeBtn2:''}
@@ -2889,7 +2906,7 @@ function planOverviewRowHtml(p){
       <div class="plan-row-icon">${icon}</div>
       <div class="plan-row-main" onclick="openPlanDetailSheet('${p.id}')" role="button" aria-label="詳細を見る">
         <div class="plan-row-name">${esc(dispName)}</div>
-        <div class="plan-row-meta">${over?IC.alertSm:''} ${p.doneCount||0}/${p.totalCount} · ${metaText}</div>
+        <div class="plan-row-meta">${over?IC.alertSm:''} ${p.doneCount||0}/${p.totalCount} · ${metaText}${snoozedDaysOf(p.origDueDate,p.snoozeUntil)?` · ${IC.moon} ${snoozedDaysOf(p.origDueDate,p.snoozeUntil)}日延期中`:''}</div>
         <div class="plan-row-bar-track"><div class="plan-row-bar-fill" style="width:${pct}%"></div></div>
         ${(p.tags&&p.tags.length)?`<div class="plan-row-tags">${p.tags.map(tid=>tagHtml(tid)).join('')}</div>`:''}
       </div>
@@ -2917,7 +2934,7 @@ function planOverviewRowHtml(p){
     <div class="plan-row-icon">${icon}</div>
     <div class="plan-row-main" onclick="openPlanDetailSheet('${p.id}')" role="button" aria-label="詳細を見る">
       <div class="plan-row-name">${esc(dispName)}</div>
-      <div class="plan-row-meta">${over?IC.alertSm:due?IC.clock:''} ${esc(typeSub)} · ${statusText}</div>
+      <div class="plan-row-meta">${over?IC.alertSm:due?IC.clock:''} ${esc(typeSub)} · ${statusText}${snoozedDaysOf(p.origDueDate,(p.type==='weekday'||p.type==='interval')?p.nextDate:p.snoozeUntil)?` · ${IC.moon} ${snoozedDaysOf(p.origDueDate,(p.type==='weekday'||p.type==='interval')?p.nextDate:p.snoozeUntil)}日延期中`:''}</div>
       ${(p.tags&&p.tags.length)?`<div class="plan-row-tags">${p.tags.map(tid=>tagHtml(tid)).join('')}</div>`:''}
     </div>
     <div class="plan-row-acts">
@@ -4284,6 +4301,19 @@ const addD  = (s,n) => { const d=new Date(s+'T00:00:00'); d.setDate(d.getDate()+
 })();
 const diff  = s => Math.round((new Date(s+'T00:00:00')-new Date(td()+'T00:00:00'))/86400000);
 const daysBetween = (a,b) => Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000);
+// ══ 延期日数バッジ ══
+// origDueDate（延期前の元の期日）とcurDate（現在の実質的な期日）から、
+// 何日延期しているかを計算し、小さな注記HTMLを返す。延期していなければ空文字。
+function snoozedDaysOf(origDate, curDate){
+  if(!origDate || !curDate) return 0;
+  const d = daysBetween(origDate, curDate);
+  return d>0 ? d : 0;
+}
+function snoozeNoteHtml(origDate, curDate){
+  const d = snoozedDaysOf(origDate, curDate);
+  if(!d) return '';
+  return `<div class="card-snooze-note">${IC.moon} ${d}日延期しています</div>`;
+}
 const haptic = (t='light') => { try { if(navigator.vibrate) navigator.vibrate(t==='medium'?8:t==='heavy'?[10,4,10]:4); } catch(_){} };
 const esc   = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
@@ -4464,6 +4494,7 @@ function complete(id){
   if(u.step>=MAX_STEP){
     u.done=true;
     u.completedAt = Date.now();
+    delete u.origDueDate;
     bumpStreak();
     save();
     clearTimeout(_safetyTimer);
@@ -4474,6 +4505,7 @@ function complete(id){
   } else {
     u.nextDate=addD(td(),(u.ints||INTS)[u.step]);
     u.lastDoneDate = td(); // track that a step was done today
+    delete u.origDueDate;
     bumpStreak();
     save();
     const msg = esc(STEPS[u.step - 1] || `${u.step}回目`) + '完了！次回: ' + fmtShortText(u.nextDate);
@@ -4540,6 +4572,8 @@ function applySnooze(days){
   closeSnooze();                                 // clears _snoozeId immediately
   if(kind==='plan'){
     const p=PLAN.find(x=>x.id===id); if(!p) return;
+    // 初回の延期時のみ、延期前の元の期日を記録しておく（バッジ表示用）
+    if(!p.origDueDate) p.origDueDate = (p.type==='weekday'||p.type==='interval') ? (p.nextDate||td()) : (p.snoozeUntil||td());
     const until=addD(td(),days);
     if(p.type==='weekday'||p.type==='interval') p.nextDate=until;
     else p.snoozeUntil=until; // daily / goal は次回発生日という概念がないため専用フィールドで隠す
@@ -4551,6 +4585,7 @@ function applySnooze(days){
   }
   if(kind==='todo'){
     const x=TODOS.find(t=>t.id===id); if(!x) return;
+    if(!x.origDueDate) x.origDueDate = x.date||td();
     x.date=addD(td(),days);
     saveTodos();
     haptic('medium');
@@ -4560,6 +4595,7 @@ function applySnooze(days){
     return;
   }
   const u=U.find(x=>x.id===id); if(!u) return;
+  if(!u.origDueDate) u.origDueDate = u.nextDate;
   u.nextDate=addD(td(),days); save();
   haptic('medium');
   shrinkOut('w-'+u.id,()=>render());
@@ -4654,7 +4690,7 @@ function analyzeLoad(){
 
 function applySmartAdjust(moves){
   if(!moves || !moves.length) return;
-  moves.forEach(({id,to})=>{ const u=U.find(x=>x.id===id); if(u) u.nextDate=to; });
+  moves.forEach(({id,to})=>{ const u=U.find(x=>x.id===id); if(u){ if(!u.origDueDate) u.origDueDate=u.nextDate; u.nextDate=to; } });
   save();
   adjDismissed=true;
   window._adjMoves=null;
@@ -6739,9 +6775,9 @@ function _calDayItemsHtml(dateStr){
   const planCands = PLAN.filter(p => !p.done && p.type!=='daily' && planCalDate(p) === dateStr);
   const todoCands = TODOS.filter(x => !x.done && x.date === dateStr);
   const rows = [
-    ...reviewCands.map(u => ({ id: u.id, kind: 'review', name: u.name, label: STEPS[u.step] || `${u.step}回目`, color: 'var(--blue)' })),
-    ...planCands.map(p => ({ id: p.id, kind: 'plan', name: planDisplayName(p), label: p.type==='goal' ? '目標の期限' : PLAN_TYPE_LABEL[p.type], color: '#7C3AED' })),
-    ...todoCands.map(x => ({ id: x.id, kind: 'todo', name: x.text, label: 'ToDo', color: '#F59E0B' })),
+    ...reviewCands.map(u => ({ id: u.id, kind: 'review', name: u.name, label: STEPS[u.step] || `${u.step}回目`, color: 'var(--blue)', origDueDate: u.origDueDate })),
+    ...planCands.map(p => ({ id: p.id, kind: 'plan', name: planDisplayName(p), label: p.type==='goal' ? '目標の期限' : PLAN_TYPE_LABEL[p.type], color: '#7C3AED', origDueDate: p.origDueDate })),
+    ...todoCands.map(x => ({ id: x.id, kind: 'todo', name: x.text, label: 'ToDo', color: '#F59E0B', origDueDate: x.origDueDate })),
   ];
   if(!rows.length){
     return `<div class="cal-day-empty">この日に予定はありません</div>`;
@@ -6752,11 +6788,14 @@ function _calDayItemsHtml(dateStr){
       : r.kind==='plan' ? `openPlanDetailSheet('${r.id}')`
       : '';
     const editBtn = editFn ? `<button class="cal-day-item-edit" onclick="event.stopPropagation();${editFn}" aria-label="編集">${IC.pencil}</button>` : '';
+    const snoozeDays = snoozedDaysOf(r.origDueDate, dateStr);
+    const snoozeBadge = snoozeDays ? `<span class="cal-day-item-snooze">${IC.moon} ${snoozeDays}日延期</span>` : '';
     return `
     <div class="cal-day-item">
       <div class="cal-day-item-top">
         <span class="cal-day-item-dot" style="background:${r.color}"></span>
         <span class="cal-day-item-name">${esc(r.name)}</span>
+        ${snoozeBadge}
         <span class="cal-day-item-label">${esc(r.label)}</span>
         ${editBtn}
       </div>
@@ -6826,9 +6865,12 @@ function _renderDenseSheet(){
 
   const reviewHtml = reviewCands.map(u => {
     const stepLabel = STEPS[u.step] || (u.step + '回目');
+    const snoozeDays = snoozedDaysOf(u.origDueDate, dateStr);
+    const snoozeBadge = snoozeDays ? `<span class="cal-day-item-snooze">${IC.moon} ${snoozeDays}日延期</span>` : '';
     return `<div class="dense-row" id="dense-row-${u.id}">
       <div class="dense-row-top">
         <div class="dense-row-name">${esc(u.name)}</div>
+        ${snoozeBadge}
         <div class="dense-row-step">${stepLabel}</div>
       </div>
       <div class="dense-row-btns">${shiftBtns(u.id,'review')}</div>
@@ -6837,9 +6879,12 @@ function _renderDenseSheet(){
 
   const planHtml = planCands.map(p => {
     const stepLabel = p.type==='goal' ? '目標の期限' : PLAN_TYPE_LABEL[p.type];
+    const snoozeDays = snoozedDaysOf(p.origDueDate, dateStr);
+    const snoozeBadge = snoozeDays ? `<span class="cal-day-item-snooze">${IC.moon} ${snoozeDays}日延期</span>` : '';
     return `<div class="dense-row" id="dense-row-${p.id}">
       <div class="dense-row-top">
         <div class="dense-row-name">${esc(planDisplayName(p))}</div>
+        ${snoozeBadge}
         <div class="dense-row-step" style="color:var(--plan-d)">${stepLabel}</div>
       </div>
       <div class="dense-row-btns">${shiftBtns(p.id,'plan')}</div>
@@ -6847,9 +6892,12 @@ function _renderDenseSheet(){
   }).join('');
 
   const todoHtml = todoCands.map(x => {
+    const snoozeDays = snoozedDaysOf(x.origDueDate, dateStr);
+    const snoozeBadge = snoozeDays ? `<span class="cal-day-item-snooze">${IC.moon} ${snoozeDays}日延期</span>` : '';
     return `<div class="dense-row" id="dense-row-${x.id}">
       <div class="dense-row-top">
         <div class="dense-row-name">${esc(x.text)}</div>
+        ${snoozeBadge}
         <div class="dense-row-step" style="color:#B45309">ToDo</div>
       </div>
       <div class="dense-row-btns">${shiftBtns(x.id,'todo')}</div>
@@ -6862,6 +6910,7 @@ function _renderDenseSheet(){
 function denseShiftTodo(id, destDate){
   const x = TODOS.find(t => t.id === id);
   if(!x) return;
+  if(!x.origDueDate) x.origDueDate = x.date;
   x.date = destDate;
   saveTodos();
   haptic('medium');
@@ -6873,6 +6922,7 @@ function denseShiftUnit(uid, destDate){
   const u = U.find(x => x.id === uid);
   if(!u) return;
   const fromDate = u.nextDate;
+  if(!u.origDueDate) u.origDueDate = fromDate;
   u.nextDate = destDate;
   save();
   haptic('medium');
@@ -6883,6 +6933,7 @@ function denseShiftUnit(uid, destDate){
 function denseShiftPlan(pid, destDate){
   const p = PLAN.find(x => x.id === pid);
   if(!p) return;
+  if(!p.origDueDate) p.origDueDate = (p.type==='goal') ? p.deadline : p.nextDate;
   if(p.type==='goal') p.deadline = destDate;
   else p.nextDate = destDate;
   savePlan();
@@ -7019,6 +7070,7 @@ function cHtml(u, compact){
     ?`<div class="card-when-chip due">${IC.clock} 今日が期限</div>`
     :`<div class="card-when-chip">${IC.calendar} ${fmtShort(u.nextDate)}</div>`;
   const newCls = u.isNew ? ' new-card' : '';
+  const snoozeNote = snoozeNoteHtml(u.origDueDate, u.nextDate);
 
   if(compact){
     // 2カラム表示では横幅が限られるため、ドットは省略し「n/8」の短い表記のみ表示する
@@ -7037,6 +7089,7 @@ function cHtml(u, compact){
           ${whenChip}
           <span class="step-mini-lbl${u.step<MAX_STEP?' active':''}">${stepLbl}</span>
         </div>
+        ${snoozeNote}
         <div class="acts">
           <button class="btn-ok" onclick="openStudyTimer('${u.id}')">${IC.timerSm} 完了にする</button>
           <button class="btn-snooze" onclick="openSnooze('${u.id}')" aria-label="延期">${IC.moon}</button>
@@ -7068,6 +7121,7 @@ function cHtml(u, compact){
           <span class="step-mini-lbl${u.step<MAX_STEP?' active':''}">${stepLbl}</span>
         </div>
       </div>
+      ${snoozeNote}
       <div class="acts">
         <button class="btn-ok" onclick="openStudyTimer('${u.id}')">${IC.timerSm} 時間を記録して完了</button>
         <button class="btn-snooze" onclick="openSnooze('${u.id}')">${IC.moon} 延期</button>
@@ -7111,6 +7165,7 @@ function cHtmlUpcoming(u){
       </div>
       ${(u.tags&&u.tags.length)?`<div class="card-tags-row">${u.tags.map(tid=>tagHtml(tid)).join('')}</div>`:''}
       <div class="card-when">${IC.calendar} ${fmtShort(u.nextDate)}<span style="color:var(--lbl3);font-size:12px;margin-left:2px">· ${d}日後</span></div>
+      ${snoozeNoteHtml(u.origDueDate, u.nextDate)}
       <div class="step-dots" style="margin-bottom:0">${dotsHtml}</div>
       <button class="sched-toggle${isOpen?' open':''}" id="sched-btn-${u.id}" onclick="toggleSched('${u.id}')">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -7675,6 +7730,7 @@ function toggleTodo(id){
   if(item.done){
     item.half=false;
     item.completedAt=Date.now();
+    delete item.origDueDate;
     if(item.timerStart){ item.elapsedMs=(item.elapsedMs||0)+(Date.now()-item.timerStart); item.timerStart=null; }
   } else {
     delete item.completedAt;
@@ -7715,6 +7771,7 @@ function todoCardHtml(x, compact){
       <div class="card-status-row">
         ${whenChip}
       </div>
+      ${snoozeNoteHtml(x.origDueDate, x.date)}
       <div class="acts">
         <button class="btn-ok" onclick="openStudyTimerForTodo('${x.id}')">${IC.timerSm} ${okLabel}</button>
         ${snoozeBtn}
