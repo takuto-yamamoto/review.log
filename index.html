@@ -1300,6 +1300,49 @@ button,a,input,[role="button"]{touch-action:manipulation}
 }
 .snooze-cancel:active{background:var(--fill)}
 
+/* ══ 実施期間終了 計画の確認シート ══ */
+.expired-plan-sheet{
+  position:fixed;inset:0;z-index:150;
+  display:flex;align-items:flex-end;
+  pointer-events:none;
+}
+.expired-plan-sheet.on{pointer-events:all}
+.expired-plan-bg{position:absolute;inset:0;background:rgba(0,0,0,0);transition:background .2s}
+.expired-plan-sheet.on .expired-plan-bg{background:rgba(0,0,0,.4)}
+.expired-plan-box{
+  position:relative;width:100%;background:var(--card);
+  border-radius:24px 24px 0 0;
+  padding:0 calc(20px + var(--safe-right)) calc(20px + var(--safe-bottom)) calc(20px + var(--safe-left));
+  transform:translateY(110%);transition:transform .32s cubic-bezier(.32,.72,0,1);
+  text-align:center
+}
+.expired-plan-sheet.on .expired-plan-box{transform:translateY(0)}
+.expired-plan-pull{display:block;width:100%;height:26px;position:relative}
+.expired-plan-icon{
+  width:60px;height:60px;border-radius:50%;margin:2px auto 14px;
+  display:flex;align-items:center;justify-content:center;font-size:28px;
+  background:linear-gradient(145deg,#FDE68A,#F59E0B);
+  box-shadow:0 4px 14px rgba(245,158,11,.35)
+}
+.expired-plan-ttl{font-size:17px;font-weight:700;color:var(--lbl);margin-bottom:5px;line-height:1.4;word-break:break-word}
+.expired-plan-sub{font-size:12.5px;color:var(--lbl3);margin-bottom:14px}
+.expired-plan-body{font-size:13.5px;color:var(--lbl2);line-height:1.75;margin-bottom:22px}
+.expired-plan-keep{
+  width:100%;display:flex;align-items:center;justify-content:center;gap:6px;
+  background:linear-gradient(145deg,#4F8EF7,#1D4ED8);
+  color:#fff;border:none;border-radius:14px;padding:16px;
+  font-family:inherit;font-size:16px;font-weight:700;cursor:pointer;
+  min-height:52px;margin-bottom:8px;box-shadow:0 3px 14px rgba(37,99,235,.3);
+  transition:opacity .12s
+}
+.expired-plan-keep:active{opacity:.8}
+.expired-plan-del{
+  width:100%;background:none;border:none;padding:14px;
+  font-size:15px;font-weight:600;color:var(--red);
+  font-family:inherit;cursor:pointer;border-radius:12px;transition:background .12s
+}
+.expired-plan-del:active{background:var(--fill)}
+
 
 .adj-banner{
   background:var(--card);border-radius:var(--r);margin-bottom:10px;
@@ -2308,6 +2351,20 @@ button,a,input,[role="button"]{touch-action:manipulation}
   </div>
 </div>
 
+<!-- 実施期間が終了した計画の確認シート -->
+<div class="expired-plan-sheet" id="expired-plan-overlay">
+  <div class="expired-plan-bg" onclick="expiredPlanKeep()"></div>
+  <div class="expired-plan-box">
+    <div class="expired-plan-pull"></div>
+    <div class="expired-plan-icon">🏁</div>
+    <div class="expired-plan-ttl" id="expired-plan-name">-</div>
+    <div class="expired-plan-sub" id="expired-plan-period">-</div>
+    <div class="expired-plan-body">お疲れさまでした！実施期間が終わりました。<br>このまま完了として残しますか？削除もできます。</div>
+    <button class="expired-plan-keep" onclick="expiredPlanKeep()">✓ 完了として残す</button>
+    <button class="expired-plan-del" onclick="expiredPlanDelete()">削除する</button>
+  </div>
+</div>
+
 <!-- P1: Edit modal -->
 <div class="edit-modal" id="edit-modal">
   <div class="edit-modal-bg" onclick="closeEdit()"></div>
@@ -2630,22 +2687,60 @@ function planIsDueToday(p){
    軽量にチェックし、削除するか完了扱いにするかを確認する。
    ※ 勉強記録（STUDY_LOGS）は記録した時点の名前などをスナップショットとして保持しているため、
      ここで計画を削除しても勉強記録タブの表示には影響しない。 */
+/* ══ 実施期間が終了した計画の自動チェック ══
+   毎日/曜日指定/間隔タイプの計画は endDate を過ぎると自動的に「今日」タブに出てこなくなるが、
+   そのままでは計画タブに古い予定として残り続けてしまう。起動時・日付が変わったタイミングで
+   軽量にチェックし、専用シートで削除するか完了扱いにするかを確認する（複数あれば1件ずつ）。
+   ※ 勉強記録（STUDY_LOGS）は記録した時点の名前などをスナップショットとして保持しているため、
+     ここで計画を削除しても勉強記録タブの表示には影響しない。 */
+let _expiredPlanQueue = [];
 function checkExpiredPlans(){
   const t=td();
   const expired=PLAN.filter(p=>!p.done && p.type!=='goal' && p.endDate && p.endDate<t);
   if(!expired.length) return;
-  let changed=false;
-  expired.forEach(p=>{
-    const period=`${fmtShort(p.startDate||p.createdDate||td())}〜${fmtShort(p.endDate)}`;
-    const ok=confirm(`「${planDisplayName(p)}」の実施期間（${period}）が終了しました。\nこの計画を削除しますか？\n\n「キャンセル」を選ぶと完了済みとして残します。`);
-    if(ok){
-      PLAN=PLAN.filter(x=>x.id!==p.id);
-    } else {
-      p.done=true; p.completedAt=Date.now(); delete p.origDueDate;
-    }
-    changed=true;
-  });
-  if(changed){ savePlan(); render(); }
+  _expiredPlanQueue = expired.map(p=>p.id);
+  _showNextExpiredPlan();
+}
+function _showNextExpiredPlan(){
+  if(!_expiredPlanQueue.length) return;
+  const p = PLAN.find(x=>x.id===_expiredPlanQueue[0]);
+  if(!p){ _expiredPlanQueue.shift(); _showNextExpiredPlan(); return; }
+  const period=`${fmtShort(p.startDate||p.createdDate||td())} 〜 ${fmtShort(p.endDate)}`;
+  document.getElementById('expired-plan-name').textContent = planDisplayName(p);
+  document.getElementById('expired-plan-period').textContent = `実施期間：${period}`;
+  document.getElementById('expired-plan-overlay').classList.add('on');
+  haptic();
+}
+function _closeExpiredPlanSheet(){
+  document.getElementById('expired-plan-overlay').classList.remove('on');
+}
+function _expiredPlanNext(){
+  _closeExpiredPlanSheet();
+  savePlan(); render();
+  if(_expiredPlanQueue.length) setTimeout(_showNextExpiredPlan, 340);
+}
+function expiredPlanKeep(){
+  const id=_expiredPlanQueue.shift(); if(!id) return;
+  const p=PLAN.find(x=>x.id===id);
+  if(p){ p.done=true; p.completedAt=Date.now(); delete p.origDueDate; }
+  haptic('medium');
+  toast(IC.checkCircle, p?esc(planDisplayName(p))+'を完了として残しました':'');
+  _expiredPlanNext();
+}
+function expiredPlanDelete(){
+  const id=_expiredPlanQueue.shift(); if(!id) return;
+  const idx=PLAN.findIndex(x=>x.id===id);
+  const p = idx>=0 ? PLAN[idx] : null;
+  if(idx>=0) PLAN=PLAN.filter(x=>x.id!==id);
+  haptic('medium');
+  if(p){
+    const name=planDisplayName(p);
+    showUndo(`「${esc(name)}」を削除しました`, ()=>{
+      PLAN.splice(Math.min(idx, PLAN.length), 0, p);
+      savePlan(); render();
+    });
+  }
+  _expiredPlanNext();
 }
 // 目標型プランの「今日分」の状況を算出。
 // today分の進捗（todayCount）を除いた時点のペースから、今日必要な件数（target）を固定して求める。
