@@ -1775,12 +1775,36 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .todo-all-name.done{color:var(--lbl3);text-decoration:line-through}
 .todo-all-date{font-size:11.5px;color:var(--lbl3);margin-top:2px}
 
+/* 計画タブ：タスク間の「ルール」一覧・作成 */
+.plan-rule-row{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:.5px solid var(--sep)}
+.plan-rule-row:last-child{border-bottom:none}
+.plan-rule-body{flex:1;min-width:0}
+.plan-rule-txt{font-size:14px;font-weight:600;color:var(--lbl);line-height:1.5;word-break:break-word}
+.plan-rule-sub{font-size:11.5px;color:var(--lbl3);margin-top:2px;display:flex;align-items:center;gap:4px}
+.plan-rule-pick-row{
+  display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:.5px solid var(--sep);
+  cursor:pointer;transition:background .12s;
+}
+.plan-rule-pick-row:active{background:var(--fill)}
+.plan-rule-pick-row:last-child{border-bottom:none}
+.plan-rule-pick-row.disabled{opacity:.4;pointer-events:none}
+.plan-rule-pick-check{
+  width:22px;height:22px;border-radius:7px;flex-shrink:0;border:1.5px solid var(--sep);
+  background:var(--card);display:flex;align-items:center;justify-content:center;color:#fff;
+  transition:background .12s,border-color .12s;
+}
+.plan-rule-pick-check.on{background:#7C3AED;border-color:#7C3AED}
+.plan-rule-pick-name{flex:1;min-width:0;font-size:14px;font-weight:600;color:var(--lbl);word-break:break-word}
+.plan-rule-pick-type{font-size:11.5px;color:var(--lbl3);margin-top:1px}
+.plan-rule-hint{font-size:12.5px;color:var(--lbl3);padding:10px 16px 2px;line-height:1.6}
+
 .dense-close-btn{
   margin:0 16px 8px;padding:13px;border:none;border-radius:12px;
   background:var(--fill);color:var(--lbl2);font-size:15px;font-weight:600;
   font-family:inherit;cursor:pointer;flex-shrink:0;
 }
 .dense-close-btn:active{opacity:.7}
+.dense-close-btn:disabled{opacity:.4;pointer-events:none}
 
 /* Tag manager sheet */
 .tag-mgr-sheet{
@@ -2625,6 +2649,18 @@ const saveTodos = () => safeSetItem(TODO_KEY, JSON.stringify(TODOS));
 const PLAN_KEY = 'fukushu-plan-v1';
 let PLAN = (() => { try { return JSON.parse(localStorage.getItem(PLAN_KEY)) || []; } catch { return []; } })();
 const savePlan = () => safeSetItem(PLAN_KEY, JSON.stringify(PLAN));
+
+/* ══ Plan（計画）タスク間の「ルール」 ═══════════
+   計画タブ内の2つのタスクが同じ日に重ならないようにするための設定。
+   Rule: { id, aId, bId, createdAt }
+   ・毎日(daily)タイプは常に「今日」が対象になり被りを解消できないため、
+     ルール作成の選択肢からは除外する。
+   ・実際の重なり回避は getDuePlanList() 側で行う（表示の抑制。
+     nextDate 自体は書き換えないので、翌日以降は再評価される）。 */
+const PLAN_RULE_KEY = 'fukushu-plan-rules-v1';
+let PLAN_RULES = (() => { try { return JSON.parse(localStorage.getItem(PLAN_RULE_KEY)) || []; } catch { return []; } })();
+const savePlanRules = () => safeSetItem(PLAN_RULE_KEY, JSON.stringify(PLAN_RULES));
+const PLAN_RULE_FILTER_ID = '__planrule__';
 const PLAN_TYPE_LABEL = { daily:'毎日', weekday:'曜日指定', interval:'間隔', goal:'目標' };
 const WD_LABELS = ['日','月','火','水','木','金','土'];
 const PLAN_NAME_MODE_LABEL = { fixed:'毎回同じ', sequence:'数字+カスタム', custom:'完全カスタム' };
@@ -2743,22 +2779,38 @@ function expiredPlanDelete(){
   _expiredPlanNext();
 }
 // 目標型プランの「今日分」の状況を算出。
-// today分の進捗（todayCount）を除いた時点のペースから、今日必要な件数（target）を固定して求める。
-// こうすることで、今日中に完了させるほど target が変わってしまう（自己参照的でわかりにくい）のを防ぐ。
+// 「当初の予定（開始日〜締切日・全体個数）」から見て、今日までに本来終わっているべき累計個数
+// （＝経過日数の割合ぶんの個数）を計算し、実際の達成数がそれを下回っていたら「遅れている」と
+// みなして表示する。早めに進めておけば、その分だけ後の日は表示されなくなる（貯金が効く）。
+// today分の進捗（todayCount）は比較の基準から除き、今日中に完了させるほど target が
+// 変わってしまう（自己参照的でわかりにくい）のを防ぐ。
 function _planGoalTodayStatus(p){
   const todayCount = (p.todayDate===td()) ? (p.todayCount||0) : 0;
   const doneBeforeToday = Math.max(0, (p.doneCount||0) - todayCount);
-  const pace = _planPaceRaw(p.deadline, p.totalCount, doneBeforeToday);
-  return {todayCount, target:pace.perDay};
+  const totalCount = p.totalCount||0;
+  const remain = Math.max(0, totalCount - doneBeforeToday);
+  if(remain<=0) return {todayCount, target:0};
+
+  const start = p.startDate || p.createdDate || td();
+  const totalDurationDays = Math.max(1, daysBetween(start, p.deadline)); // 開始日〜締切日の総日数
+  const overdue = diff(p.deadline) < 0;
+  // 経過日数（開始日を1日目として数える。例: 開始日当日なら1）
+  const elapsedDays = Math.min(totalDurationDays, Math.max(0, daysBetween(start, td())) + 1);
+  // 当初ペースなら「今日までに」終わっているべき累計個数
+  // 例: 100日で20個（5日に1個）なら、最初の5日間で1個必要 → 5日目時点で expected=1
+  const expectedByToday = overdue ? totalCount : Math.floor(elapsedDays * totalCount / totalDurationDays);
+  const target = Math.max(0, Math.min(remain, expectedByToday - doneBeforeToday));
+  return {todayCount, target};
 }
 // 今日タブに表示すべき計画タスク（毎日/曜日指定/間隔/目標型）を取得。
 // 今日タブのバッジ数・本文表示で共通利用する
 function getDuePlanList(){
-  return PLAN.filter(p=>{
+  const list = PLAN.filter(p=>{
     if(p.done || !planInPeriod(p)) return false;
     if(p.snoozeUntil && p.snoozeUntil>td()) return false; // 延期中は今日タブから隠す
     if(p.type==='goal'){
-      // 「1日◯個必要」の目安分を今日すでに達成していれば今日タブからは消す
+      // 今日「本当にやる必要がある」場合のみ表示する（ペースに余裕がある日は表示しない）。
+      // 表示される日でも、その日の目安分をすでに達成していれば今日タブからは消す。
       const {todayCount, target} = _planGoalTodayStatus(p);
       return target>0 && todayCount<target;
     }
@@ -2768,7 +2820,34 @@ function getDuePlanList(){
       const kb = b.type==='goal' ? (b.deadline||'') : (b.nextDate||'');
       return ka.localeCompare(kb);
     });
+  return _applyPlanRulesToDueList(list);
 }
+// 「XとYは同じ日にならないようにする」ルールを、今日タブに出す直前の一覧に適用する。
+// nextDate/deadline 自体は書き換えない「表示の抑制」なので、翌日以降は改めて評価される
+// （＝片方が完了しなければ、次回はまた両方の状況を見て優先度の高い方が出る）。
+function _applyPlanRulesToDueList(list){
+  if(!PLAN_RULES.length || list.length<2) return list;
+  const idsToday = new Set(list.map(p=>p.id));
+  const suppressed = new Set();
+  PLAN_RULES.forEach(r=>{
+    if(!idsToday.has(r.aId) || !idsToday.has(r.bId)) return; // 両方が今日出る場合のみ対象
+    if(suppressed.has(r.aId) || suppressed.has(r.bId)) return; // 既に他ルールで解決済み
+    const a=list.find(p=>p.id===r.aId), b=list.find(p=>p.id===r.bId);
+    if(!a || !b) return;
+    const loser = _planRuleLoser(a,b);
+    if(loser) suppressed.add(loser.id);
+  });
+  return suppressed.size ? list.filter(p=>!suppressed.has(p.id)) : list;
+}
+// ルールが重なった2件のうち、今日は表示を見送る側（負け）を決める。
+// 期日がより近い／過ぎている方を優先して残し、同条件ならPLAN配列内で先に作られた方を残す。
+function _planRuleLoser(a,b){
+  const rank = p => p.type==='goal' ? diff(p.deadline) : diff(p.nextDate);
+  const ra=rank(a), rb=rank(b);
+  if(ra!==rb) return ra<rb ? b : a;
+  return (PLAN.findIndex(x=>x.id===a.id) > PLAN.findIndex(x=>x.id===b.id)) ? a : b;
+}
+
 // 今日タブの「完了済み」に表示すべき、今日達成した計画タスクを取得
 // daily/weekday/interval: 今日 lastDoneDate が付いたもの
 // goal: 今日分の目安を達成した、または目標そのものを今日達成したもの
@@ -2828,9 +2907,13 @@ function planDelete(id){
   const idx=PLAN.findIndex(x=>x.id===id); if(idx<0) return;
   const p=PLAN[idx];
   const name=planDisplayName(p);
+  // このタスクに紐づく「ルール」も一旦削除し、削除を元に戻した場合はルールも復元する
+  const removedRules = PLAN_RULES.filter(r=>r.aId===id||r.bId===id);
+  if(removedRules.length){ PLAN_RULES = PLAN_RULES.filter(r=>r.aId!==id&&r.bId!==id); savePlanRules(); }
   PLAN=PLAN.filter(x=>x.id!==id); savePlan(); render(); haptic();
   showUndo(`「${esc(name)}」を削除しました`, ()=>{
     PLAN.splice(Math.min(idx, PLAN.length), 0, p);
+    if(removedRules.length){ PLAN_RULES = PLAN_RULES.concat(removedRules); savePlanRules(); }
     savePlan(); render();
   });
 }
@@ -3148,14 +3231,183 @@ function rPlan(){
     .sort((a,b)=>planOverviewSortKey(a).localeCompare(planOverviewSortKey(b)));
   const dueCount = active.filter(p=>p.type!=='goal' && (planIsDueToday(p)||planIsOverdue(p))).length;
 
-  let html = `<div class="hero" style="background:linear-gradient(135deg,#4C1D95 0%,#7C3AED 55%,#A78BFA 100%)">
+  // ── タグ絞り込みバー（予定タブと同じ見た目・挙動）＋「ルール」チップ ──
+  const usedTagIds=new Set();
+  active.forEach(p=>(p.tags||[]).forEach(tid=>usedTagIds.add(tid)));
+  const availTags=TAGS.filter(t=>usedTagIds.has(t.id));
+  const ruleActive = filterPlanTagId===PLAN_RULE_FILTER_ID;
+  // ルールは2件以上の計画タスクがあって初めて作れるため、その条件下でのみチップを出す
+  const ruleChipHtml = active.length>=2 ? `<button class="tagf-chip todo-chip${ruleActive?' active':''}" onclick="setPlanRuleFilter()">
+    <span class="tagf-dot" style="background:${ruleActive?'#fff':'#7C3AED'}"></span>ルール${PLAN_RULES.length?` (${PLAN_RULES.length})`:''}
+  </button>` : '';
+
+  const tagFilterHtml = (availTags.length || ruleChipHtml) ? `<div class="tagf-wrap">
+    <div class="tagf-scroll">
+      <button class="tagf-chip all${!filterPlanTagId?' active':''}" onclick="setPlanTagFilter(null)">すべて</button>
+      ${ruleChipHtml}
+      ${availTags.map(t=>{
+        const isActive=filterPlanTagId===t.id;
+        const st=isActive?`background:${t.color};border-color:${t.color};color:#fff`:'';
+        return `<button class="tagf-chip${isActive?' active':''}" style="${st}" onclick="setPlanTagFilter('${t.id}')"><span class="tagf-dot" style="background:${isActive?'#fff':t.color}"></span>${esc(t.name)}</button>`;
+      }).join('')}
+    </div>
+  </div>` : '';
+
+  const heroHtml = `<div class="hero" style="background:linear-gradient(135deg,#4C1D95 0%,#7C3AED 55%,#A78BFA 100%)">
     <div class="hero-msg">${active.length} 件の計画があります</div>
     ${dueCount?`<div class="hero-sub" style="margin-top:6px">今日やることは「今日」タブで確認・完了できます</div>`:''}
-  </div>
-  ${addCtaHtml}
-  <div class="plan-list">${active.map(p=>planOverviewRowHtml(p)).join('')}</div>`;
+  </div>`;
+
+  const barHtml = heroHtml + tagFilterHtml;
+
+  if(ruleActive){
+    el.innerHTML = barHtml + planRuleListHtml();
+    const _tf=el.querySelector('.tagf-scroll');
+    if(_tf) _tf.scrollLeft=_planTagfScrollLeft;
+    return;
+  }
+
+  const filtered = filterPlanTagId ? active.filter(p=>(p.tags||[]).includes(filterPlanTagId)) : active;
+
+  let listHtml;
+  if(filtered.length){
+    listHtml = `<div class="plan-list">${filtered.map(p=>planOverviewRowHtml(p)).join('')}</div>`;
+  } else {
+    const _filterTag = filterPlanTagId ? getTag(filterPlanTagId) : null;
+    listHtml = `<div class="empty" style="padding:28px 0">
+      <div class="empty-icon">${IC.searchLg}</div>
+      <h3>該当する計画がありません</h3>
+      <p>${_filterTag ? `「${esc(_filterTag.name)}」のタグが付いた計画は<br>見つかりませんでした` : '該当する計画はありません'}</p>
+    </div>`;
+  }
+
+  let html = barHtml + addCtaHtml + listHtml;
   el.innerHTML=html;
+  const _tf=el.querySelector('.tagf-scroll');
+  if(_tf) _tf.scrollLeft=_planTagfScrollLeft;
 }
+
+function setPlanTagFilter(tagId){
+  const _tf=document.querySelector('#p-plan .tagf-scroll');
+  if(_tf) _planTagfScrollLeft=_tf.scrollLeft;
+  filterPlanTagId = tagId;
+  haptic();
+  render();
+}
+
+function setPlanRuleFilter(){
+  const _tf=document.querySelector('#p-plan .tagf-scroll');
+  if(_tf) _planTagfScrollLeft=_tf.scrollLeft;
+  filterPlanTagId = (filterPlanTagId===PLAN_RULE_FILTER_ID) ? null : PLAN_RULE_FILTER_ID;
+  haptic();
+  render();
+}
+
+/* ══ 計画タスク間の「ルール」一覧・作成 ══ */
+function planRuleListHtml(){
+  const addBtn = `<button class="plan-add-cta" onclick="openPlanRuleAddSheet()">
+    <span class="plan-add-cta-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+    <span class="plan-add-cta-txt">
+      <span class="plan-add-cta-ttl">新しいルールを作る</span>
+      <span class="plan-add-cta-sub">2つの計画タスクが同じ日に重ならないようにできます</span>
+    </span>
+  </button>`;
+
+  if(!PLAN_RULES.length){
+    return addBtn + `<div class="empty" style="padding:28px 0">
+      <div class="empty-icon">${IC.searchLg}</div>
+      <h3>ルールはまだありません</h3>
+      <p>「AとBは同じ日にしない」のようなルールを<br>作って予定の重なりを避けられます</p>
+    </div>`;
+  }
+
+  const rows = PLAN_RULES.map(r=>{
+    const a=PLAN.find(x=>x.id===r.aId), b=PLAN.find(x=>x.id===r.bId);
+    const nameA = a ? esc(planDisplayName(a)) : '<span style="color:var(--lbl3)">（削除済み）</span>';
+    const nameB = b ? esc(planDisplayName(b)) : '<span style="color:var(--lbl3)">（削除済み）</span>';
+    return `<div class="plan-rule-row" id="rule-${r.id}">
+      <div class="plan-rule-body">
+        <div class="plan-rule-txt">${nameA} と ${nameB}</div>
+        <div class="plan-rule-sub">${IC.calendar} 同じ日にならないようにする</div>
+      </div>
+      <button class="btn-del" onclick="deletePlanRule('${r.id}')" aria-label="ルールを削除">${IC.trash}</button>
+    </div>`;
+  }).join('');
+
+  return addBtn + `<div class="plan-list">${rows}</div>`;
+}
+
+function deletePlanRule(id){
+  const idx=PLAN_RULES.findIndex(r=>r.id===id); if(idx<0) return;
+  const r=PLAN_RULES[idx];
+  PLAN_RULES=PLAN_RULES.filter(x=>x.id!==id); savePlanRules(); render(); haptic();
+  showUndo('ルールを削除しました', ()=>{
+    PLAN_RULES.splice(Math.min(idx, PLAN_RULES.length), 0, r);
+    savePlanRules(); render();
+  });
+}
+
+/* ── ルール作成シート：2つの計画タスクを選んで「同じ日にしない」ルールを作る ── */
+let _planRuleDraftIds = [];
+function openPlanRuleAddSheet(){
+  _planRuleDraftIds = [];
+  renderPlanRuleAddSheet();
+  document.getElementById('plan-rule-overlay').classList.add('on');
+  document.getElementById('plan-rule-sheet').classList.add('on');
+  setFabHidden(true);
+  haptic();
+}
+function closePlanRuleAddSheet(){
+  document.getElementById('plan-rule-overlay').classList.remove('on');
+  document.getElementById('plan-rule-sheet').classList.remove('on');
+  setFabHidden(true); // ルールシートは計画タブからのみ開くため、閉じてもFABは非表示のまま
+}
+function togglePlanRuleDraftId(id){
+  const i=_planRuleDraftIds.indexOf(id);
+  if(i>=0){ _planRuleDraftIds.splice(i,1); }
+  else {
+    if(_planRuleDraftIds.length>=2) _planRuleDraftIds.shift(); // 3つ目を選んだら一番古い選択を外す
+    _planRuleDraftIds.push(id);
+  }
+  haptic();
+  renderPlanRuleAddSheet();
+}
+function renderPlanRuleAddSheet(){
+  // 毎日タイプは常に「今日」が対象になり、重なりを解消できないため選択肢から除外する
+  const candidates = PLAN.filter(p=>!p.done && p.type!=='daily');
+  const rows = candidates.map(p=>{
+    const isOn = _planRuleDraftIds.includes(p.id);
+    return `<div class="plan-rule-pick-row" onclick="togglePlanRuleDraftId('${p.id}')">
+      <div class="plan-rule-pick-check${isOn?' on':''}">${isOn?IC.check:''}</div>
+      <div style="flex:1;min-width:0">
+        <div class="plan-rule-pick-name">${esc(planDisplayName(p))}</div>
+        <div class="plan-rule-pick-type">${PLAN_TYPE_LABEL[p.type]}${p.type==='goal'?` · ${fmtShort(p.deadline)}まで`:''}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const body = candidates.length ? rows : `<div class="dense-empty">毎日タイプ以外の計画タスクがまだありません。<br>曜日指定・間隔・目標のタスクを作成してから設定できます。</div>`;
+
+  const scroll = document.getElementById('plan-rule-sheet-scroll');
+  if(scroll){
+    scroll.innerHTML = `<div class="plan-rule-hint">同じ日にしたくない2つのタスクを選んでください（毎日タイプは対象外です）</div>${body}`;
+  }
+  const saveBtn = document.getElementById('plan-rule-save-btn');
+  if(saveBtn) saveBtn.disabled = _planRuleDraftIds.length!==2;
+}
+function savePlanRuleFromSheet(){
+  if(_planRuleDraftIds.length!==2) return;
+  const [aId,bId]=_planRuleDraftIds;
+  const dup = PLAN_RULES.some(r=>(r.aId===aId&&r.bId===bId)||(r.aId===bId&&r.bId===aId));
+  if(dup){ toast(IC.alertSm, 'このルールはすでに作成されています'); return; }
+  PLAN_RULES.push({id:'rule-'+Date.now().toString(), aId, bId, createdAt:Date.now()});
+  savePlanRules();
+  closePlanRuleAddSheet();
+  render();
+  haptic('medium');
+  toast(IC.checkCircle, 'ルールを作成しました');
+}
+
 
 /* ── Plan add / edit modal ── */
 let _planDraft=null;
@@ -4491,6 +4743,8 @@ let adjDismissed = (() => { try { return localStorage.getItem(ADJ_DISMISSED_KEY)
 let filterTagId = null;
 const TODO_FILTER_ID = '__todo__';
 let _tagfScrollLeft = 0;
+let filterPlanTagId = null;
+let _planTagfScrollLeft = 0;
 
 /* ══ Sheet date state ══════════════════ */
 let _sheetDateMode = 'today';
@@ -7328,6 +7582,7 @@ function switchTab(btn){
   // Clear search only when leaving the relevant tab
   let needRender = false;
   if(prevTab === 'upcoming' && filterTagId){ filterTagId = null; _tagfScrollLeft = 0; needRender = true; }
+  if(prevTab === 'plan' && filterPlanTagId){ filterPlanTagId = null; _planTagfScrollLeft = 0; needRender = true; }
   if(id === 'study'){
     rStudy();
   } else if(id === 'settings'){
@@ -8573,6 +8828,22 @@ if('serviceWorker' in navigator){
   </div>
 </div>
 
+<!-- 計画タブ：「同じ日にしない」ルールの作成シート -->
+<div class="overlay" id="plan-rule-overlay" onclick="closePlanRuleAddSheet()" style="z-index:119"></div>
+<div class="dense-sheet" id="plan-rule-sheet">
+  <div class="dense-sheet-pull"></div>
+  <div class="dense-sheet-head">
+    <div class="dense-sheet-ttl">新しいルールを作る</div>
+    <div class="dense-sheet-sub">2つのタスクを選ぶと「同じ日にしない」ルールになります</div>
+  </div>
+  <div class="dense-sheet-scroll" id="plan-rule-sheet-scroll"></div>
+  <div style="display:flex;gap:8px;padding:0 16px 8px;flex-shrink:0">
+    <button class="dense-close-btn" style="flex:1;margin:0" onclick="closePlanRuleAddSheet()">キャンセル</button>
+    <button class="dense-close-btn" id="plan-rule-save-btn" style="flex:1;margin:0;background:var(--blue-bg);color:var(--blue)" onclick="savePlanRuleFromSheet()" disabled>作成する</button>
+  </div>
+</div>
+
+
 <!-- Tag manager sheet -->
 <div class="overlay" id="tag-overlay" onclick="closeTagMgr()" style="z-index:109"></div>
 <div class="tag-mgr-sheet" id="tag-mgr-sheet">
@@ -8779,6 +9050,14 @@ if('serviceWorker' in navigator){
     const p = planDetailSheet.querySelector('.dense-sheet-pull');
     const sc = document.getElementById('plan-detail-sheet-scroll');
     if(p) bindPullToClose(planDetailSheet, p, closePlanDetailSheet, sc);
+  }
+
+  // plan-rule-sheet（計画タスク間の「ルール」作成）
+  const planRuleSheet = document.getElementById('plan-rule-sheet');
+  if(planRuleSheet){
+    const p = planRuleSheet.querySelector('.dense-sheet-pull');
+    const sc = document.getElementById('plan-rule-sheet-scroll');
+    if(p) bindPullToClose(planRuleSheet, p, closePlanRuleAddSheet, sc);
   }
 
   // tag-mgr-sheet（タグを管理）
