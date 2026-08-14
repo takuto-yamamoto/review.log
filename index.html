@@ -2868,6 +2868,10 @@ function planCardHtml(p, opts){
       : pace.remain<=0 ? ''
       : pace.daysPerOne>0 ? ''
       : `1日${pace.perDay}個 必要`;
+    // 今日タブの正方形コンパクトカードは表示できる行数が限られているため、
+    // 「達成しました」「期限超過」以外の補足ペース情報（1日◯個必要）は省略し、
+    // ボタンなどが枠からはみ出さないようにする。詳細は計画タブ・詳細シートで確認できる。
+    const showPace = paceLbl && (!compact || p.done || over);
     const okLabel = compact ? '1個完了' : (opts.todayMode?'時間を記録して1個完了':'1個完了にする');
     const snoozeBtn = opts.hideSnooze?'':(compact
       ? `<button class="btn-snooze" onclick="openPlanSnooze('${p.id}')" aria-label="延期">${IC.moon}</button>`
@@ -2887,7 +2891,7 @@ function planCardHtml(p, opts){
         </div>
         <div class="plan-progress-lbl"><span>${p.doneCount||0} / ${p.totalCount}</span><span>${pct}%</span></div>
         ${compact ? '' : `<div class="plan-progress-track"><div class="plan-progress-fill" style="width:${pct}%"></div></div>`}
-        ${paceLbl?`<div class="plan-pace">${IC.zap.replace('white','currentColor')}${paceLbl}</div>`:''}
+        ${showPace?`<div class="plan-pace">${IC.zap.replace('white','currentColor')}${paceLbl}</div>`:''}
         ${snoozeNoteHtml(p.origDueDate, p.snoozeUntil)}
         ${(p.done||opts.hideComplete)?'':`<div class="acts">
           <button class="btn-plan-ok" onclick="${opts.todayMode?`openStudyTimerForPlan('${p.id}')`:`planComplete('${p.id}')`}">${opts.todayMode?IC.timerSm:IC.check} ${okLabel}</button>
