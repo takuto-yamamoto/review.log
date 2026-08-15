@@ -7545,6 +7545,9 @@ function _buildCalCellHtml(dateStr, cellDate, dow, opts){
     : '';
 
   // タグ色の四角ピップ（最大4個表示、超過は +N）／計画タスクは丸ピップ／ToDoはひし形ピップ
+  // 復習・計画・ToDo のいずれも見落とされないよう、3種類を交互に(ラウンドロビンで)
+  // 詰めていく。以前は計画/ToDoの色を先に最大4個ずつ確保してから復習の残り枠を
+  // 計算していたため、計画やToDoが多い日は復習の丸ピップが一つも出ないことがあった。
   let pipsHtml = '';
   if(hasEvent && !isOther){
     const MAX_PIPS = 4;
@@ -7552,29 +7555,42 @@ function _buildCalCellHtml(dateStr, cellDate, dow, opts){
     const colors = isOverdue
       ? ev.colors.map(() => '#EF4444')
       : ev.colors;
-    const planColors = (isOverdue
+    const planColors = isOverdue
       ? (ev.planColors||[]).map(() => '#EF4444')
-      : (ev.planColors||[])
-    ).slice(0, MAX_PIPS);
-    const todoColors = (isOverdue
+      : (ev.planColors||[]);
+    const todoColors = isOverdue
       ? (ev.todoColors||[]).map(() => '#EF4444')
-      : (ev.todoColors||[])
-    ).slice(0, MAX_PIPS);
-    const shown = colors.slice(0, Math.max(0, MAX_PIPS - planColors.length - todoColors.length));
-    const shownPipCount = Math.min(count, shown.length + planColors.length + todoColors.length);
+      : (ev.todoColors||[]);
+    const groups = [
+      { colors, cls:'' },
+      { colors: planColors, cls:'plan' },
+      { colors: todoColors, cls:'todo' },
+    ];
+    const idx = [0,0,0];
+    const picked = [];
+    outer:
+    while(picked.length < MAX_PIPS){
+      let addedAny = false;
+      for(let g=0; g<groups.length; g++){
+        if(idx[g] < groups[g].colors.length){
+          picked.push({ c: groups[g].colors[idx[g]++], cls: groups[g].cls });
+          addedAny = true;
+          if(picked.length >= MAX_PIPS) break outer;
+        }
+      }
+      if(!addedAny) break;
+    }
+    const shownPipCount = picked.length;
     const rest  = count - shownPipCount; // 表示しきれないタスク数
-    const pips  = shown.map(c =>
-      `<div class="cal-pip" style="background:${c}"></div>`
-    ).join('') + planColors.map(c =>
-      `<div class="cal-pip plan" style="background:${c}"></div>`
-    ).join('') + todoColors.map(c =>
-      `<div class="cal-pip todo" style="background:${c}"></div>`
+    const pips  = picked.map(p =>
+      `<div class="cal-pip ${p.cls}" style="background:${p.c}"></div>`
     ).join('');
     const more  = rest > 0 ? `<span class="cal-pip-more">+${rest}</span>` : '';
     pipsHtml = `<div class="cal-pips">${pips}${more}</div>`;
   } else if(isGap){
     pipsHtml = `<div class="cal-gap-dot"></div>`;
   }
+
 
   return `<div class="${cls}" ${onclick}>
     <div class="cal-num">${cellDate}</div>
