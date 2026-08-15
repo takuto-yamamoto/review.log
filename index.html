@@ -9729,6 +9729,14 @@ if('serviceWorker' in navigator){
     const sc = document.getElementById('all-logs-body');
     if(p) bindPullToClose(allLogsSheet, p, closeAllLogsSheet, sc);
   }
+
+  // guide-sheet（使い方ガイド）— scrollEl を渡してスクロール中は無効化
+  const guideSheet = document.getElementById('guide-sheet');
+  if(guideSheet){
+    const p = guideSheet.querySelector('.sheet-pull');
+    const sc = document.getElementById('guide-body');
+    if(p) bindPullToClose(guideSheet, p, closeGuideSheet, sc);
+  }
 })();
 </script>
 
