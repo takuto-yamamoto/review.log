@@ -3083,6 +3083,12 @@ const _ruleRank = p => p.type==='goal' ? diff(p.deadline) : diff(p.nextDate);
 function _ruleSuppressSameday(r, list){
   const idsToday = new Set(list.map(p=>p.id));
   const present = r.taskIds.filter(id=>idsToday.has(id)).map(id=>list.find(p=>p.id===id));
+  // 今日すでに完了したメンバーがいれば、残りのメンバーは今日中ずっと抑制する。
+  // （完了したタスクが「今日の一覧」から外れた途端、present.length が2未満になって
+  //   抑制が解除され、別メンバーが同じ日に表示されてしまう不具合を防ぐ）
+  const doneTodayIds = new Set(getPlanDoneTodayList().map(p=>p.id));
+  const doneMemberId = r.taskIds.find(id=>doneTodayIds.has(id));
+  if(doneMemberId) return present.filter(p=>p.id!==doneMemberId).map(p=>p.id);
   if(present.length<2) return [];
   let winner = present[0];
   for(let i=1;i<present.length;i++){ if(_ruleRank(present[i]) < _ruleRank(winner)) winner = present[i]; }
@@ -7643,11 +7649,14 @@ function _calShiftBtnsHtml(dateStr, id, kind){
 /* その日の復習・計画タスク・ToDoを一覧で返す（日表示の画面上でそのまま移動・編集できる） */
 function _calDayItemsHtml(dateStr){
   const reviewCands = U.filter(u => !u.done && u.nextDate === dateStr);
-  const planCands = PLAN.filter(p => !p.done && p.type!=='daily' && planCalDate(p) === dateStr);
+  // 毎日タスクは常に「今日」の日付にのみマッチする（planCalDateがtd()を返すため）ので、
+  // ここでは除外せず一覧に含める。除外するとカレンダーの丸ピップ（_calEventMap）には
+  // 数えられているのに、日付をタップした一覧には出てこないという不整合が起きていた。
+  const planCands = PLAN.filter(p => !p.done && planCalDate(p) === dateStr);
   const todoCands = TODOS.filter(x => !x.done && x.date === dateStr);
   const rows = [
     ...reviewCands.map(u => ({ id: u.id, kind: 'review', name: u.name, label: STEPS[u.step] || `${u.step}回目`, color: 'var(--blue)', origDueDate: u.origDueDate })),
-    ...planCands.map(p => ({ id: p.id, kind: 'plan', name: planDisplayName(p), label: p.type==='goal' ? '目標の期限' : PLAN_TYPE_LABEL[p.type], color: '#7C3AED', origDueDate: p.origDueDate })),
+    ...planCands.map(p => ({ id: p.id, kind: 'plan', name: planDisplayName(p), label: p.type==='goal' ? '目標の期限' : PLAN_TYPE_LABEL[p.type], color: '#7C3AED', origDueDate: p.origDueDate, isDaily: p.type==='daily' })),
     ...todoCands.map(x => ({ id: x.id, kind: 'todo', name: x.text, label: 'ToDo', color: '#F59E0B', origDueDate: x.origDueDate })),
   ];
   if(!rows.length){
@@ -7670,7 +7679,7 @@ function _calDayItemsHtml(dateStr){
         <span class="cal-day-item-label">${esc(r.label)}</span>
         ${editBtn}
       </div>
-      <div class="cal-day-item-btns">${_calShiftBtnsHtml(dateStr, r.id, r.kind)}</div>
+      <div class="cal-day-item-btns">${r.isDaily ? '' : _calShiftBtnsHtml(dateStr, r.id, r.kind)}</div>
     </div>`;
   }).join('')}</div>`;
 }
