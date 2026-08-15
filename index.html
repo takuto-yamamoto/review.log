@@ -1781,6 +1781,78 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .plan-rule-hint{font-size:12.5px;color:var(--lbl3);padding:10px 16px 2px;line-height:1.6}
 .plan-rule-section-lbl{font-size:12px;font-weight:700;color:var(--lbl2);padding:14px 16px 6px;display:flex;align-items:center;justify-content:space-between}
 .plan-rule-section-lbl span.count{color:#7C3AED}
+.plan-rule-param-row{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:12px 16px 2px;font-size:13.5px;font-weight:600;color:var(--lbl)
+}
+.plan-rule-param-stepper{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.plan-rule-param-stepper button{
+  width:30px;height:30px;border-radius:9px;border:1px solid var(--sep);background:var(--card);
+  color:var(--lbl2);font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-family:inherit
+}
+.plan-rule-param-stepper button:disabled{opacity:.3;pointer-events:none}
+.plan-rule-param-val{font-size:14px;font-weight:700;color:var(--lbl);min-width:44px;text-align:center}
+.plan-rule-type-badge{
+  display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:700;color:#7C3AED;
+  background:#F3E8FF;border-radius:6px;padding:2px 6px;flex-shrink:0;white-space:nowrap;margin-bottom:5px
+}
+.plan-rule-type-badge svg{width:11px;height:11px}
+.plan-rule-wd-row{padding:12px 16px 2px}
+.plan-rule-wd-label{font-size:13.5px;font-weight:600;color:var(--lbl);margin-bottom:8px}
+.plan-rule-wd-grid{display:flex;gap:6px}
+.plan-rule-wd-btn{
+  width:34px;height:34px;border-radius:10px;border:1.5px solid var(--sep);background:var(--card);
+  font-size:13px;font-weight:700;color:var(--lbl2);cursor:pointer;transition:background .12s,border-color .12s,color .12s;
+  font-family:inherit;display:flex;align-items:center;justify-content:center
+}
+.plan-rule-wd-btn.on{background:#7C3AED;border-color:#7C3AED;color:#fff}
+
+/* ルール作成シート：種類選択カード（アイコン＋見出し＋説明のグリッド） */
+.plan-rule-type-grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:2px 16px 0}
+.plan-rule-type-card{
+  position:relative;display:flex;align-items:flex-start;gap:9px;padding:11px 12px;border-radius:14px;
+  border:1.5px solid var(--sep);background:var(--card);cursor:pointer;text-align:left;
+  font-family:inherit;transition:background .15s,border-color .15s,transform .08s;-webkit-tap-highlight-color:transparent;
+}
+.plan-rule-type-card:active{transform:scale(.97)}
+.plan-rule-type-card.on{border-color:#7C3AED;background:#F5F3FF}
+.plan-rule-type-card-icon{
+  width:30px;height:30px;border-radius:9px;background:var(--fill);color:var(--lbl2);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s,color .15s;
+}
+.plan-rule-type-card.on .plan-rule-type-card-icon{background:#7C3AED;color:#fff}
+.plan-rule-type-card-body{min-width:0}
+.plan-rule-type-card-lbl{font-size:12.5px;font-weight:700;color:var(--lbl);line-height:1.3}
+.plan-rule-type-card-desc{
+  font-size:10.5px;color:var(--lbl3);line-height:1.35;margin-top:2px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.plan-rule-type-card-check{
+  position:absolute;top:7px;right:7px;width:15px;height:15px;border-radius:50%;background:#7C3AED;
+  color:#fff;display:flex;align-items:center;justify-content:center;opacity:0;transform:scale(.4);
+  transition:opacity .15s,transform .15s;
+}
+.plan-rule-type-card-check svg{width:10px;height:10px}
+.plan-rule-type-card.on .plan-rule-type-card-check{opacity:1;transform:scale(1)}
+
+/* ルール作成シート：入力内容から組み立てる「プレビュー」コールアウト */
+.plan-rule-preview{
+  margin:12px 16px 0;padding:12px 14px;border-radius:14px;background:#F5F3FF;
+  border:1px solid rgba(124,58,237,.18);display:flex;gap:9px;align-items:flex-start;
+  animation:planRulePreviewIn .18s ease;
+}
+@keyframes planRulePreviewIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+.plan-rule-preview-icon{width:18px;height:18px;color:#7C3AED;flex-shrink:0;margin-top:1px}
+.plan-rule-preview-txt{font-size:12.5px;line-height:1.6;color:#4C1D95;font-weight:500}
+.plan-rule-preview-txt b{font-weight:800;color:#3B0764}
+
+.plan-rule-pri-row.first{background:linear-gradient(90deg,#F5F3FF,transparent 85%);border-radius:10px}
+.plan-rule-pri-first-tag{
+  font-size:9.5px;font-weight:800;color:#7C3AED;background:#F3E8FF;border-radius:5px;
+  padding:1px 5px;margin-left:6px;flex-shrink:0;vertical-align:middle;
+}
+.plan-rule-save-hint{font-size:11.5px;color:var(--lbl3);text-align:center;padding:2px 16px 6px;line-height:1.5}
 
 
 
@@ -2031,6 +2103,49 @@ button,a,input,[role="button"]{touch-action:manipulation}
   display:flex;align-items:center;gap:8px;margin:6px 0 14px;color:var(--lbl3);font-size:11px;font-weight:600;letter-spacing:.5px
 }
 .backup-divider::before,.backup-divider::after{content:'';flex:1;height:.5px;background:var(--sep)}
+
+/* ══ 使い方ガイド（設定タブ） ══════════════ */
+.guide-sheet{
+  position:fixed;bottom:0;left:0;right:0;z-index:110;
+  background:var(--card);border-radius:24px 24px 0 0;
+  transform:translateY(110%);transition:transform .38s cubic-bezier(.32,.72,0,1);
+  padding-bottom:var(--safe-bottom);
+  display:flex;flex-direction:column;max-height:88vh
+}
+.guide-sheet.on{transform:translateY(0)}
+.guide-body{padding:8px 16px 28px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;flex:1;min-height:0}
+.guide-ttl{font-size:17px;font-weight:700;text-align:center;margin-bottom:6px}
+.guide-sub{font-size:13px;color:var(--lbl2);text-align:center;margin-bottom:16px;line-height:1.6}
+.guide-acc{
+  border-radius:14px;overflow:hidden;margin-bottom:10px;
+  background:var(--bg);border:1px solid var(--sep);
+}
+.guide-acc-header{
+  display:flex;align-items:center;gap:11px;
+  padding:13px 14px;cursor:pointer;min-height:50px;
+  -webkit-user-select:none;user-select:none;
+}
+.guide-acc-header:active{background:var(--fill)}
+.guide-acc-icon{
+  width:34px;height:34px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:17px;flex-shrink:0
+}
+.guide-acc-ttl{flex:1;font-size:14.5px;font-weight:700;color:var(--lbl)}
+.guide-acc-chev{color:var(--lbl3);flex-shrink:0;display:flex;transition:transform .22s ease}
+.guide-acc.open .guide-acc-chev{transform:rotate(180deg)}
+.guide-acc.open .guide-acc-header{border-bottom:.5px solid var(--sep)}
+.guide-acc-body{max-height:0;overflow:hidden;transition:max-height .32s cubic-bezier(.25,.46,.45,.94)}
+.guide-acc.open .guide-acc-body{max-height:2400px}
+.guide-acc-inner{padding:4px 14px 16px}
+.guide-acc-inner p{font-size:13px;color:var(--lbl2);line-height:1.7;margin:0 0 8px}
+.guide-acc-inner ul{margin:0 0 8px;padding-left:18px}
+.guide-acc-inner li{font-size:13px;color:var(--lbl2);line-height:1.7;margin-bottom:5px}
+.guide-acc-inner li b{color:var(--lbl);font-weight:700}
+.guide-acc-inner .guide-tip{
+  margin-top:8px;background:var(--blue-bg);border:1px solid var(--blue-bd);
+  border-radius:10px;padding:9px 11px;font-size:12.5px;color:var(--blue-d);line-height:1.6
+}
 
 /* Backup reminder banner */
 .backup-reminder{
@@ -2652,20 +2767,105 @@ const savePlan = () => safeSetItem(PLAN_KEY, JSON.stringify(PLAN));
      今日タブに先出しする。 */
 const PLAN_RULE_KEY = 'fukushu-plan-rules-v1';
 let PLAN_RULES = (() => { try { return JSON.parse(localStorage.getItem(PLAN_RULE_KEY)) || []; } catch { return []; } })();
-// 旧形式 { aId, bId } のルールを新形式 { taskIds:[aId,bId] } へ移行する
+// 旧形式 { aId, bId } のルールを新形式 { taskIds:[aId,bId] } へ移行、
+// type未設定の既存ルールには 'sameday'（同じ日にしない）を補う
 (function migratePlanRulesToTaskIds(){
   let changed = false;
   PLAN_RULES = PLAN_RULES.map(r=>{
-    if(Array.isArray(r.taskIds)) return r;
-    changed = true;
-    return { id:r.id, taskIds:[r.aId, r.bId].filter(Boolean), createdAt:r.createdAt };
+    let rr = r;
+    if(!Array.isArray(rr.taskIds)){
+      changed = true;
+      rr = { id:rr.id, taskIds:[rr.aId, rr.bId].filter(Boolean), createdAt:rr.createdAt };
+    }
+    if(!rr.type){ changed = true; rr = {...rr, type:'sameday'}; }
+    return rr;
   }).filter(r=>Array.isArray(r.taskIds) && r.taskIds.length>=2);
   if(changed) safeSetItem(PLAN_RULE_KEY, JSON.stringify(PLAN_RULES));
 })();
 const savePlanRules = () => safeSetItem(PLAN_RULE_KEY, JSON.stringify(PLAN_RULES));
 const PLAN_RULE_FILTER_ID = '__planrule__';
+// ルールの種類ごとの定義。label=選択ボタンの表示名、desc=種類選択時の説明、
+// needsParam=数値パラメータ(param)を使うか、listSub=一覧行のサブテキスト、
+// pickHint=作成シートで「選んだタスク」欄に出す説明文（優先順位の意味を種類ごとに変える）
+const PLAN_RULE_TYPES = {
+  sameday: {
+    label:'同じ日にしない',
+    desc:'選んだタスクが同じ日に重ならないようにします。',
+    needsParam:false,
+    listSub:()=>'同じ日にならないようにする（期日が近い方・▲▼の並び順を優先）',
+    pickHint:()=>'同じ日にならないようにします。期日が同じ日になったときだけ、▲▼の並び順（1が最優先）で決まります',
+  },
+  interval: {
+    label:'間隔をあける',
+    desc:'選んだタスク同士が、最低◯日は空くようにします。',
+    needsParam:true, paramLabel:'最低何日空けますか', paramUnit:'日', paramDefault:2, paramMin:1,
+    listSub:r=>`最低${r.param||2}日は間隔を空ける（期日が近い方・▲▼の並び順を優先）`,
+    pickHint:param=>`最低${param}日は間隔をあけます。競合したときは▲▼の並び順（1が最優先）が優先されます`,
+  },
+  order: {
+    label:'順序を守る',
+    desc:'上から順に行い、上のタスクを完了するまで下は表示しません。',
+    needsParam:false,
+    listSub:()=>'上から順に行う（上が終わるまで下は表示しない）',
+    pickHint:()=>'上から順に行います。同じ日に複数該当する場合、上のタスクを完了するまで下は表示されません（▲▼で順番を変更できます）',
+  },
+  cap: {
+    label:'1日の件数を制限',
+    desc:'選んだタスクのうち、1日に表示するのは上位◯件までにします。',
+    needsParam:true, paramLabel:'1日あたり最大何件まで表示しますか', paramUnit:'件', paramDefault:1, paramMin:1,
+    listSub:r=>`1日最大${r.param||1}件まで（期日が近い方・▲▼の並び順を優先）`,
+    pickHint:param=>`1日に表示するのは上位${param}件までです。▲▼の並び順（1が最優先）で選ばれます`,
+  },
+  weeklyonce: {
+    label:'同じ週に1つだけ',
+    desc:'選んだタスクのうち、同じ週（日〜土）には1つだけ表示します。',
+    needsParam:false,
+    listSub:()=>'同じ週（日〜土）には1つだけ表示する（期日が近い方・▲▼の並び順を優先）',
+    pickHint:()=>'同じ週（日〜土）には1つだけ表示します。競合したときは期日が近い方、同じなら▲▼の並び順（1が最優先）が優先されます',
+  },
+  avoidweekday: {
+    label:'曜日を避ける',
+    desc:'選んだ曜日には、対象タスクを表示しないようにします。',
+    needsWeekdays:true,
+    listSub:r=>`${(r.weekdays||[]).map(w=>WD_LABELS[w]).join('・')||'未設定'}には表示しない`,
+    pickHint:()=>'選んだ曜日には表示されません（その日は期日が来ていても翌日以降に持ち越されます）',
+  },
+  depend: {
+    label:'前提条件',
+    desc:'上のタスクを一度も完了していない間は、下のタスクを表示しません。',
+    needsParam:false,
+    listSub:()=>'上を一度も完了するまで下は表示しない（▲▼の並び順が実行順）',
+    pickHint:()=>'上から順に前提条件になります。すぐ上のタスクを一度も完了していない間、下のタスクは表示されません（▲▼で順番を変更できます）',
+  },
+  together: {
+    label:'セットで実施',
+    desc:'選んだタスクのうち、どれか1つでも対象日になったら、残りもまとめて表示します。',
+    needsParam:false,
+    listSub:()=>'いずれか1つが対象になった日は、まとめて表示する',
+    pickHint:()=>'このうちどれか1つでも今日が対象日になると、まだ対象日でない残りのタスクも今日まとめて表示されます',
+  },
+  streak: {
+    label:'連続日数を制限',
+    desc:'選んだタスクが◯日連続で表示されたら、次の1日はまとめて休みにします。',
+    needsParam:true, paramLabel:'何日連続で出したら休ませますか', paramUnit:'日', paramDefault:3, paramMin:2,
+    listSub:r=>`${r.param||3}日連続で表示されたら1日休ませる`,
+    pickHint:param=>`${param}日連続で表示されたら、次の1日はまとめて休みにします`,
+  },
+};
 const PLAN_TYPE_LABEL = { daily:'毎日', weekday:'曜日指定', interval:'間隔', goal:'目標' };
 const WD_LABELS = ['日','月','火','水','木','金','土'];
+// ルール作成シートの種類選択カードで使う、種類ごとの小アイコン
+const RULE_TYPE_ICON = {
+  sameday:  `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M9.5 14.5l5 5M14.5 14.5l-5 5"/></svg>`,
+  interval: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v20M18 2v20"/><path d="M6 12h5M18 12h-5M9 9l-3 3 3 3M15 9l3 3-3 3"/></svg>`,
+  order:    `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg>`,
+  cap:      `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16l-6 8v6l-4 2v-8z"/></svg>`,
+  weeklyonce:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M9 15l2 2 4-4"/></svg>`,
+  avoidweekday:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M4 20L20 4"/></svg>`,
+  depend:   `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17H7a5 5 0 0 1 0-10h2"/><path d="M15 7h2a5 5 0 0 1 0 10h-2"/><path d="M8 12h8"/></svg>`,
+  together: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l9 5-9 5-9-5 9-5z"/><path d="M3 12l9 5 9-5M3 17l9 5 9-5"/></svg>`,
+  streak:   `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c1 3-2 4-2 7a3 3 0 0 0 6 0c1.5 1.5 2 3.5 2 5a6 6 0 0 1-12 0c0-4 2-5 3-8 1 1 1.5 2 1.5 3.5"/></svg>`,
+};
 const PLAN_NAME_MODE_LABEL = { fixed:'毎回同じ', sequence:'数字+カスタム', custom:'完全カスタム' };
 // 計画タブの統合リストで、目標／ルーティンをタイプ別アイコンで視覚的に区別するためのグリフ
 // (色は状態(over/due/通常)で分けるため、ここでは形のみを変える)
@@ -2825,31 +3025,184 @@ function getDuePlanList(){
     });
   return _applyPlanRulesToDueList(list);
 }
-// 「これらは同じ日にならないようにする」ルールを、今日タブに出す直前の一覧に適用する。
-// 優先されるのは「期日がより近い（＝より緊急な）方」。期日が同じ場合のみ、taskIds の並び順
-// （＝ルールで設定した優先順位。先頭ほど優先度が高い）で決める。
+// 「これらは同じ日にならないようにする」等のルールを、今日タブに出す直前の一覧に適用する。
+// ルールごとに種類（type）別の抑制関数へディスパッチし、順番に適用していく
+// （あるルールで抑制されたタスクは、以降のルールの対象からも自然に外れる）。
 // nextDate/deadline 自体は書き換えない「表示の抑制」なので、翌日以降は改めて評価される。
 function _applyPlanRulesToDueList(list){
-  if(!PLAN_RULES.length || list.length<2) return list;
-  const idsToday = new Set(list.map(p=>p.id));
-  const suppressed = new Set();
-  const rank = p => p.type==='goal' ? diff(p.deadline) : diff(p.nextDate);
+  if(!PLAN_RULES.length) return list;
+  // 「セットで実施」は一覧に項目を追加する側のルールなので、抑制系ルールより先に適用する
+  let cur = _applyPlanRulesTogetherAdditions(list);
+  if(cur.length<2) return cur;
   PLAN_RULES.forEach(r=>{
-    // taskIds の並び順（＝優先順位）を保ったまま、今日出ていてまだ抑制されていないものだけを残す
-    const present = r.taskIds
-      .filter(id=>idsToday.has(id) && !suppressed.has(id))
-      .map(id=>list.find(p=>p.id===id));
-    if(present.length<2) return; // 今日は1件以下しか該当しないので競合なし
-    // 期日が最も近い（数値が最小の）ものを勝者にする。同点なら taskIds で先に来た方（＝優先順位が高い方）を優先するため、
-    // より小さい場合だけ勝者を入れ替える（同点時は先に見つかった＝優先順位が高い方が勝者のまま残る）。
-    let winner = present[0];
-    for(let i=1;i<present.length;i++){
-      if(rank(present[i]) < rank(winner)) winner = present[i];
-    }
-    present.forEach(p=>{ if(p.id!==winner.id) suppressed.add(p.id); });
+    const type = r.type || 'sameday';
+    let suppressedIds;
+    if(type==='interval') suppressedIds = _ruleSuppressInterval(r, cur);
+    else if(type==='order') suppressedIds = _ruleSuppressOrder(r, cur);
+    else if(type==='cap') suppressedIds = _ruleSuppressCap(r, cur);
+    else if(type==='weeklyonce') suppressedIds = _ruleSuppressWeeklyOnce(r, cur);
+    else if(type==='avoidweekday') suppressedIds = _ruleSuppressAvoidWeekday(r, cur);
+    else if(type==='depend') suppressedIds = _ruleSuppressDepend(r, cur);
+    else if(type==='streak') suppressedIds = _ruleSuppressStreak(r, cur);
+    else if(type==='together') suppressedIds = []; // 追加のみを行うため、ここでは何も抑制しない
+    else suppressedIds = _ruleSuppressSameday(r, cur);
+    if(suppressedIds && suppressedIds.length) cur = cur.filter(p=>!suppressedIds.includes(p.id));
   });
-  return suppressed.size ? list.filter(p=>!suppressed.has(p.id)) : list;
+  return cur;
 }
+// 「セットで実施」：グループ内のどれか1つでも今日の一覧に含まれていれば、
+// まだ対象日になっていない残りのメンバー（毎日／目標型は対象外）も一覧に加える。
+// nextDate 自体は書き換えないので、実際にそのタスクを完了させた時点で通常どおり次回に進む。
+function _applyPlanRulesTogetherAdditions(list){
+  const togetherRules = PLAN_RULES.filter(r=>(r.type||'sameday')==='together');
+  if(!togetherRules.length) return list;
+  let cur = list.slice();
+  const idsInList = new Set(cur.map(p=>p.id));
+  togetherRules.forEach(r=>{
+    if(!r.taskIds.some(id=>idsInList.has(id))) return;
+    r.taskIds.forEach(id=>{
+      if(idsInList.has(id)) return;
+      const p = PLAN.find(x=>x.id===id);
+      if(p && !p.done && p.type!=='goal' && planInPeriod(p) && !(p.snoozeUntil && p.snoozeUntil>td())){
+        cur.push(p); idsInList.add(id);
+      }
+    });
+  });
+  cur.sort((a,b)=>{
+    const ka = a.type==='goal' ? (a.deadline||'') : (a.nextDate||'');
+    const kb = b.type==='goal' ? (b.deadline||'') : (b.nextDate||'');
+    return ka.localeCompare(kb);
+  });
+  return cur;
+}
+// 期日の近さ（数値が小さいほど近い＝優先）で比較するための共通ランク関数
+const _ruleRank = p => p.type==='goal' ? diff(p.deadline) : diff(p.nextDate);
+
+// 「同じ日にしない」：今日出ているメンバーのうち、期日が最も近いものだけを残す。
+// 同点なら taskIds の並び順（優先順位）が高い方を残す。
+function _ruleSuppressSameday(r, list){
+  const idsToday = new Set(list.map(p=>p.id));
+  const present = r.taskIds.filter(id=>idsToday.has(id)).map(id=>list.find(p=>p.id===id));
+  if(present.length<2) return [];
+  let winner = present[0];
+  for(let i=1;i<present.length;i++){ if(_ruleRank(present[i]) < _ruleRank(winner)) winner = present[i]; }
+  return present.filter(p=>p.id!==winner.id).map(p=>p.id);
+}
+
+// 「間隔をあける」：自分より優先順位の高いメンバーが今日も出ている、または
+// そのメンバーの最終実施日から minDays 未満しか経っていない場合は抑制する。
+function _ruleSuppressInterval(r, list){
+  const minDays = Math.max(1, r.param||2);
+  const idsToday = new Set(list.map(p=>p.id));
+  const out=[];
+  for(let i=0;i<r.taskIds.length;i++){
+    const id = r.taskIds[i];
+    if(!idsToday.has(id)) continue;
+    for(let j=0;j<i;j++){
+      const q = PLAN.find(x=>x.id===r.taskIds[j]);
+      if(!q) continue;
+      const qToday = idsToday.has(q.id);
+      const recentlyDone = q.lastDoneDate && daysBetween(q.lastDoneDate, td()) < minDays;
+      if(qToday || recentlyDone){ out.push(id); break; }
+    }
+  }
+  return out;
+}
+
+// 「順序を守る」：同じ日に複数該当する場合、上（先）のタスクが今日まだ残っている間は
+// 下（後）のタスクを抑制する。上のタスクがそもそも今日該当しない場合は競合なしとみなす。
+function _ruleSuppressOrder(r, list){
+  const idsToday = new Set(list.map(p=>p.id));
+  const out=[];
+  for(let i=1;i<r.taskIds.length;i++){
+    const prevId=r.taskIds[i-1], curId=r.taskIds[i];
+    if(idsToday.has(prevId) && idsToday.has(curId)) out.push(curId);
+  }
+  return out;
+}
+
+// 「1日の件数を制限」：今日出ているメンバーを期日の近さ→優先順位で並べ、
+// 上位 maxPerDay 件だけ残して残りを抑制する。
+function _ruleSuppressCap(r, list){
+  const maxPerDay = Math.max(1, r.param||1);
+  const idsToday = new Set(list.map(p=>p.id));
+  const present = r.taskIds.filter(id=>idsToday.has(id)).map(id=>list.find(p=>p.id===id));
+  if(present.length<=maxPerDay) return [];
+  const sorted = [...present].sort((a,b)=>{
+    const ra=_ruleRank(a), rb=_ruleRank(b);
+    if(ra!==rb) return ra-rb;
+    return r.taskIds.indexOf(a.id)-r.taskIds.indexOf(b.id);
+  });
+  return sorted.slice(maxPerDay).map(p=>p.id);
+}
+
+// 「同じ週に1つだけ」：今週（日〜土）すでに完了したメンバーがいれば残りを全て抑制。
+// まだ誰も完了していなければ、同じ日にしないルールと同様に期日が近い方を残す。
+function _ruleSuppressWeeklyOnce(r, list){
+  const idsToday = new Set(list.map(p=>p.id));
+  const present = r.taskIds.filter(id=>idsToday.has(id)).map(id=>list.find(p=>p.id===id));
+  const t = td();
+  const wStart = weekStartDate(t);
+  const doneThisWeek = r.taskIds
+    .map(id=>PLAN.find(x=>x.id===id))
+    .find(p=>p && p.lastDoneDate && p.lastDoneDate>=wStart && p.lastDoneDate<=t);
+  if(doneThisWeek) return present.filter(p=>p.id!==doneThisWeek.id).map(p=>p.id);
+  if(present.length<2) return [];
+  let winner = present[0];
+  for(let i=1;i<present.length;i++){ if(_ruleRank(present[i]) < _ruleRank(winner)) winner = present[i]; }
+  return present.filter(p=>p.id!==winner.id).map(p=>p.id);
+}
+// 「曜日を避ける」：今日が選択した曜日に該当する場合、対象メンバー全員を抑制する。
+function _ruleSuppressAvoidWeekday(r, list){
+  const wd = new Date(td()+'T00:00:00').getDay();
+  if(!(r.weekdays||[]).includes(wd)) return [];
+  const idsToday = new Set(list.map(p=>p.id));
+  return r.taskIds.filter(id=>idsToday.has(id));
+}
+
+// タスクが（type問わず）これまでに一度でも完了したことがあるかどうか
+function planEverCompleted(p){
+  if(!p) return false;
+  return p.type==='goal' ? (p.doneCount||0)>0 : !!p.lastDoneDate;
+}
+
+// 「前提条件」：すぐ上のタスクを一度も完了していなければ、下のタスクを抑制する。
+// 「順序を守る」と違い、上のタスクが今日の一覧に出ているかどうかは問わない
+// （一度でも完了していれば、以降はずっと条件を満たしたことになる）。
+function _ruleSuppressDepend(r, list){
+  const idsToday = new Set(list.map(p=>p.id));
+  const out=[];
+  for(let i=1;i<r.taskIds.length;i++){
+    const prevId = r.taskIds[i-1], curId = r.taskIds[i];
+    if(!idsToday.has(curId)) continue;
+    const prev = PLAN.find(x=>x.id===prevId);
+    if(!planEverCompleted(prev)) out.push(curId);
+  }
+  return out;
+}
+
+// 「連続日数を制限」：グループ内のいずれかが完了した日が、今日の前日から遡って
+// 何日連続で続いているかを数え、指定日数に達していたら今日を「休みの日」として抑制する。
+// ※各タスクは直近の完了日（lastDoneDate）しか保持していないため、同じタスクが
+//   期間内に2回以上完了している場合は厳密でないことがある点に留意。
+function _ruleSuppressStreak(r, list){
+  const idsToday = new Set(r.taskIds.filter(id=>list.some(p=>p.id===id)));
+  if(!idsToday.size) return [];
+  const minStreak = Math.max(2, r.param||3);
+  let streak = 0;
+  let day = addD(td(), -1);
+  while(streak < minStreak){
+    const doneOnDay = r.taskIds.some(id=>{
+      const p = PLAN.find(x=>x.id===id);
+      return p && p.lastDoneDate===day;
+    });
+    if(!doneOnDay) break;
+    streak++;
+    day = addD(day, -1);
+  }
+  return streak>=minStreak ? Array.from(idsToday) : [];
+}
+
 // 計画タスク p が属するルールの中で、そのタスクの優先順位（0=最優先）を返す。
 // 複数ルールに属している場合は最も高い（数字が小さい）順位を採用する。属していなければ null。
 function planPriorityRankInRules(id){
@@ -2861,18 +3214,20 @@ function planPriorityRankInRules(id){
   return best;
 }
 // ══ 前倒し（forward push）候補の検出 ══
-// ルールで縛られている曜日指定／間隔タイプの計画タスクのうち、次回期日(nextDate)が
-// 「今日より後」で、かつ同じルール内でより優先度の高いタスクの次回期日と同じ日になっている
-// ものを検出する。そのまま待つとその日に表示が抑制され続け、先延ばしになり続けるおそれが
-// あるため、今日のうちに前倒しで済ませることを提案する（今日タブに表示）。
+// 「同じ日にしない」ルールで縛られている曜日指定／間隔タイプの計画タスクのうち、次回期日
+// (nextDate)が「今日より後」で、かつ同じルール内でより優先度の高いタスクの次回期日と
+// 同じ日になっているものを検出する。そのまま待つとその日に表示が抑制され続け、先延ばしに
+// なり続けるおそれがあるため、今日のうちに前倒しで済ませることを提案する（今日タブに表示）。
 // 目標(goal)型は日々の必要ペース(_planGoalTodayStatus)が未達成分を自動的に翌日以降へ
 // 繰り越すため、ここでは対象外（毎日型はルール対象外）。
+// ※「間隔をあける」「順序を守る」等の他タイプは衝突の意味合いが異なるため、この前倒し提案の
+//   対象は「同じ日にしない」ルールのみとする。
 function getForwardPushPlanList(){
   if(!PLAN_RULES.length) return [];
   const t = td();
   const out = [];
   const seen = new Set();
-  PLAN_RULES.forEach(rule=>{
+  PLAN_RULES.filter(rule=>(rule.type||'sameday')==='sameday').forEach(rule=>{
     const members = rule.taskIds
       .map(id=>PLAN.find(p=>p.id===id))
       .filter(p=>p && !p.done && planInPeriod(p) && (p.type==='weekday'||p.type==='interval'));
@@ -3380,7 +3735,7 @@ function planRuleListHtml(){
     <span class="plan-add-cta-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
     <span class="plan-add-cta-txt">
       <span class="plan-add-cta-ttl">新しいルールを作る</span>
-      <span class="plan-add-cta-sub">好きな数の計画タスクを選んで、同じ日に重ならないようにできます</span>
+      <span class="plan-add-cta-sub">同じ日を避ける・間隔をあける・順序を守るなど選べます</span>
     </span>
   </button>`;
 
@@ -3393,6 +3748,7 @@ function planRuleListHtml(){
   }
 
   const rows = PLAN_RULES.map(r=>{
+    const cfg = PLAN_RULE_TYPES[r.type||'sameday'] || PLAN_RULE_TYPES.sameday;
     const names = r.taskIds.map((id,idx)=>{
       const p = PLAN.find(x=>x.id===id);
       const nm = p ? esc(planDisplayName(p)) : '<span style="color:var(--lbl3)">（削除済み）</span>';
@@ -3400,8 +3756,9 @@ function planRuleListHtml(){
     }).join('');
     return `<div class="plan-rule-row" id="rule-${r.id}" onclick="openPlanRuleAddSheet('${r.id}')">
       <div class="plan-rule-body">
+        <div class="plan-rule-type-badge">${RULE_TYPE_ICON[r.type||'sameday']||''} ${cfg.label}</div>
         <div class="plan-rule-txt">${names}</div>
-        <div class="plan-rule-sub">${IC.calendar} 同じ日にならないようにする（期日が近い方を優先・同日なら数字順）</div>
+        <div class="plan-rule-sub">${IC.calendar} ${cfg.listSub(r)}</div>
       </div>
       <button class="btn-del" onclick="event.stopPropagation();deletePlanRule('${r.id}')" aria-label="ルールを削除">${IC.trash}</button>
     </div>`;
@@ -3423,11 +3780,18 @@ function deletePlanRule(id){
 /* ── ルール作成／編集シート：好きな数の計画タスクを選び、選んだ順＝優先順位で
    「同じ日にしない」ルールを作る。既存ルールをタップすると同じシートで編集できる。 ── */
 let _planRuleDraftIds = [];
+let _planRuleDraftType = 'sameday';
+let _planRuleDraftParam = 2;
+let _planRuleDraftWeekdays = [];
 let _planRuleEditId = null; // 編集中のルールid（新規作成時はnull）
 function openPlanRuleAddSheet(editId){
   _planRuleEditId = editId || null;
   const existing = editId ? PLAN_RULES.find(r=>r.id===editId) : null;
   _planRuleDraftIds = existing ? existing.taskIds.filter(id=>PLAN.some(p=>p.id===id && !p.done)) : [];
+  _planRuleDraftType = existing ? (existing.type||'sameday') : 'sameday';
+  const _cfg0 = PLAN_RULE_TYPES[_planRuleDraftType];
+  _planRuleDraftParam = (existing && existing.param!=null) ? existing.param : (_cfg0.paramDefault||1);
+  _planRuleDraftWeekdays = (existing && existing.weekdays) ? existing.weekdays.slice() : [];
   document.getElementById('plan-rule-ttl') && (document.getElementById('plan-rule-ttl').textContent = existing ? 'ルールを編集' : '新しいルールを作る');
   const saveBtnEl = document.getElementById('plan-rule-save-btn');
   if(saveBtnEl) saveBtnEl.textContent = existing ? '保存する' : '作成する';
@@ -3457,18 +3821,79 @@ function movePlanRuleDraftId(id, dir){
   haptic();
   renderPlanRuleAddSheet();
 }
+function setPlanRuleDraftType(type){
+  if(!PLAN_RULE_TYPES[type] || _planRuleDraftType===type) return;
+  _planRuleDraftType = type;
+  _planRuleDraftParam = PLAN_RULE_TYPES[type].paramDefault || 1;
+  _planRuleDraftWeekdays = [];
+  haptic();
+  renderPlanRuleAddSheet();
+}
+function togglePlanRuleDraftWeekday(wd){
+  const i = _planRuleDraftWeekdays.indexOf(wd);
+  if(i>=0) _planRuleDraftWeekdays.splice(i,1);
+  else _planRuleDraftWeekdays.push(wd);
+  haptic();
+  renderPlanRuleAddSheet();
+}
+function setPlanRuleDraftParam(val){
+  const cfg = PLAN_RULE_TYPES[_planRuleDraftType];
+  if(!cfg || !cfg.needsParam) return;
+  const min = cfg.paramMin||1;
+  const n = Math.round(val);
+  _planRuleDraftParam = Math.max(min, Math.min(30, isNaN(n)?min:n));
+  haptic();
+  renderPlanRuleAddSheet();
+}
+// 今選んでいる内容（種類・対象タスク・パラメータ）から、実際のタスク名を使って
+// 「このルールはどう働くか」を一文で組み立てる（作成しながらその場で確認できるプレビュー）
+function planRulePreviewText(){
+  const names = _planRuleDraftIds.map(id=>{
+    const p = PLAN.find(x=>x.id===id);
+    return p ? esc(planDisplayName(p)) : null;
+  }).filter(Boolean);
+
+  if(_planRuleDraftType==='avoidweekday'){
+    const wdTxt = _planRuleDraftWeekdays.slice().sort().map(w=>WD_LABELS[w]+'曜').join('・');
+    if(!names.length && !wdTxt) return '対象のタスクと、避ける曜日を選んでください。';
+    if(!names.length) return `${wdTxt}には対象のタスクを表示しません。対象タスクも選んでください。`;
+    if(!wdTxt) return `<b>${names.join('・')}</b>を選択中です。避ける曜日も選んでください。`;
+    return `<b>${names.join('・')}</b>は、<b>${wdTxt}</b>には表示されません。`;
+  }
+  if(names.length<2){
+    return names.length===1 ? 'もう1件、対象のタスクを選んでください。' : '対象のタスクを2件以上選んでください。';
+  }
+  switch(_planRuleDraftType){
+    case 'interval': return `<b>${names.join('・')}</b>は、互いに最低<b>${_planRuleDraftParam}日</b>間隔をあけて表示されます。`;
+    case 'order': return `<b>${names[0]}</b>を終えるまで、<b>${names.slice(1).join('→')}</b>は表示されません。`;
+    case 'cap': return `<b>${names.join('・')}</b>のうち、1日には最大<b>${_planRuleDraftParam}件</b>まで表示されます。`;
+    case 'weeklyonce': return `<b>${names.join('・')}</b>は、同じ週には<b>1つだけ</b>表示されます。`;
+    case 'depend': return `<b>${names[0]}</b>を一度も完了しない間、<b>${names.slice(1).join('→')}</b>は表示されません。`;
+    case 'together': return `<b>${names.join('・')}</b>は、どれか1つが対象日になった日にまとめて表示されます。`;
+    case 'streak': return `<b>${names.join('・')}</b>が<b>${_planRuleDraftParam}日連続</b>で表示されたら、次の1日はまとめて休みになります。`;
+    default: return `<b>${names.join('・')}</b>は、同じ日に<b>重ならない</b>ように表示されます。`;
+  }
+}
+// 「作成する／保存する」ボタンが押せない理由をひとことで示す（空文字なら押せる状態）
+function planRuleSaveDisabledReason(cfg){
+  if(_planRuleDraftIds.length<2) return `対象のタスクをあと${Math.max(0,2-_planRuleDraftIds.length)}件選んでください`;
+  if(cfg.needsWeekdays && _planRuleDraftWeekdays.length===0) return '避ける曜日を1つ以上選んでください';
+  return '';
+}
 function renderPlanRuleAddSheet(){
   // 毎日タイプは常に「今日」が対象になり、重なりを解消できないため選択肢から除外する
   const candidates = PLAN.filter(p=>!p.done && p.type!=='daily');
   const unselected = candidates.filter(p=>!_planRuleDraftIds.includes(p.id));
+  const cfg = PLAN_RULE_TYPES[_planRuleDraftType] || PLAN_RULE_TYPES.sameday;
 
-  // 選択中のタスク＝そのまま優先順位順のリスト（▲▼で並び替え・✕で解除）
+  // 選択中のタスク＝そのまま優先順位（順序・前提条件ルールでは実行順）のリスト（▲▼で並び替え・✕で解除）
   const priorityRows = _planRuleDraftIds.map((id,idx)=>{
     const p = PLAN.find(x=>x.id===id);
     if(!p) return '';
-    return `<div class="plan-rule-pri-row">
+    const isFirst = idx===0 && ['order','depend'].includes(_planRuleDraftType);
+    return `<div class="plan-rule-pri-row${isFirst?' first':''}">
       <div class="plan-rule-pri-num">${idx+1}</div>
-      <div class="plan-rule-pri-name">${esc(planDisplayName(p))}</div>
+      <div class="plan-rule-pri-name">${esc(planDisplayName(p))}${isFirst?`<span class="plan-rule-pri-first-tag">${_planRuleDraftType==='depend'?'前提':'最初'}</span>`:''}</div>
       <div class="plan-rule-pri-btns">
         <button class="plan-rule-pri-btn" onclick="movePlanRuleDraftId('${id}',-1)" ${idx===0?'disabled':''} aria-label="優先度を上げる">▲</button>
         <button class="plan-rule-pri-btn" onclick="movePlanRuleDraftId('${id}',1)" ${idx===_planRuleDraftIds.length-1?'disabled':''} aria-label="優先度を下げる">▼</button>
@@ -3490,38 +3915,99 @@ function renderPlanRuleAddSheet(){
 
   let body;
   if(!candidates.length){
-    body = `<div class="dense-empty">毎日タイプ以外の計画タスクがまだありません。<br>曜日指定・間隔・目標のタスクを作成してから設定できます。</div>`;
+    body = `<div class="empty" style="padding:28px 0">
+      <div class="empty-icon">${IC.searchLg}</div>
+      <h3>対象にできるタスクがありません</h3>
+      <p>毎日タイプ以外の計画タスクがまだありません。<br>曜日指定・間隔・目標のタスクを作成してから設定できます。</p>
+    </div>`;
   } else {
+    const typeBlock = `
+      <div class="plan-rule-section-lbl">ルールの種類</div>
+      <div class="plan-rule-type-grid2">
+        ${Object.entries(PLAN_RULE_TYPES).map(([key,c])=>`
+          <button class="plan-rule-type-card${_planRuleDraftType===key?' on':''}" onclick="setPlanRuleDraftType('${key}')">
+            <span class="plan-rule-type-card-check">${IC.check||'✓'}</span>
+            <span class="plan-rule-type-card-icon">${RULE_TYPE_ICON[key]||''}</span>
+            <span class="plan-rule-type-card-body">
+              <span class="plan-rule-type-card-lbl">${c.label}</span>
+              <span class="plan-rule-type-card-desc">${c.desc}</span>
+            </span>
+          </button>`).join('')}
+      </div>
+      ${cfg.needsParam ? `
+        <div class="plan-rule-param-row">
+          <span>${cfg.paramLabel}</span>
+          <div class="plan-rule-param-stepper">
+            <button onclick="setPlanRuleDraftParam(${_planRuleDraftParam-1})" ${_planRuleDraftParam<=(cfg.paramMin||1)?'disabled':''} aria-label="減らす">−</button>
+            <span class="plan-rule-param-val">${_planRuleDraftParam}${cfg.paramUnit}</span>
+            <button onclick="setPlanRuleDraftParam(${_planRuleDraftParam+1})" aria-label="増やす">＋</button>
+          </div>
+        </div>` : ''}
+      ${cfg.needsWeekdays ? `
+        <div class="plan-rule-wd-row">
+          <div class="plan-rule-wd-label">避ける曜日を選んでください</div>
+          <div class="plan-rule-wd-grid">
+            ${WD_LABELS.map((lbl,wd)=>`<button class="plan-rule-wd-btn${_planRuleDraftWeekdays.includes(wd)?' on':''}" onclick="togglePlanRuleDraftWeekday(${wd})">${lbl}</button>`).join('')}
+          </div>
+        </div>` : ''}
+      <div class="plan-rule-preview">
+        <span class="plan-rule-preview-icon">${IC.sparkle||IC.checkCircle||''}</span>
+        <span class="plan-rule-preview-txt">${planRulePreviewText()}</span>
+      </div>
+    `;
+
     const selectedBlock = _planRuleDraftIds.length ? `
-      <div class="plan-rule-section-lbl">選んだタスク<span class="count">${_planRuleDraftIds.length}件</span></div>
-      <div class="plan-rule-hint" style="padding-top:0">同じ日にならないようにします。期日が同じ日になったときだけ、▲▼の並び順（1が最優先）で決まります</div>
+      <div class="plan-rule-section-lbl" style="padding-top:18px">選んだタスク<span class="count">${_planRuleDraftIds.length}件</span></div>
       <div class="plan-list" style="margin:8px 16px 4px">${priorityRows}</div>
-    ` : `<div class="plan-rule-hint">同じ日にしたくないタスクを、下から好きな数だけ選んでください（毎日タイプは対象外です）</div>`;
+    ` : `<div class="plan-rule-hint" style="padding-top:18px">${(_planRuleDraftType==='order'||_planRuleDraftType==='depend')?'実行する順番になるように、上から順にタップして選んでください':'対象にしたいタスクを、下から好きな数だけ選んでください'}（毎日タイプは対象外です）</div>`;
 
     const pickBlock = pickRows ? `
       <div class="plan-rule-section-lbl">${_planRuleDraftIds.length?'ほかのタスクを追加':'計画タスク'}</div>
       <div class="plan-list" style="margin:0 16px 4px">${pickRows}</div>
     ` : (unselected.length===0 && candidates.length>0 ? `<div class="plan-rule-hint">すべての候補タスクを選択しています</div>` : '');
 
-    body = selectedBlock + pickBlock;
+    body = typeBlock + selectedBlock + pickBlock;
   }
 
   const scroll = document.getElementById('plan-rule-sheet-scroll');
   if(scroll) scroll.innerHTML = body;
+  const reason = candidates.length ? planRuleSaveDisabledReason(cfg) : '';
   const saveBtn = document.getElementById('plan-rule-save-btn');
-  if(saveBtn) saveBtn.disabled = _planRuleDraftIds.length<2;
+  if(saveBtn) saveBtn.disabled = !!reason;
+  const hintEl = document.getElementById('plan-rule-save-hint');
+  if(hintEl) hintEl.textContent = reason;
 }
 function savePlanRuleFromSheet(){
+  const cfg = PLAN_RULE_TYPES[_planRuleDraftType] || PLAN_RULE_TYPES.sameday;
   if(_planRuleDraftIds.length<2) return;
+  if(cfg.needsWeekdays && _planRuleDraftWeekdays.length===0) return;
   const taskIds = _planRuleDraftIds.slice();
-  const dup = PLAN_RULES.some(r=>r.id!==_planRuleEditId &&
-    r.taskIds.length===taskIds.length && r.taskIds.every(id=>taskIds.includes(id)));
-  if(dup){ toast(IC.alertSm, '同じ組み合わせのルールはすでに作成されています'); return; }
+  const dup = PLAN_RULES.some(r=>{
+    if(r.id===_planRuleEditId) return false;
+    if((r.type||'sameday')!==_planRuleDraftType) return false;
+    if(_planRuleDraftType==='order' || _planRuleDraftType==='depend') return r.taskIds.length===taskIds.length && r.taskIds.every((id,i)=>id===taskIds[i]);
+    const sameTasks = r.taskIds.length===taskIds.length && r.taskIds.every(id=>taskIds.includes(id));
+    if(!sameTasks) return false;
+    if(_planRuleDraftType==='avoidweekday'){
+      const rw=(r.weekdays||[]).slice().sort(), dw=_planRuleDraftWeekdays.slice().sort();
+      return rw.length===dw.length && rw.every((w,i)=>w===dw[i]);
+    }
+    return true;
+  });
+  if(dup){ toast(IC.alertSm, '同じ組み合わせ・種類のルールはすでに作成されています'); return; }
   if(_planRuleEditId){
     const r = PLAN_RULES.find(x=>x.id===_planRuleEditId);
-    if(r) r.taskIds = taskIds;
+    if(r){
+      r.taskIds = taskIds;
+      r.type = _planRuleDraftType;
+      if(cfg.needsParam) r.param = _planRuleDraftParam; else delete r.param;
+      if(cfg.needsWeekdays) r.weekdays = _planRuleDraftWeekdays.slice(); else delete r.weekdays;
+    }
   } else {
-    PLAN_RULES.push({id:'rule-'+Date.now().toString(), taskIds, createdAt:Date.now()});
+    const newRule = {id:'rule-'+Date.now().toString(), type:_planRuleDraftType, taskIds, createdAt:Date.now()};
+    if(cfg.needsParam) newRule.param = _planRuleDraftParam;
+    if(cfg.needsWeekdays) newRule.weekdays = _planRuleDraftWeekdays.slice();
+    PLAN_RULES.push(newRule);
   }
   savePlanRules();
   closePlanRuleAddSheet();
@@ -4772,6 +5258,8 @@ const addD  = (s,n) => { const d=new Date(s+'T00:00:00'); d.setDate(d.getDate()+
 })();
 const diff  = s => Math.round((new Date(s+'T00:00:00')-new Date(td()+'T00:00:00'))/86400000);
 const daysBetween = (a,b) => Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000);
+// 指定日が属する週の開始日（日曜始まり。カレンダー表示の曜日順に合わせる）
+const weekStartDate = s => addD(s, -new Date(s+'T00:00:00').getDay());
 // ══ 延期日数バッジ ══
 // origDueDate（延期前の元の期日）とcurDate（現在の実質的な期日）から、
 // 何日延期しているかを計算し、小さな注記HTMLを返す。延期していなければ空文字。
@@ -7317,7 +7805,7 @@ function denseShiftPlan(pid, destDate){
   const p = PLAN.find(x => x.id === pid);
   if(!p) return;
   if(!p.origDueDate) p.origDueDate = (p.type==='goal') ? p.deadline : p.nextDate;
-  if(p.type==='goal') p.deadline = destDate;
+  if(p.type==='goal'){ p.deadline = destDate; p.nextDate = destDate; }
   else p.nextDate = destDate;
   savePlan();
   haptic('medium');
@@ -7340,7 +7828,7 @@ function _denseShiftRowOut(id){
     setTimeout(() => {
       // 残件数が0になったらシートを閉じる
       const remaining = U.filter(u => !u.done && u.nextDate === _denseDate).length
-        + PLAN.filter(p => !p.done && p.type!=='daily' && p.nextDate === _denseDate).length
+        + PLAN.filter(p => !p.done && p.type!=='daily' && planCalDate(p) === _denseDate).length
         + TODOS.filter(x => !x.done && x.date === _denseDate).length;
       if(remaining === 0){
         closeDenseSheet();
@@ -8234,6 +8722,112 @@ function todoAllRowHtml(x){
   </div>`;
 }
 
+/* ══ 使い方ガイド（設定タブ） ══════════════
+   各タブの機能を初心者にもわかるように解説するアコーディオン式ガイド。
+   設定タブの「使い方ガイド」セクションから、タブごとに該当箇所を開いた状態で表示できる。 */
+const GUIDE_SECTIONS = [
+  { id:'overview', icon:'🚀', bg:'#EEF2FF', title:'はじめに（全体の仕組み）', body:`
+    <p>このアプリには3種類のタスクがあり、それぞれ役割が違います。</p>
+    <ul>
+      <li><b>🔵 復習カード</b>：単語や暗記した内容を「1日後→7日後→14日後→…」のように、忘れかけたタイミングで自動的に思い出させてくれます。単元を登録すれば、あとは自動でスケジュールが組まれます。</li>
+      <li><b>🟣 計画タスク</b>：自分で決めた「毎日／曜日指定／○日ごと／期限までに◯個」のくり返しタスクです。問題集を進める、ノートをまとめる、といった継続的な作業に向いています。</li>
+      <li><b>🟠 ToDo</b>：一度きりのやることリストです。日付をつけて「その日までにやる」ことを管理できます。</li>
+    </ul>
+    <p>この3つはすべて「今日」タブと「予定」タブに一緒に表示されるので、その日にやることを1か所で確認できます。</p>
+    <div class="guide-tip">💡 まずは「計画」タブでくり返しタスクを1つ作ってみる、または「今日」タブの＋ToDoボタンからやることを追加してみましょう。</div>
+  `},
+  { id:'today', icon:'📅', bg:'#EFF6FF', title:'「今日」タブの使い方', body:`
+    <p>その日にやるべきタスク（復習・計画・ToDo）がすべて1つのリストにまとまって表示されます。</p>
+    <ul>
+      <li>各カードの<b>「完了にする」</b>ボタンでその日の分を終わらせます。</li>
+      <li><b>🌙 延期</b>ボタンで、明日・2日後・3日後・1週間後に先送りできます。</li>
+      <li>タブアイコンの数字バッジは、今日やるべき残りのタスク数です。</li>
+      <li>終わったタスクは下部の<b>「完了済み」</b>を開くと確認でき、間違えて完了にした場合は「↩ 戻す」で取り消せます。</li>
+    </ul>
+    <div class="guide-tip">💡 カードの並び方（1列／2列）は設定タブの「表示」から切り替えられます。</div>
+  `},
+  { id:'upcoming', icon:'🗓', bg:'#F5F3FF', title:'「予定」タブ（カレンダー）の使い方', body:`
+    <p>復習・計画・ToDoをまとめてカレンダーで確認できます。上部の「月」「日」ボタンで表示を切り替えられます。</p>
+    <ul>
+      <li>印の色：<b>青＝復習</b>、<b>紫の丸＝計画タスク</b>、<b>オレンジのひし形＝ToDo</b></li>
+      <li>日付をタップすると、その日のタスク一覧と「◯日ずらす」ボタンが表示されます。ここから復習・計画・ToDoをまとめて延期できます。</li>
+      <li>赤色は<b>期限超過</b>、⚠️マークは1日に予定が集中している「過密日」の目印です。</li>
+      <li>予定のない空白日にも軽い印がつくので、余裕がある日をひと目で把握できます。</li>
+    </ul>
+    <div class="guide-tip">💡 予定が1日に集中しすぎていたら、日付をタップ→ずらすボタンで前後の日に散らしてみましょう。</div>
+  `},
+  { id:'plan', icon:'🎯', bg:'#F5F3FF', title:'「計画」タブの使い方', body:`
+    <p>くり返しタスクを自分で作成する画面です。＋ボタンから新規追加でき、作成時に4つのタイプから選びます。</p>
+    <ul>
+      <li><b>毎日</b>：毎日おこなうタスク</li>
+      <li><b>曜日指定</b>：決めた曜日だけ行うタスク（例：火・木・土）</li>
+      <li><b>間隔</b>：「◯日ごと」に行うタスク</li>
+      <li><b>目標</b>：期限までに合計◯個をこなす目標型。進捗バーと「今日必要なペース」が自動で計算されます。</li>
+    </ul>
+    <p>タスクが複数ある場合は<b>「ルール」</b>機能で「同じ日に重ねない」「順番を守る」などの関係性を設定でき、無理のないスケジュールに調整できます。</p>
+    <div class="guide-tip">💡 各タスクの🌙ボタンでいつでも個別に延期できます。</div>
+  `},
+  { id:'study', icon:'⏱', bg:'#ECFDF5', title:'「勉強時間」タブの使い方', body:`
+    <p>勉強した時間を記録・振り返る画面です。</p>
+    <ul>
+      <li>「新しく勉強したことを記録」から、タイマーで計測するか、あとから手入力で記録できます。</li>
+      <li>週間グラフとタグ別の内訳で、何にどれだけ時間を使ったか確認できます。</li>
+      <li>過去の記録は一覧から見返せ、修正・削除もできます。</li>
+    </ul>
+    <div class="guide-tip">💡 復習カードや計画タスクを完了するときにも、そのまま時間を記録できます。</div>
+  `},
+  { id:'settings', icon:'⚙️', bg:'#FFFBEB', title:'「設定」タブの使い方', body:`
+    <p>アプリ全体の設定をまとめた画面です。</p>
+    <ul>
+      <li><b>アイコン</b>：アプリのアイコン画像を変更できます。</li>
+      <li><b>表示</b>：今日タブのレイアウトを1列／2列に切り替えられます。</li>
+      <li><b>データ管理</b>：バックアップの保存・復元、タグの追加・編集・削除ができます。機種変更やアプリの不具合に備えて、定期的なバックアップをおすすめします。</li>
+      <li><b>開発者向け</b>：復習の間隔（1日後→7日後→…）を細かくカスタマイズできます（上級者向け）。</li>
+      <li>この使い方ガイドも、いつでもここから開けます。</li>
+    </ul>
+  `},
+];
+let _guideOpenId = 'overview';
+function openGuideSheet(focusId){
+  if(focusId) _guideOpenId = focusId;
+  _renderGuideList();
+  document.getElementById('guide-overlay').classList.add('on');
+  document.getElementById('guide-sheet').classList.add('on');
+  setFabHidden(true);
+  haptic();
+  if(focusId){
+    requestAnimationFrame(()=>{
+      const body = document.getElementById('guide-body');
+      const el = document.getElementById('guide-acc-'+focusId);
+      if(body && el) body.scrollTop = el.offsetTop - 4;
+    });
+  }
+}
+function closeGuideSheet(){
+  document.getElementById('guide-overlay').classList.remove('on');
+  document.getElementById('guide-sheet').classList.remove('on');
+  setFabHidden(false);
+}
+function toggleGuideAcc(id){
+  _guideOpenId = (_guideOpenId===id) ? null : id;
+  _renderGuideList();
+  haptic();
+}
+function _renderGuideList(){
+  const el = document.getElementById('guide-acc-list'); if(!el) return;
+  el.innerHTML = GUIDE_SECTIONS.map(s=>{
+    const open = _guideOpenId===s.id;
+    return `<div class="guide-acc${open?' open':''}" id="guide-acc-${s.id}">
+      <div class="guide-acc-header" onclick="toggleGuideAcc('${s.id}')">
+        <div class="guide-acc-icon" style="background:${s.bg}">${s.icon}</div>
+        <div class="guide-acc-ttl">${esc(s.title)}</div>
+        <div class="guide-acc-chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
+      </div>
+      <div class="guide-acc-body"><div class="guide-acc-inner">${s.body}</div></div>
+    </div>`;
+  }).join('');
+}
+
 function openBackupSheet(){
   updateBackupLastText();
   document.getElementById('backup-overlay').classList.add('on');
@@ -8444,6 +9038,18 @@ function renderSettings(){
             <svg width="18" height="14" viewBox="0 0 18 14" fill="none"><rect x="0" y="0" width="8" height="14" rx="1.8" fill="currentColor"/><rect x="10" y="0" width="8" height="14" rx="1.8" fill="currentColor"/></svg>
           </button>
         </div>
+      </div>
+    </div>
+
+    <div class="sec">使い方ガイド</div>
+    <div class="settings-section" style="margin-bottom:12px">
+      <div class="settings-row" onclick="openGuideSheet('overview')" style="cursor:pointer">
+        <div class="settings-row-icon" style="background:#EEF2FF">📖</div>
+        <div class="settings-row-body">
+          <div class="settings-row-title">使い方ガイド</div>
+          <div class="settings-row-sub">各タブの機能をタップして解説を確認できます</div>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--lbl3)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
     </div>
 
@@ -8864,9 +9470,10 @@ if('serviceWorker' in navigator){
   <div class="dense-sheet-pull"></div>
   <div class="dense-sheet-head">
     <div class="dense-sheet-ttl" id="plan-rule-ttl">新しいルールを作る</div>
-    <div class="dense-sheet-sub">好きな数のタスクを選ぶと「同じ日にしない」ルールになります</div>
+    <div class="dense-sheet-sub">ルールの種類とタスクを選んで作成できます</div>
   </div>
   <div class="dense-sheet-scroll" id="plan-rule-sheet-scroll"></div>
+  <div class="plan-rule-save-hint" id="plan-rule-save-hint"></div>
   <div style="display:flex;gap:8px;padding:0 16px 8px;flex-shrink:0">
     <button class="dense-close-btn" style="flex:1;margin:0" onclick="closePlanRuleAddSheet()">キャンセル</button>
     <button class="dense-close-btn" id="plan-rule-save-btn" style="flex:1;margin:0;background:var(--blue-bg);color:var(--blue)" onclick="savePlanRuleFromSheet()" disabled>作成する</button>
@@ -8941,6 +9548,17 @@ if('serviceWorker' in navigator){
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- 使い方ガイド -->
+<div class="overlay" id="guide-overlay" onclick="closeGuideSheet()" style="z-index:109"></div>
+<div class="guide-sheet" id="guide-sheet">
+  <div class="sheet-pull"></div>
+  <div class="guide-body" id="guide-body">
+    <div class="guide-ttl">📖 使い方ガイド</div>
+    <div class="guide-sub">このアプリでは3種類のタスク（復習・計画・ToDo）を<br>組み合わせて管理します。タップして詳しく見てみましょう。</div>
+    <div id="guide-acc-list"></div>
   </div>
 </div>
 
