@@ -3011,6 +3011,7 @@ function getDuePlanList(){
   const list = PLAN.filter(p=>{
     if(p.done || !planInPeriod(p)) return false;
     if(p.snoozeUntil && p.snoozeUntil>td()) return false; // 延期中は今日タブから隠す
+    if(p.hiddenTodayDate===td()) return false; // 今日タブでゴミ箱ボタンを押した分（今日だけ非表示。削除ではない）
     if(p.type==='goal'){
       // 今日「本当にやる必要がある」場合のみ表示する（ペースに余裕がある日は表示しない）。
       // 表示される日でも、その日の目安分をすでに達成していれば今日タブからは消す。
@@ -3076,7 +3077,11 @@ function _applyPlanRulesTogetherAdditions(list){
   return cur;
 }
 // 期日の近さ（数値が小さいほど近い＝優先）で比較するための共通ランク関数
-const _ruleRank = p => p.type==='goal' ? diff(p.deadline) : diff(p.nextDate);
+// ※ 毎日タイプは nextDate を持たないため diff(undefined)=NaN になり、
+//   NaN同士の比較は常にfalseとなって並び替え・上位N件抽出（cap等）が壊れ、
+//   未完了の毎日タスクが今日の一覧から抜け落ちることがあった。
+//   毎日タイプは「常に今日が期日」（diff=0）として扱う。
+const _ruleRank = p => p.type==='goal' ? diff(p.deadline) : p.type==='daily' ? 0 : diff(p.nextDate);
 
 // 「同じ日にしない」：今日出ているメンバーのうち、期日が最も近いものだけを残す。
 // 同点なら taskIds の並び順（優先順位）が高い方を残す。
@@ -3243,6 +3248,7 @@ function getForwardPushPlanList(){
       if(!p.nextDate || p.nextDate<=t) return; // 今日／期限超過はすでに通常どおり表示されるので対象外
       if(p.snoozeUntil && p.snoozeUntil>t) return; // 延期中は対象外
       if(p.forwardDismissedDate===t) return; // 今日は「後で」を選択済み
+      if(p.hiddenTodayDate===t) return; // 今日タブでゴミ箱ボタンを押した分（今日だけ非表示。削除ではない）
       const blocker = members.slice(0,idx).find(m=>m.nextDate===p.nextDate);
       if(blocker){
         seen.add(p.id);
@@ -3257,6 +3263,17 @@ function planForwardDismiss(id){
   const p = PLAN.find(x=>x.id===id); if(!p) return;
   p.forwardDismissedDate = td();
   savePlan(); render(); haptic();
+}
+// 今日タブのカードのゴミ箱ボタン：計画タスク自体は削除せず、今日のカードだけを一覧から消す
+// （lastDoneDate/nextDate等は一切変更しないため、完了状況や次回予定には影響しない。
+//   日付が変わればまた通常どおり評価され、必要なら明日また表示される）
+function planDismissToday(id){
+  const p = PLAN.find(x=>x.id===id); if(!p) return;
+  const name = planDisplayName(p);
+  p.hiddenTodayDate = td();
+  savePlan(); haptic();
+  toast(IC.check, esc(name)+'を今日のリストから消しました（削除はされていません）');
+  flashThenShrink('c-'+id, 'w-'+id, ()=>render());
 }
 
 // 今日タブの「完了済み」に表示すべき、今日達成した計画タスクを取得
@@ -3388,7 +3405,7 @@ function planCardHtml(p, opts){
           <div class="card-name">${esc(dispName)}</div>
           <div class="card-icon-row">
             <button class="btn-edit" onclick="openPlanSheet('${p.id}')" aria-label="編集">${IC.pencil}</button>
-            <button class="btn-del" onclick="planDelete('${p.id}')" aria-label="削除">${IC.trash}</button>
+            <button class="btn-del" onclick="planDismissToday('${p.id}')" aria-label="今日のリストから消す">${IC.trash}</button>
           </div>
         </div>
         <div class="card-meta-row">
@@ -3444,7 +3461,7 @@ function planCardHtml(p, opts){
           <div class="card-name">${esc(dispNameToday)}</div>
           <div class="card-icon-row">
             <button class="btn-edit" onclick="openPlanSheet('${p.id}')" aria-label="編集">${IC.pencil}</button>
-            <button class="btn-del" onclick="planDelete('${p.id}')" aria-label="削除">${IC.trash}</button>
+            <button class="btn-del" onclick="planDismissToday('${p.id}')" aria-label="今日のリストから消す">${IC.trash}</button>
           </div>
         </div>
         ${(p.tags&&p.tags.length)?`<div class="card-tags-row">${p.tags.map(tid=>tagHtml(tid)).join('')}</div>`:''}
@@ -3477,7 +3494,7 @@ function planCardHtml(p, opts){
         <div class="card-name">${esc(dispNameToday)}</div>
         <div class="card-icon-row">
           <button class="btn-edit" onclick="openPlanSheet('${p.id}')" aria-label="編集">${IC.pencil}</button>
-          <button class="btn-del" onclick="planDelete('${p.id}')" aria-label="削除">${IC.trash}</button>
+          <button class="btn-del" onclick="planDismissToday('${p.id}')" aria-label="今日のリストから消す">${IC.trash}</button>
         </div>
       </div>
       <div class="card-meta-row">
