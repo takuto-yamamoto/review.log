@@ -7424,6 +7424,58 @@ function planCalDate(p){
   return p.nextDate;
 }
 
+/* weekday・intervalタイプの計画は「次回日」を1件だけ保持しているが、
+   カレンダーは月をまたいで先の予定まで見渡せるべきなので、次回日以降の
+   繰り返し予定を実施期間の終了日（未設定なら約1年先まで）まで投影して返す。
+   毎日タイプは常に「今日」のみ、目標タイプは締切日のみを返す（単発のため）。 */
+const PLAN_PROJECTION_HORIZON_DAYS = 366;
+function _planOccurrenceDates(p){
+  if(p.type==='daily') return [td()];
+  if(p.type==='goal')  return p.deadline ? [p.deadline] : [];
+  if(!p.nextDate) return [];
+  const limitDate = p.endDate || addD(td(), PLAN_PROJECTION_HORIZON_DAYS);
+  if(p.nextDate > limitDate) return [];
+  const dates = [];
+  let guard = 0;
+  if(p.type==='weekday'){
+    let cur = p.nextDate;
+    while(cur && cur <= limitDate && guard < 400){
+      dates.push(cur);
+      cur = planNextWeekday(cur, p.weekdays);
+      guard++;
+    }
+  } else if(p.type==='interval'){
+    const step = Math.max(1, p.intervalDays||1);
+    let cur = p.nextDate;
+    while(cur <= limitDate && guard < 400){
+      dates.push(cur);
+      cur = addD(cur, step);
+      guard++;
+    }
+  } else {
+    dates.push(p.nextDate);
+  }
+  return dates;
+}
+
+/* 指定日にこの計画タスクの occurrence があるかどうかを判定
+   （_planOccurrenceDates を毎回全展開しなくても、日付クリック時の一覧などで軽量に判定できるように） */
+function _planOccursOn(p, dateStr){
+  if(p.type==='daily') return dateStr===td();
+  if(p.type==='goal')  return dateStr===p.deadline;
+  if(!p.nextDate || dateStr < p.nextDate) return false;
+  if(p.endDate && dateStr > p.endDate) return false;
+  if(p.type==='weekday'){
+    const dow = new Date(dateStr+'T00:00:00').getDay();
+    return (p.weekdays||[]).includes(dow);
+  }
+  if(p.type==='interval'){
+    const step = Math.max(1, p.intervalDays||1);
+    return daysBetween(p.nextDate, dateStr) % step === 0;
+  }
+  return dateStr===p.nextDate;
+}
+
 /* 日付ごとのタスク情報を返す純粋関数 */
 function _calEventMap(){
   // { 'YYYY-MM-DD': { count: number, overdue: bool, colors: string[], planColors: string[], todoColors: string[] } }
@@ -7442,19 +7494,24 @@ function _calEventMap(){
       map[d].colors.push('#9CA3AF');
     }
   });
-  // 計画タスク（毎日/曜日指定/間隔）: 次回日、目標型は期限日にピップを表示
-  PLAN.filter(p=>!p.done && planInPeriod(p)).forEach(p=>{
-    const d = planCalDate(p);
-    if(!d) return;
-    if(!map[d]) map[d] = { count: 0, overdue: false, colors: [], planColors: [], todoColors: [] };
-    map[d].count++;
-    if(p.type!=='daily' && d < today) map[d].overdue = true;
+  // 計画タスク（毎日/曜日指定/間隔）: 次回日以降の繰り返し予定を投影して表示。目標型は期限日にピップを表示
+  // 注：weekday・intervalタイプは「次回日」1件だけでなく、実施期間の終了日（未設定なら
+  // 約1年先まで）までの繰り返し予定をすべて投影する（_planOccurrenceDates参照）。
+  // 以前は次回日1件しか表示されず、1週間以上先の繰り返し予定がカレンダーに出ない不具合があった。
+  PLAN.filter(p=>!p.done).forEach(p=>{
     const tagColors = (p.tags || []).map(tid => { const t = getTag(tid); return t ? t.color : null; }).filter(Boolean);
-    if(tagColors.length) {
-      tagColors.forEach(c => { if(!map[d].planColors.includes(c)) map[d].planColors.push(c); });
-    } else if(!map[d].planColors.includes('#7C3AED')) {
-      map[d].planColors.push('#7C3AED');
-    }
+    _planOccurrenceDates(p).forEach(d=>{
+      if(p.startDate && d < p.startDate) return;
+      if(p.endDate && d > p.endDate) return;
+      if(!map[d]) map[d] = { count: 0, overdue: false, colors: [], planColors: [], todoColors: [] };
+      map[d].count++;
+      if(p.type!=='daily' && d < today) map[d].overdue = true;
+      if(tagColors.length) {
+        tagColors.forEach(c => { if(!map[d].planColors.includes(c)) map[d].planColors.push(c); });
+      } else if(!map[d].planColors.includes('#7C3AED')) {
+        map[d].planColors.push('#7C3AED');
+      }
+    });
   });
   // ToDo: 日付が設定されている未完了のToDoをカレンダーに表示
   TODOS.filter(x=>!x.done).forEach(x=>{
@@ -7717,7 +7774,7 @@ function _calShiftBtnsHtml(dateStr, id, kind){
     if(dest <= today) return ''; // 過去はスキップ
     if(dest === dateStr) return '';
     const destCount = U.filter(u => !u.done && u.nextDate === dest).length
-      + PLAN.filter(p => !p.done && p.type!=='daily' && planCalDate(p) === dest).length
+      + PLAN.filter(p => !p.done && p.type!=='daily' && _planOccursOn(p, dest)).length
       + TODOS.filter(x => !x.done && x.date === dest).length;
     const warn = destCount >= CAL_DENSE_OVER ? '⚠️' : '';
     const label = (d > 0 ? '+' : '') + d + '日' + warn;
@@ -7732,7 +7789,7 @@ function _calDayItemsHtml(dateStr){
   // 毎日タスクは常に「今日」の日付にのみマッチする（planCalDateがtd()を返すため）ので、
   // ここでは除外せず一覧に含める。除外するとカレンダーの丸ピップ（_calEventMap）には
   // 数えられているのに、日付をタップした一覧には出てこないという不整合が起きていた。
-  const planCands = PLAN.filter(p => !p.done && planCalDate(p) === dateStr);
+  const planCands = PLAN.filter(p => !p.done && _planOccursOn(p, dateStr));
   const todoCands = TODOS.filter(x => !x.done && x.date === dateStr);
   const rows = [
     ...reviewCands.map(u => ({ id: u.id, kind: 'review', name: u.name, label: STEPS[u.step] || `${u.step}回目`, color: 'var(--blue)', origDueDate: u.origDueDate })),
@@ -7803,7 +7860,7 @@ function _renderDenseSheet(){
   const today = td();
   const reviewCands = U.filter(u => !u.done && u.nextDate === dateStr);
   // 計画: 毎日タスクは常に「今日」なので今日の日付のときのみ、日付固定移動はできない（除外）
-  const planCands = PLAN.filter(p => !p.done && p.type!=='daily' && planCalDate(p) === dateStr);
+  const planCands = PLAN.filter(p => !p.done && p.type!=='daily' && _planOccursOn(p, dateStr));
   const todoCands = TODOS.filter(x => !x.done && x.date === dateStr);
   const allCount = reviewCands.length + planCands.length + todoCands.length;
 
@@ -7917,7 +7974,7 @@ function _denseShiftRowOut(id){
     setTimeout(() => {
       // 残件数が0になったらシートを閉じる
       const remaining = U.filter(u => !u.done && u.nextDate === _denseDate).length
-        + PLAN.filter(p => !p.done && p.type!=='daily' && planCalDate(p) === _denseDate).length
+        + PLAN.filter(p => !p.done && p.type!=='daily' && _planOccursOn(p, _denseDate)).length
         + TODOS.filter(x => !x.done && x.date === _denseDate).length;
       if(remaining === 0){
         closeDenseSheet();
@@ -7956,7 +8013,7 @@ function calJumpToDate(dateStr){
   //    表示されるため、該当するタブへ切り替える
   const reviewTargets = U.filter(u => !u.done && u.nextDate === dateStr);
   const todoTargets = TODOS.filter(x => !x.done && x.date === dateStr);
-  const planTargets = PLAN.filter(p => !p.done && p.type!=='daily' && planCalDate(p) === dateStr);
+  const planTargets = PLAN.filter(p => !p.done && p.type!=='daily' && _planOccursOn(p, dateStr));
   const todayTargets = [...reviewTargets, ...todoTargets];
   const destTabName = todayTargets.length ? 'today' : (planTargets.length ? 'plan' : 'today');
   const destTabBtn = document.querySelector(`.tab-btn[data-tab="${destTabName}"]`);
