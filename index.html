@@ -931,7 +931,8 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .sheet.locked .sheet-footer{
   pointer-events:none;
 }
-.sheet.locked .sheet-body{opacity:.5}
+.sheet.locked .sheet-body,
+.sheet.locked .sheet-footer{opacity:.5}
 .sheet-inp{
   width:100%;background:var(--fill);border:none;border-radius:12px;
   padding:14px 16px;font-family:inherit;font-size:17px;color:var(--lbl);
@@ -6768,6 +6769,38 @@ function _restoreTimerState(){
     _timerTodoId=todoId||null;
   }catch(_){}
 }
+
+// バックグラウンドで長時間CPUを奪われる／OSにページを再読み込みされるなどして
+// 記録シートが閉じた状態に戻ってしまっても、計測中・一時停止中のタイマーが
+// localStorageに残っていれば、ユーザーの操作を待たずに記録シートを自動で
+// 開き直し、経過時間を引き継いだ状態を復元する。
+function _reopenActiveStudySheet(){
+  if(!(_timerStart || _timerElapsed>0)) return;
+  let tags=[];
+  if(_timerUnitId){
+    const u=U.find(x=>x.id===_timerUnitId);
+    if(!u){ clearStudyTimer(); return; } // 対象が既に削除されていたら諦めて破棄
+    tags=(u.tags&&u.tags.length)?[...u.tags]:[];
+  } else if(_timerPlanId){
+    const p=PLAN.find(x=>x.id===_timerPlanId);
+    if(!p){ clearStudyTimer(); return; }
+    tags=(p.tags&&p.tags.length)?[...p.tags]:[];
+    _studySheetQty=1;
+  } else if(_timerTodoId){
+    const t=TODOS.find(x=>x.id===_timerTodoId);
+    if(!t){ clearStudyTimer(); return; }
+    tags=(t.tags&&t.tags.length)?[...t.tags]:[];
+  }
+  _studySheetMode=(_timerUnitId||_timerPlanId||_timerTodoId)?'review':'new';
+  _studySheetDate=null;
+  _studySheetTags=tags;
+  _resetStudyLockUI();
+  _renderStudySheet();
+  _restoreTimerUI();
+  document.getElementById('overlay').classList.add('on');
+  document.getElementById('study-sheet').classList.add('on');
+  setFabHidden(true);
+}
 let _studySheetMode='review'; // 'review' or 'new'
 let _studySheetTags=[];
 let _studySheetDate=null; // null = today
@@ -6797,8 +6830,22 @@ function _startFreshStudyTimer(){
   _saveTimerState();
 }
 
+// バックグラウンド中にアプリが再読み込みされた場合など、localStorageに
+// 同じ対象の計測中／一時停止中タイマーが残っていればそれを継続し、
+// 別の対象を開いた場合や残っていない場合だけ0から新規に計測を開始する。
+// （_restoreTimerState()で復元した直後にopenStudyTimer等から呼ばれても
+//   経過時間が消えないようにするためのガード）
+function _startOrResumeStudyTimer(matches){
+  if((_timerStart || _timerElapsed>0) && matches()){
+    if(_timerInterval){ clearInterval(_timerInterval); _timerInterval=null; }
+    _manualInpEdited=false;
+  } else {
+    _startFreshStudyTimer();
+  }
+}
+
 function openStudyTimer(unitId){
-  _startFreshStudyTimer();
+  _startOrResumeStudyTimer(()=>_timerUnitId===unitId && !_timerPlanId && !_timerTodoId);
   _timerUnitId=unitId;
   _timerPlanId=null;
   _timerTodoId=null;
@@ -6816,7 +6863,7 @@ function openStudyTimer(unitId){
 }
 
 function openStudyTimerForPlan(planId){
-  _startFreshStudyTimer();
+  _startOrResumeStudyTimer(()=>_timerPlanId===planId && !_timerUnitId && !_timerTodoId);
   _timerPlanId=planId;
   _timerUnitId=null;
   _timerTodoId=null;
@@ -6837,7 +6884,7 @@ function openStudyTimerForPlan(planId){
 // ToDoカードの「時間を記録して完了」から開く。他のカードと同じ記録シートを使い、
 // 保存時だけ「途中までやった／完了にする」を選べるようフッターを出し分ける
 function openStudyTimerForTodo(todoId){
-  _startFreshStudyTimer();
+  _startOrResumeStudyTimer(()=>_timerTodoId===todoId && !_timerUnitId && !_timerPlanId);
   _timerTodoId=todoId;
   _timerUnitId=null;
   _timerPlanId=null;
@@ -6855,7 +6902,7 @@ function openStudyTimerForTodo(todoId){
 }
 
 function openNewStudySheet(){
-  _startFreshStudyTimer();
+  _startOrResumeStudyTimer(()=>!_timerUnitId && !_timerPlanId && !_timerTodoId);
   _timerUnitId=null;
   _timerPlanId=null;
   _timerTodoId=null;
@@ -9453,7 +9500,13 @@ requestPersistentStorage();
   document.addEventListener('visibilitychange', ()=>{
     if(document.visibilityState !== 'visible') return;
     // バックグラウンドから復帰したらタイマー表示を即時同期（計測中・一時停止中どちらも）
-    if(_timerStart || _timerElapsed>0) _updateTimerDisplay();
+    if(_timerStart || _timerElapsed>0){
+      _updateTimerDisplay();
+      // CPUを奪われるなどして記録シートが閉じた状態に戻ってしまっていた場合に備え、
+      // シートが開いていなければ自動で開き直す（フルリロードを伴わない復帰でも保険をかける）
+      const sh=document.getElementById('study-sheet');
+      if(sh && !sh.classList.contains('on')) _reopenActiveStudySheet();
+    }
     _checkDateRollover();
   });
   // 画面を閉じずに開きっぱなしのまま日付をまたいだ場合でも追従できるよう定期チェックする
@@ -9463,6 +9516,7 @@ requestPersistentStorage();
   _updateNavIcon(); // アイコンをナビバーに反映
   render();
   renderSettings();
+  _reopenActiveStudySheet(); // 計測中だった記録シートも自動で開き直し、経過時間を引き継ぐ
   setTimeout(checkBackupReminder, 800); // slight delay so UI is settled
   setTimeout(checkExpiredPlans, 900); // 起動時に実施期間が終了した計画がないかチェック
 })();
