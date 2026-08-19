@@ -7010,7 +7010,6 @@ function _renderStudySheet(){
       <input type="number" id="study-manual-inp" min="1" max="600" placeholder="例：30" oninput="_manualInpEdited=true" style="flex:1;background:var(--fill);border:none;border-radius:12px;padding:13px 14px;font-family:'Outfit',inherit;font-size:18px;font-weight:700;color:var(--lbl);outline:none;text-align:center">
       <span style="color:var(--lbl2);font-size:14px;font-weight:600;flex-shrink:0">分</span>
     </div>
-    ${(td_||u)?'':`<input type="text" id="study-note-inp" placeholder="メモ（任意）" maxlength="60" autocomplete="off" style="width:100%;background:var(--fill);border:none;border-radius:12px;padding:12px 14px;font-family:inherit;font-size:16px;color:var(--lbl);outline:none;margin-bottom:14px">`}
     ${td_?'':`<div style="margin-bottom:16px">
       <div style="font-size:13px;font-weight:600;color:var(--lbl2);margin-bottom:8px">📅 記録する日付</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap" id="study-date-btns">
@@ -7212,8 +7211,6 @@ function saveStudyRecord(){
     haptic('medium'); return;
   }
   const titleInp=document.getElementById('study-title-inp');
-  const noteInp=document.getElementById('study-note-inp');
-  const note=noteInp?.value.trim()||'';
   const _savedQty=_studySheetQty;
   let title='';
   if(_studySheetMode==='review'&&_timerUnitId){
@@ -7242,7 +7239,7 @@ function saveStudyRecord(){
     title:title||null,
     tagIds:[..._studySheetTags],
     minutes,
-    note:note||null,
+    note:null,
     createdAt:Date.now()
   });
   closeStudySheet();
@@ -7279,8 +7276,6 @@ function saveStudyRecordForTodo(isComplete){
   const item=_savedTodoId?TODOS.find(x=>x.id===_savedTodoId):null;
 
   // 0分（記録なし）でも、完了／途中の操作自体は妨げない。時間の記録だけスキップする。
-  const noteInp=document.getElementById('study-note-inp');
-  const note=(item||u)?'':(noteInp?.value.trim()||'');
   let title='';
   if(u) title=`${u.name} - ${STEPS[u.step]||`${u.step}回目`}`;
   else if(p){ title=planDisplayName(p); if(p.type==='goal' && _savedQty>1) title += ` ×${_savedQty}`; }
@@ -7299,7 +7294,7 @@ function saveStudyRecordForTodo(isComplete){
       title:title||null,
       tagIds:[..._studySheetTags],
       minutes,
-      note:note||null,
+      note:null,
       createdAt:Date.now()
     });
   }
