@@ -7785,7 +7785,7 @@ function _calShiftBtnsHtml(dateStr, id, kind){
   const deltas = [-3,-2,-1,1,2,3];
   return deltas.map(d => {
     const dest = addD(dateStr, d);
-    if(dest <= today) return ''; // 過去はスキップ
+    if(dest < today) return ''; // 過去はスキップ（今日への移動は許可）
     if(dest === dateStr) return '';
     const destCount = U.filter(u => !u.done && u.nextDate === dest).length
       + PLAN.filter(p => !p.done && p.type!=='daily' && _planOccursOn(p, dest)).length
