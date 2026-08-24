@@ -2281,6 +2281,21 @@ button,a,input,[role="button"]{touch-action:manipulation}
 }
 .layout-toggle-btn.on{background:var(--card);color:var(--blue);box-shadow:0 1px 4px rgba(0,0,0,.12)}
 .layout-toggle-btn:active{opacity:.7}
+
+/* ══ 設定画面の ON/OFF スイッチ ══ */
+.settings-switch{
+  -webkit-appearance:none;appearance:none;border:none;cursor:pointer;flex-shrink:0;
+  width:48px;height:28px;border-radius:100px;background:var(--fill);position:relative;
+  transition:background .18s ease;padding:0
+}
+.settings-switch::after{
+  content:'';position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;
+  background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.22);transition:transform .18s ease
+}
+.settings-switch.on{background:var(--blue)}
+.settings-switch.on::after{transform:translateX(20px)}
+.settings-switch:active::after{width:26px}
+
 .settings-select{
   background:var(--fill);border:none;border-radius:8px;
   padding:7px 8px;font-family:inherit;font-size:13px;font-weight:600;
@@ -5383,6 +5398,21 @@ function getStreak(){
 let filterTagId = null;
 const TODO_FILTER_ID = '__todo__';
 let _tagfScrollLeft = 0;
+
+// 今日タブ用のタグ絞り込み状態（予定タブとは独立に保持する）
+let filterTagIdToday = null;
+let _tagfScrollLeftToday = 0;
+function setTodayTagFilter(tagId){
+  const _tf=document.querySelector('#p-today .tagf-scroll');
+  if(_tf) _tagfScrollLeftToday=_tf.scrollLeft;
+  filterTagIdToday = tagId;
+  haptic();
+  render();
+}
+function _restoreTodayTagfScroll(el){
+  const _tf=el.querySelector('.tagf-scroll');
+  if(_tf) _tf.scrollLeft=_tagfScrollLeftToday;
+}
 let filterPlanTagId = null;
 let _planTagfScrollLeft = 0;
 
@@ -5887,18 +5917,48 @@ function rToday(list, hasActive, allDone){
   const el=document.getElementById('p-today');
   const bannerHtml = backupBannerHtml();
   const compact = isTodayGridLayout();
-  const todoCardsHtml = renderTodoSectionHtml(compact); // 復習カードと並列に、hero直下へ差し込むToDoカード群
+
+  // ── タグ絞り込み（予定タブと同じUI。設定でON/OFF、デフォルトON）──
+  const t0 = td();
+  const duePlanAll = getDuePlanList();
+  const forwardPushAll = getForwardPushPlanList();
+  const todosAll = TODOS.filter(x=>x.date && x.date<=t0 && !x.done);
+  const tagFilterOn = todayTagFilterEnabled();
+  const usedTagIdsToday = new Set();
+  if(tagFilterOn){
+    list.forEach(u=>(u.tags||[]).forEach(id=>usedTagIdsToday.add(id)));
+    duePlanAll.forEach(p=>(p.tags||[]).forEach(id=>usedTagIdsToday.add(id)));
+    todosAll.forEach(x=>(x.tags||[]).forEach(id=>usedTagIdsToday.add(id)));
+  }
+  const availTagsToday = TAGS.filter(tg=>usedTagIdsToday.has(tg.id));
+  const showTodayTagFilter = tagFilterOn && availTagsToday.length>0;
+  const activeTagIdToday = showTodayTagFilter ? filterTagIdToday : null;
+  const todayTagFilterBar = showTodayTagFilter ? `<div class="tagf-wrap">
+    <div class="tagf-scroll">
+      <button class="tagf-chip all${!filterTagIdToday?' active':''}" onclick="setTodayTagFilter(null)">すべて</button>
+      ${availTagsToday.map(tg=>{
+        const isActive=filterTagIdToday===tg.id;
+        const st=isActive?`background:${tg.color};border-color:${tg.color};color:#fff`:'';
+        return `<button class="tagf-chip${isActive?' active':''}" style="${st}" onclick="setTodayTagFilter('${tg.id}')"><span class="tagf-dot" style="background:${isActive?'#fff':tg.color}"></span>${esc(tg.name)}</button>`;
+      }).join('')}
+    </div>
+  </div>` : '';
+
+  if(activeTagIdToday){
+    list = list.filter(u=>(u.tags||[]).includes(activeTagIdToday));
+  }
+  const todoCardsHtml = renderTodoSectionHtml(compact, activeTagIdToday); // 復習カードと並列に、hero直下へ差し込むToDoカード群
 
   // 計画タブで作成したタスクのうち、今日やること（毎日/曜日指定/間隔/目標型）。
   // 通常の復習カードと見出しなしで同じリストに並べる
-  const duePlan = getDuePlanList();
+  const duePlan = activeTagIdToday ? duePlanAll.filter(p=>(p.tags||[]).includes(activeTagIdToday)) : duePlanAll;
   function duePlanSecHtml(){
     if(!duePlan.length) return '';
     return duePlan.map(p=>planCardHtml(p,{todayMode:true, compact})).join('');
   }
 
   // ルールの競合を避けるために前倒しで済ませておくことを提案する計画タスク
-  const forwardPushPlan = getForwardPushPlanList();
+  const forwardPushPlan = activeTagIdToday ? forwardPushAll.filter(({plan})=>(plan.tags||[]).includes(activeTagIdToday)) : forwardPushAll;
   function forwardPushSecHtml(){
     if(!forwardPushPlan.length) return '';
     const header = `<div class="sec">⚡ 前倒し提案 · ${forwardPushPlan.length}件</div>`;
@@ -6016,7 +6076,8 @@ function rToday(list, hasActive, allDone){
       el.innerHTML=bannerHtml+`
         <div class="hero">
           <div class="hero-msg">${msg}</div>
-        </div>`+wrap(todoCardsHtml+duePlanSecHtml()+forwardPushSecHtml())+todayDoneAccHtml();
+        </div>`+todayTagFilterBar+wrap(todoCardsHtml+duePlanSecHtml()+forwardPushSecHtml())+todayDoneAccHtml();
+      _restoreTodayTagfScroll(el);
       return;
     }
     if(hasActive){
@@ -6028,18 +6089,19 @@ function rToday(list, hasActive, allDone){
           ${allDoneIconHtml}
           <div class="hero-msg">今日もお疲れ様です</div>
           <div class="hero-sub" style="margin-top:6px">ナイスファイト！！</div>
-        </div>`+wrap(todoCardsHtml)+todayDoneAccHtml();
+        </div>`+todayTagFilterBar+wrap(todoCardsHtml)+todayDoneAccHtml();
     } else {
       el.innerHTML=bannerHtml+`
         <div class="hero">
           <div class="hero-msg">単元を追加しましょう</div>
           <div class="hero-sub" style="margin-top:6px">＋ボタンから最初の単元を登録できます</div>
-        </div>`+wrap(todoCardsHtml)+`
+        </div>`+todayTagFilterBar+wrap(todoCardsHtml)+`
         <div class="empty">
           <div class="empty-icon">${IC.calendarLg}</div>
           <p>復習したい単元を追加すると<br>スケジュールが自動で組まれます</p>
         </div>`+todayDoneAccHtml();
     }
+    _restoreTodayTagfScroll(el);
     return;
   }
   // P4 fix: separate overdue from due-today
@@ -6057,15 +6119,19 @@ function rToday(list, hasActive, allDone){
     <div class="hero">
       <div class="hero-msg">${heroMsgText}</div>
       ${overSub}
-    </div>`;
+    </div>`+todayTagFilterBar;
   const filteredOverdue=overdue;
   const filteredDueToday=dueToday;
 
   if(!filteredOverdue.length && !filteredDueToday.length){
     html += wrap(todoCardsHtml);
-    html+=`<div class="empty" style="padding:28px 0"><div class="empty-icon">${IC.searchLg}</div><h3>該当する単元がありません</h3><p>今日の復習はありません</p></div>`;
+    const _filterTagToday = activeTagIdToday ? getTag(activeTagIdToday) : null;
+    const _emptyMsgToday = _filterTagToday
+      ? `「${esc(_filterTagToday.name)}」のタグが付いた今日の復習は<br>見つかりませんでした`
+      : '今日の復習はありません';
+    html+=`<div class="empty" style="padding:28px 0"><div class="empty-icon">${IC.searchLg}</div><h3>該当する単元がありません</h3><p>${_emptyMsgToday}</p></div>`;
     html += wrap(duePlanSecHtml()+forwardPushSecHtml()) + todayDoneAccHtml();
-    el.innerHTML=html; return;
+    el.innerHTML=html; _restoreTodayTagfScroll(el); return;
   }
   // 今日タブのメインカード群（ToDo・期限切れ・今日が期限・計画タスク）を
   // 2列表示のときは1つのグリッドにまとめる。見出し（.sec）はCSS側で
@@ -6082,6 +6148,7 @@ function rToday(list, hasActive, allDone){
   html += wrap(gridHtml);
   html += todayDoneAccHtml();
   el.innerHTML=html;
+  _restoreTodayTagfScroll(el);
 }
 
 /* ── Upcoming panel ── */
@@ -8561,13 +8628,6 @@ function changeBackupRemindDays(v){
   toast(IC.checkCircle, days>0 ? `バックアップ通知を ${days}日ごとに設定しました` : 'バックアップ通知をオフにしました');
 }
 
-function getLastBackupDate(){
-  try { return localStorage.getItem(BACKUP_LAST_KEY) || null; } catch { return null; }
-}
-function setLastBackupDate(){
-  try { localStorage.setItem(BACKUP_LAST_KEY, new Date().toISOString()); } catch {}
-}
-
 /* ══ 今日タブのレイアウト設定（1列 / 2列） ══
    'grid' = 2カラム表示（一覧性重視）/ 'list' = 従来の1カラム表示 */
 const TODAY_LAYOUT_KEY = 'fukushu-today-layout-v1';
@@ -8584,6 +8644,31 @@ function setTodayLayout(mode){
   renderSettings();
   render();
 }
+
+/* ══ 今日タブのタグ絞り込み設定 ══
+   予定タブと同じタグチップUIを今日タブにも表示するかどうか。デフォルトはON。 */
+const TODAY_TAGF_KEY = 'fukushu-today-tagfilter-v1';
+function todayTagFilterEnabled(){
+  try {
+    return localStorage.getItem(TODAY_TAGF_KEY) !== '0'; // 未設定時はONをデフォルトに
+  } catch { return true; }
+}
+function setTodayTagFilterEnabled(on){
+  if(todayTagFilterEnabled() === on) return;
+  try { localStorage.setItem(TODAY_TAGF_KEY, on ? '1' : '0'); } catch {}
+  if(!on) filterTagIdToday = null; // オフにする時はフィルタ状態もリセット
+  haptic('light');
+  renderSettings();
+  render();
+}
+
+function getLastBackupDate(){
+  try { return localStorage.getItem(BACKUP_LAST_KEY) || null; } catch { return null; }
+}
+function setLastBackupDate(){
+  try { localStorage.setItem(BACKUP_LAST_KEY, new Date().toISOString()); } catch {}
+}
+
 function daysSinceBackup(){
   const last = getLastBackupDate();
   if(!last) return Infinity;
@@ -8914,9 +8999,10 @@ function todoCardHtml(x, compact){
 // 復習カード（cHtml）・計画カード（planCardHtml）と同じ .cw/.card 構造で、
 // ToDo1件につき1枚のカードを独立して出力する（まとめず並列に並ぶ）。
 // 完了済みのToDoはここには含めず、他のカードと同様に「完了済み」アコーディオンへ移す。
-function renderTodoSectionHtml(compact){
+function renderTodoSectionHtml(compact, tagId){
   const t = td();
-  const list = TODOS.filter(x=>x.date && x.date<=t && !x.done).sort((a,b)=>(a.date||'').localeCompare(b.date||'')||(a.createdAt||0)-(b.createdAt||0));
+  let list = TODOS.filter(x=>x.date && x.date<=t && !x.done).sort((a,b)=>(a.date||'').localeCompare(b.date||'')||(a.createdAt||0)-(b.createdAt||0));
+  if(tagId) list = list.filter(x=>(x.tags||[]).includes(tagId));
   if(!list.length) return '';
   return list.map(x=>todoCardHtml(x, compact)).join('');
 }
@@ -9293,6 +9379,14 @@ function renderSettings(){
             <svg width="18" height="14" viewBox="0 0 18 14" fill="none"><rect x="0" y="0" width="8" height="14" rx="1.8" fill="currentColor"/><rect x="10" y="0" width="8" height="14" rx="1.8" fill="currentColor"/></svg>
           </button>
         </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-icon" style="background:#F5F3FF">🏷️</div>
+        <div class="settings-row-body">
+          <div class="settings-row-title">今日タブのタグ絞り込み</div>
+          <div class="settings-row-sub">予定タブと同じタグチップで、今日のタスクを絞り込めます</div>
+        </div>
+        <button class="settings-switch${todayTagFilterEnabled()?' on':''}" role="switch" aria-checked="${todayTagFilterEnabled()?'true':'false'}" aria-label="今日タブのタグ絞り込み" onclick="setTodayTagFilterEnabled(${todayTagFilterEnabled()?'false':'true'})"></button>
       </div>
     </div>
 
