@@ -31,6 +31,7 @@
   --blue:#2563EB;--blue-d:#1D4ED8;--blue-bg:#EFF6FF;--blue-bd:rgba(37,99,235,.15);
   --red:#FF3B30;
   --plan:#7C3AED;--plan-d:#6D28D9;--plan-bg:#F5F3FF;--plan-bd:rgba(124,58,237,.18);
+  --orange:#F97316;--orange-d:#EA580C;--orange-bg:#FFF4E9;--orange-bd:rgba(249,115,22,.2);
   --lbl:#0F0F14;--lbl2:rgba(60,60,67,.52);--lbl3:rgba(60,60,67,.26);
   --sep:rgba(60,60,67,.09);--fill:rgba(120,120,128,.09);
   --shadow:0 1px 3px rgba(0,0,0,.05),0 6px 20px rgba(0,0,0,.07);
@@ -423,6 +424,14 @@ button,a,input,[role="button"]{touch-action:manipulation}
   transition:opacity .12s,background .12s;font-family:inherit;flex-shrink:0
 }
 .btn-snooze:active{opacity:.6;background:var(--sep)}
+.cal-spread-row{padding:10px 16px 2px}
+.btn-smart-spread{
+  width:100%;background:var(--orange-bg);color:var(--orange-d);border:1.5px solid var(--orange-bd);
+  border-radius:12px;padding:10px 14px;min-height:40px;font-size:13px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:6px;font-family:inherit;
+  transition:opacity .12s,background .12s
+}
+.btn-smart-spread:active{background:var(--orange);color:#fff}
 
 /* ── カード共通パーツ: 通常タスク／計画タスク両方で使用 ── */
 .card-icon-row{display:flex;gap:2px;flex-shrink:0}
@@ -2620,6 +2629,7 @@ const IC = {
   play:       `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6 3 20 12 6 21 6 3"/></svg>`,
   pause:      `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>`,
   info:       `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`,
+  spread:     `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.8-1.1 2-1.7 3.3-1.7H22"/><path d="m18 2 4 4-4 4"/><path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"/><path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8"/><path d="m18 14 4 4-4 4"/></svg>`,
 };
 
 /* ══════════════════════════════════════════
@@ -5637,9 +5647,24 @@ function flashThenShrink(cardId, wrapId, cb){
   setTimeout(()=>shrinkOut(wrapId, cb), 280);
 }
 
-/* ══ カレンダー「過密」判定の閾値 ═══════════ */
-// カレンダー上で「過密」とみなす1日あたりの件数
-const CAL_DENSE_OVER = 5;
+/* ══ カレンダー「過密」判定の閾値（相対評価） ═══════════
+   固定件数だと、タスクを細かく分割している人ほど1日の平均件数が多くなり、
+   毎日が「過密」判定されてしまう。そこで、その人の直近の予定から算出した
+   平均件数を基準にした相対評価にする。 */
+const CAL_DENSE_MIN  = 3;   // 平均が低くても、これ未満の件数では過密としない下限
+const CAL_DENSE_MULT = 1.6; // 平均の何倍を超えたら過密とみなすか
+
+// 今日以降で予定がある日の平均件数から、相対的な過密しきい値を算出する
+function _calDenseThreshold(evMap){
+  evMap = evMap || _calEventMap();
+  const today = td();
+  const counts = Object.keys(evMap)
+    .filter(d => d >= today && evMap[d].count > 0)
+    .map(d => evMap[d].count);
+  if(!counts.length) return CAL_DENSE_MIN;
+  const avg = counts.reduce((s,c)=>s+c,0) / counts.length;
+  return Math.max(CAL_DENSE_MIN, Math.round(avg * CAL_DENSE_MULT));
+}
 
 /* ══ P1: Edit unit name ════════════════ */
 let _editId = null;
@@ -6067,6 +6092,8 @@ function rUpcoming(list){
   _calInit();
   const _calEvMapForTpl = _calOpen ? _calEventMap() : null;
   const isPrevDisabled = _calPrevDisabled();
+  const _spreadCand = _calOpen ? _smartSpreadCandidates() : null;
+  const spreadCount = _spreadCand ? (_spreadCand.units.length + _spreadCand.todos.length) : 0;
   const calHtml = `
   <button class="cal-toggle" onclick="calToggle()" aria-label="カレンダービューを切り替え">
     <div class="cal-toggle-left">
@@ -6095,6 +6122,9 @@ function rUpcoming(list){
     </div>
     <div id="cal-grid" class="cal-grid${_calViewMode==='day'?' cal-grid-day':''}">${_calOpen ? (_calViewMode==='day' ? _buildCalDayGridHtml(_calDayDate, _calEvMapForTpl) : _buildCalMonthGridHtml(_calYear, _calMonth, _calEvMapForTpl)) : ''}</div>
     <div id="cal-legend" class="cal-legend">${_calOpen ? _calLegendHtml() : ''}</div>
+    <div id="cal-spread-row" class="cal-spread-row" style="display:${spreadCount>0 ? 'block':'none'}">
+      <button class="btn-smart-spread" onclick="openSmartSpread()">${IC.spread} スマート分散でならす（${spreadCount}件）</button>
+    </div>
   </div>`;
 
   const usedTagIds=new Set();
@@ -7604,7 +7634,7 @@ function _calForecastText(evMap){
   const total = next7.reduce((s,x) => s + x.count, 0);
   if(total === 0) return '';
   const peak = next7.reduce((a,b) => b.count > a.count ? b : a, next7[0]);
-  if(peak.count >= CAL_DENSE_OVER){
+  if(peak.count >= _calDenseThreshold(evMap)){
     return `⚠️ ${fmtShortText(peak.date)}に${peak.count}件集中しています`;
   }
   return `今後7日間で${total}件の予定があります`;
@@ -7650,17 +7680,18 @@ function _calAttachSwipe(){
 /* 1セル分のHTMLを生成する純粋関数（月表示・週表示で共通） */
 function _buildCalCellHtml(dateStr, cellDate, dow, opts){
   const { isOther, evMap, today, gapDates } = opts;
+  const denseThreshold = opts.denseThreshold || _calDenseThreshold(evMap);
   const isToday   = dateStr === today;
   const ev        = dateStr ? evMap[dateStr] : null;
   const count     = ev ? ev.count : 0;
   const hasEvent  = count > 0;
   const isOverdue = ev ? ev.overdue : false;
-  const isDense   = count >= CAL_DENSE_OVER && !isOther && !isOverdue;
+  const isDense   = count >= denseThreshold && !isOther && !isOverdue;
   const isGap     = !isOther && !hasEvent && gapDates.has(dateStr);
 
   let heatLv = 0;
   if(hasEvent && !isOther){
-    heatLv = count >= CAL_DENSE_OVER ? 4 : count >= 3 ? 3 : count >= 2 ? 2 : 1;
+    heatLv = count >= denseThreshold ? 4 : count >= 3 ? 3 : count >= 2 ? 2 : 1;
   }
 
   let cls = 'cal-cell';
@@ -7743,6 +7774,7 @@ function _buildCalMonthGridHtml(year, month, evMap){
   const today = td();
   evMap = evMap || _calEventMap();
   const gapDates = _calGapDates(evMap);
+  const denseThreshold = _calDenseThreshold(evMap);
 
   // 1日の曜日と末日
   const firstDay = new Date(year, month, 1).getDay(); // 0=日
@@ -7774,7 +7806,7 @@ function _buildCalMonthGridHtml(year, month, evMap){
     const dateStr = isOther ? '' : `${year}-${String(month+1).padStart(2,'0')}-${String(cellDate).padStart(2,'0')}`;
     const dow = i % 7; // 0=日,6=土
 
-    html += _buildCalCellHtml(dateStr, cellDate, dow, { isOther, evMap, today, gapDates });
+    html += _buildCalCellHtml(dateStr, cellDate, dow, { isOther, evMap, today, gapDates, denseThreshold });
   }
   return html;
 }
@@ -7790,7 +7822,7 @@ function _calShiftBtnsHtml(dateStr, id, kind){
     const destCount = U.filter(u => !u.done && u.nextDate === dest).length
       + PLAN.filter(p => !p.done && p.type!=='daily' && _planOccursOn(p, dest)).length
       + TODOS.filter(x => !x.done && x.date === dest).length;
-    const warn = destCount >= CAL_DENSE_OVER ? '⚠️' : '';
+    const warn = destCount >= _calDenseThreshold() ? '⚠️' : '';
     const label = (d > 0 ? '+' : '') + d + '日' + warn;
     const fn = kind==='plan' ? `denseShiftPlan('${id}','${dest}')` : kind==='todo' ? `denseShiftTodo('${id}','${dest}')` : `denseShiftUnit('${id}','${dest}')`;
     return `<button class="dense-shift-btn" onclick="${fn}">${label}</button>`;
@@ -7853,6 +7885,67 @@ function _buildCalDayGridHtml(dayDate, evMap){
 
 /* ══ Dense-day manual spread sheet ════════════════ */
 let _denseDate = null; // 現在シートで表示中の日付
+
+/* ══ スマート分散：風邪などでこなせなかった日の積み残しを、今後の空いている日に均等に振り分ける ══
+   復習の1回目・2回目はタイミングが記憶定着に直結するため対象外（ほぼ動かさない）。
+   計画タスクも決まったルールで運用されているため対象外とし、3回目以降の復習とToDoだけを動かす。 */
+function _smartSpreadCandidates(){
+  const t = td();
+  const units = U.filter(u => !u.done && u.step >= 2 && u.nextDate <= t)
+    .sort((a,b) => a.nextDate.localeCompare(b.nextDate));
+  const todos = TODOS.filter(x => !x.done && x.date && x.date <= t)
+    .sort((a,b) => (a.date||'').localeCompare(b.date||''));
+  return { units, todos };
+}
+
+function openSmartSpread(){
+  const { units, todos } = _smartSpreadCandidates();
+  const total = units.length + todos.length;
+  if(total === 0){
+    toast(IC.alert, '分散できるタスクがありません（1・2回目の復習と計画タスクは対象外です）');
+    return;
+  }
+  const ok = confirm(`3回目以降の復習・ToDoを中心に${total}件を、今後7日間で均等にならします。\n1・2回目の復習と計画タスクは動かしません。よろしいですか？`);
+  if(!ok) return;
+  runSmartSpread(units, todos);
+}
+
+function runSmartSpread(units, todos){
+  const t = td();
+  const evMap = _calEventMap();
+  const threshold = _calDenseThreshold(evMap);
+  const horizonDays = 7; // 直近7日間の中でならす
+  const load = {};
+  for(let i=1;i<=horizonDays;i++){
+    const d = addD(t,i);
+    load[d] = evMap[d] ? evMap[d].count : 0;
+  }
+  function pickDate(){
+    // 過密しきい値未満で最も近い日を優先。全て埋まっていたら最も空いている日を選ぶ
+    for(let i=1;i<=horizonDays;i++){
+      const d = addD(t,i);
+      if(load[d] < threshold){ load[d]++; return d; }
+    }
+    const best = Object.keys(load).reduce((a,b) => load[b] < load[a] ? b : a);
+    load[best]++;
+    return best;
+  }
+  units.forEach(u=>{
+    const dest = pickDate();
+    if(!u.origDueDate) u.origDueDate = u.nextDate;
+    u.nextDate = dest;
+  });
+  todos.forEach(x=>{
+    const dest = pickDate();
+    if(!x.origDueDate) x.origDueDate = x.date;
+    x.date = dest;
+  });
+  if(units.length) save();
+  if(todos.length) saveTodos();
+  haptic('medium');
+  toast(IC.check, `${units.length + todos.length}件のタスクを今後7日間に分散しました`);
+  render();
+}
 
 function openDenseSheet(dateStr){
   _denseDate = dateStr;
