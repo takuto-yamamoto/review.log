@@ -425,13 +425,20 @@ button,a,input,[role="button"]{touch-action:manipulation}
 }
 .btn-snooze:active{opacity:.6;background:var(--sep)}
 .cal-spread-row{padding:10px 16px 2px}
-.btn-smart-spread{
-  width:100%;background:var(--orange-bg);color:var(--orange-d);border:1.5px solid var(--orange-bd);
-  border-radius:12px;padding:10px 14px;min-height:40px;font-size:13px;font-weight:700;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;gap:6px;font-family:inherit;
-  transition:opacity .12s,background .12s
+.cal-spread-btn{
+  width:100%;display:flex;align-items:center;gap:12px;text-align:left;
+  background:var(--orange-bg);border:1.5px solid var(--orange-bd);border-radius:14px;
+  padding:11px 12px;cursor:pointer;font-family:inherit;transition:opacity .12s,transform .12s;
 }
-.btn-smart-spread:active{background:var(--orange);color:#fff}
+.cal-spread-btn:active{transform:scale(.98);opacity:.85}
+.cal-spread-icon{
+  width:36px;height:36px;border-radius:10px;flex-shrink:0;background:var(--orange);color:#fff;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(249,115,22,.35);
+}
+.cal-spread-body{flex:1;min-width:0}
+.cal-spread-title{font-size:13.5px;font-weight:700;color:var(--orange-d)}
+.cal-spread-sub{font-size:11.5px;color:var(--lbl2);margin-top:2px}
+.cal-spread-chev{color:var(--orange-d);opacity:.55;flex-shrink:0;display:flex}
 
 /* ── カード共通パーツ: 通常タスク／計画タスク両方で使用 ── */
 .card-icon-row{display:flex;gap:2px;flex-shrink:0}
@@ -6190,7 +6197,14 @@ function rUpcoming(list){
     <div id="cal-grid" class="cal-grid${_calViewMode==='day'?' cal-grid-day':''}">${_calOpen ? (_calViewMode==='day' ? _buildCalDayGridHtml(_calDayDate, _calEvMapForTpl) : _buildCalMonthGridHtml(_calYear, _calMonth, _calEvMapForTpl)) : ''}</div>
     <div id="cal-legend" class="cal-legend">${_calOpen ? _calLegendHtml() : ''}</div>
     <div id="cal-spread-row" class="cal-spread-row" style="display:${spreadCount>0 ? 'block':'none'}">
-      <button class="btn-smart-spread" onclick="openSmartSpread()">${IC.spread} スマート分散でならす（${spreadCount}件）</button>
+      <button class="cal-spread-btn" onclick="openSmartSpread()">
+        <span class="cal-spread-icon">${IC.spread}</span>
+        <span class="cal-spread-body">
+          <span class="cal-spread-title">スマート分散でならす</span>
+          <span class="cal-spread-sub">${spreadCount}件を今後7日間で均等に振り分けます</span>
+        </span>
+        <span class="cal-spread-chev"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+      </button>
     </div>
   </div>`;
 
@@ -7982,35 +7996,76 @@ function runSmartSpread(units, todos){
   const evMap = _calEventMap();
   const threshold = _calDenseThreshold(evMap);
   const horizonDays = 7; // 直近7日間の中でならす
+  const horizonDates = [];
   const load = {};
   for(let i=1;i<=horizonDays;i++){
     const d = addD(t,i);
+    horizonDates.push(d);
     load[d] = evMap[d] ? evMap[d].count : 0;
   }
-  function pickDate(){
-    // 過密しきい値未満で最も近い日を優先。全て埋まっていたら最も空いている日を選ぶ
-    for(let i=1;i<=horizonDays;i++){
-      const d = addD(t,i);
-      if(load[d] < threshold){ load[d]++; return d; }
+  // exclude と異なる日の中で、過密しきい値未満の最も近い日を優先。全て埋まっていたら
+  // exclude以外で最も空いている日を返す（load自体は更新しない＝呼び出し側で反映する）
+  function bestDest(exclude){
+    for(const d of horizonDates){
+      if(d===exclude) continue;
+      if(load[d] < threshold) return d;
     }
-    const best = Object.keys(load).reduce((a,b) => load[b] < load[a] ? b : a);
-    load[best]++;
-    return best;
+    const cands = horizonDates.filter(d=>d!==exclude);
+    return cands.reduce((a,b) => load[b] < load[a] ? b : a, cands[0]);
   }
+
+  const movedUnitIds = new Set();
+  const movedTodoIds = new Set();
   units.forEach(u=>{
-    const dest = pickDate();
+    const dest = bestDest(null);
+    load[dest]++;
     if(!u.origDueDate) u.origDueDate = u.nextDate;
     u.nextDate = dest;
+    movedUnitIds.add(u.id);
   });
   todos.forEach(x=>{
-    const dest = pickDate();
+    const dest = bestDest(null);
+    load[dest]++;
     if(!x.origDueDate) x.origDueDate = x.date;
     x.date = dest;
+    movedTodoIds.add(x.id);
   });
-  if(units.length) save();
-  if(todos.length) saveTodos();
+
+  // ── ならし残し対策：積み残しを流し込んでもなお過密な日が残っていたら、
+  // その日にもともと予定されていた「動かしやすいタスク（3回目以降の復習・ToDo）」だけを
+  // 軽い日へ少し逃がす。1・2回目の復習と計画タスクには一切触れない。
+  let leveledCount = 0;
+  horizonDates.forEach(d=>{
+    let guard = 0;
+    while(load[d] > threshold && guard < 30){
+      guard++;
+      const movU = U.find(u=>!u.done && u.step>=2 && u.nextDate===d && !movedUnitIds.has(u.id));
+      const movX = !movU ? TODOS.find(x=>!x.done && x.date===d && !movedTodoIds.has(x.id)) : null;
+      if(!movU && !movX) break;
+      const dest = bestDest(d);
+      if(dest===d || load[dest] >= load[d]-1) break; // これ以上動かしても改善しない
+      load[d]--; load[dest]++;
+      if(movU){
+        if(!movU.origDueDate) movU.origDueDate = movU.nextDate;
+        movU.nextDate = dest;
+        movedUnitIds.add(movU.id);
+      } else {
+        if(!movX.origDueDate) movX.origDueDate = movX.date;
+        movX.date = dest;
+        movedTodoIds.add(movX.id);
+      }
+      leveledCount++;
+    }
+  });
+
+  save();
+  saveTodos();
   haptic('medium');
-  toast(IC.check, `${units.length + todos.length}件のタスクを今後7日間に分散しました`);
+  const totalMoved = units.length + todos.length;
+  const msg = leveledCount>0
+    ? `${totalMoved}件を分散し、混み合う日をさらに${leveledCount}件ならしました`
+    : `${totalMoved}件のタスクを今後7日間に分散しました`;
+  toast(IC.check, msg);
   render();
 }
 
