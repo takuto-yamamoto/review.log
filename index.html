@@ -5687,19 +5687,29 @@ function flashThenShrink(cardId, wrapId, cb){
 /* ══ カレンダー「過密」判定の閾値（相対評価） ═══════════
    固定件数だと、タスクを細かく分割している人ほど1日の平均件数が多くなり、
    毎日が「過密」判定されてしまう。そこで、その人の直近の予定から算出した
-   平均件数を基準にした相対評価にする。 */
+   平均件数を基準にした相対評価にする。
+   ただし平均を「今日以降ずっと先まで」の全日程で取ると、何ヶ月も先の
+   ぽつぽつとした予定に平均が引きずられて低くなり、スマート分散で直近を
+   均等にならしただけでも「過密」判定されてしまう。そこで直近1〜3週間の
+   平均のうち高い方を基準にすることで、この誤判定を防ぐ。 */
 const CAL_DENSE_MIN  = 3;   // 平均が低くても、これ未満の件数では過密としない下限
 const CAL_DENSE_MULT = 1.6; // 平均の何倍を超えたら過密とみなすか
 
-// 今日以降で予定がある日の平均件数から、相対的な過密しきい値を算出する
+// 直近の予定から、相対的な過密しきい値を算出する
 function _calDenseThreshold(evMap){
   evMap = evMap || _calEventMap();
   const today = td();
-  const counts = Object.keys(evMap)
-    .filter(d => d >= today && evMap[d].count > 0)
-    .map(d => evMap[d].count);
-  if(!counts.length) return CAL_DENSE_MIN;
-  const avg = counts.reduce((s,c)=>s+c,0) / counts.length;
+  function avgOver(days){
+    const end = addD(today, days-1);
+    const counts = Object.keys(evMap)
+      .filter(d => d >= today && d <= end && evMap[d].count > 0)
+      .map(d => evMap[d].count);
+    if(!counts.length) return 0;
+    return counts.reduce((s,c)=>s+c,0) / counts.length;
+  }
+  // スマート分散の対象期間（直近7日）の平均と、少し長め（3週間）の平均のうち高い方を採用
+  const avg = Math.max(avgOver(7), avgOver(21));
+  if(!avg) return CAL_DENSE_MIN;
   return Math.max(CAL_DENSE_MIN, Math.round(avg * CAL_DENSE_MULT));
 }
 
@@ -6201,7 +6211,7 @@ function rUpcoming(list){
         <span class="cal-spread-icon">${IC.spread}</span>
         <span class="cal-spread-body">
           <span class="cal-spread-title">スマート分散でならす</span>
-          <span class="cal-spread-sub">${spreadCount}件を今後7日間で均等に振り分けます</span>
+          <span class="cal-spread-sub">${spreadCount}件を今日から7日間で均等に振り分けます</span>
         </span>
         <span class="cal-spread-chev"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
       </button>
@@ -7986,7 +7996,7 @@ function openSmartSpread(){
     toast(IC.alert, '分散できるタスクがありません（1・2回目の復習と計画タスクは対象外です）');
     return;
   }
-  const ok = confirm(`3回目以降の復習・ToDoを中心に${total}件を、今後7日間で均等にならします。\n1・2回目の復習と計画タスクは動かしません。よろしいですか？`);
+  const ok = confirm(`3回目以降の復習・ToDoを中心に${total}件を、今日から7日間で均等にならします。\n1・2回目の復習と計画タスクは動かしません。よろしいですか？`);
   if(!ok) return;
   runSmartSpread(units, todos);
 }
@@ -7995,10 +8005,10 @@ function runSmartSpread(units, todos){
   const t = td();
   const evMap = _calEventMap();
   const threshold = _calDenseThreshold(evMap);
-  const horizonDays = 7; // 直近7日間の中でならす
+  const horizonDays = 7; // 今日から7日間でならす（今日の分も含める）
   const horizonDates = [];
   const load = {};
-  for(let i=1;i<=horizonDays;i++){
+  for(let i=0;i<horizonDays;i++){
     const d = addD(t,i);
     horizonDates.push(d);
     load[d] = evMap[d] ? evMap[d].count : 0;
@@ -8064,7 +8074,7 @@ function runSmartSpread(units, todos){
   const totalMoved = units.length + todos.length;
   const msg = leveledCount>0
     ? `${totalMoved}件を分散し、混み合う日をさらに${leveledCount}件ならしました`
-    : `${totalMoved}件のタスクを今後7日間に分散しました`;
+    : `${totalMoved}件のタスクを今日から7日間に分散しました`;
   toast(IC.check, msg);
   render();
 }
