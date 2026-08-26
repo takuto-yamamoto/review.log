@@ -7669,6 +7669,7 @@ function _renderCalGrid(){
   const forecastEl = document.getElementById('cal-forecast');
   const legendEl   = document.getElementById('cal-legend');
   const modeBtns   = document.getElementById('cal-mode-row');
+  const spreadRowEl = document.getElementById('cal-spread-row');
   if(!gridEl || !titleEl) return;
 
   _calInit();
@@ -7694,6 +7695,17 @@ function _renderCalGrid(){
     forecastEl.style.display = txt ? 'flex' : 'none';
   }
   if(legendEl) legendEl.innerHTML = _calLegendHtml();
+
+  // カレンダー開閉・月/日送りのたびに、スマート分散の対象件数を再計算して同期する
+  // （以前はここで更新しておらず、直近のフル再描画時点の表示のまま固定される
+  //  ことがあり、「出る時と出ない時がある」ように見える不具合の原因だった）
+  if(spreadRowEl){
+    const spreadCand = _smartSpreadCandidates();
+    const spreadCount = spreadCand.units.length + spreadCand.todos.length;
+    spreadRowEl.style.display = spreadCount > 0 ? 'block' : 'none';
+    const spreadSubEl = spreadRowEl.querySelector('.cal-spread-sub');
+    if(spreadSubEl) spreadSubEl.textContent = `${spreadCount}件を今日から7日間で均等に振り分けます`;
+  }
 
   _calAttachSwipe();
 }
