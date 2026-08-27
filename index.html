@@ -6177,7 +6177,7 @@ function rUpcoming(list){
   const _calEvMapForTpl = _calOpen ? _calEventMap() : null;
   const isPrevDisabled = _calPrevDisabled();
   const _spreadCand = _calOpen ? _smartSpreadCandidates() : null;
-  const spreadCount = _spreadCand ? (_spreadCand.units.length + _spreadCand.todos.length) : 0;
+  const spreadCount = _spreadCand ? _spreadCand.units.length : 0;
   const calHtml = `
   <button class="cal-toggle" onclick="calToggle()" aria-label="カレンダービューを切り替え">
     <div class="cal-toggle-left">
@@ -7614,19 +7614,29 @@ function _planOccursOn(p, dateStr){
 /* 日付ごとのタスク情報を返す純粋関数 */
 function _calEventMap(){
   // { 'YYYY-MM-DD': { count: number, overdue: bool, colors: string[], planColors: string[], todoColors: string[] } }
+  // 期限超過（過去日）のタスクは、実際の期日ではなく「今日」の分としてまとめて表示する。
+  // 「今日タブ」ではもともと期限超過のタスクも今日の一覧に合流して表示されるため、
+  // カレンダーだけが昨日・一昨日の日付に取り残されたように見えるのは実態と合っていなかった。
   const map = {};
   const today = td();
+  function ensure(d){
+    if(!map[d]) map[d] = { count: 0, overdue: false, colors: [], planColors: [], todoColors: [] };
+    return map[d];
+  }
   U.filter(u => !u.done).forEach(u => {
-    const d = u.nextDate;
+    let d = u.nextDate;
     if(!d) return;
-    if(!map[d]) map[d] = { count: 0, overdue: d < today, colors: [], planColors: [], todoColors: [] };
-    map[d].count++;
+    const isOverdueItem = d < today;
+    if(isOverdueItem) d = today;
+    const cell = ensure(d);
+    cell.count++;
+    if(isOverdueItem) cell.overdue = true;
     // タグの色を収集（タグなし → グレー）
     const tagColors = (u.tags || []).map(tid => { const t = getTag(tid); return t ? t.color : null; }).filter(Boolean);
     if(tagColors.length) {
-      tagColors.forEach(c => { if(!map[d].colors.includes(c)) map[d].colors.push(c); });
-    } else if(!map[d].colors.includes('#9CA3AF')) {
-      map[d].colors.push('#9CA3AF');
+      tagColors.forEach(c => { if(!cell.colors.includes(c)) cell.colors.push(c); });
+    } else if(!cell.colors.includes('#9CA3AF')) {
+      cell.colors.push('#9CA3AF');
     }
   });
   // 計画タスク（毎日/曜日指定/間隔）: 次回日以降の繰り返し予定を投影して表示。目標型は期限日にピップを表示
@@ -7638,24 +7648,28 @@ function _calEventMap(){
     _planOccurrenceDates(p).forEach(d=>{
       if(p.startDate && d < p.startDate) return;
       if(p.endDate && d > p.endDate) return;
-      if(!map[d]) map[d] = { count: 0, overdue: false, colors: [], planColors: [], todoColors: [] };
-      map[d].count++;
-      if(p.type!=='daily' && d < today) map[d].overdue = true;
+      const isOverdueItem = p.type!=='daily' && d < today;
+      if(isOverdueItem) d = today;
+      const cell = ensure(d);
+      cell.count++;
+      if(isOverdueItem) cell.overdue = true;
       if(tagColors.length) {
-        tagColors.forEach(c => { if(!map[d].planColors.includes(c)) map[d].planColors.push(c); });
-      } else if(!map[d].planColors.includes('#7C3AED')) {
-        map[d].planColors.push('#7C3AED');
+        tagColors.forEach(c => { if(!cell.planColors.includes(c)) cell.planColors.push(c); });
+      } else if(!cell.planColors.includes('#7C3AED')) {
+        cell.planColors.push('#7C3AED');
       }
     });
   });
   // ToDo: 日付が設定されている未完了のToDoをカレンダーに表示
   TODOS.filter(x=>!x.done).forEach(x=>{
-    const d = x.date;
+    let d = x.date;
     if(!d) return;
-    if(!map[d]) map[d] = { count: 0, overdue: false, colors: [], planColors: [], todoColors: [] };
-    map[d].count++;
-    if(d < today) map[d].overdue = true;
-    if(!map[d].todoColors.includes('#F59E0B')) map[d].todoColors.push('#F59E0B');
+    const isOverdueItem = d < today;
+    if(isOverdueItem) d = today;
+    const cell = ensure(d);
+    cell.count++;
+    if(isOverdueItem) cell.overdue = true;
+    if(!cell.todoColors.includes('#F59E0B')) cell.todoColors.push('#F59E0B');
   });
   return map;
 }
@@ -7701,7 +7715,7 @@ function _renderCalGrid(){
   //  ことがあり、「出る時と出ない時がある」ように見える不具合の原因だった）
   if(spreadRowEl){
     const spreadCand = _smartSpreadCandidates();
-    const spreadCount = spreadCand.units.length + spreadCand.todos.length;
+    const spreadCount = spreadCand.units.length;
     spreadRowEl.style.display = spreadCount > 0 ? 'block' : 'none';
     const spreadSubEl = spreadRowEl.querySelector('.cal-spread-sub');
     if(spreadSubEl) spreadSubEl.textContent = `${spreadCount}件を今日から7日間で均等に振り分けます`;
@@ -7922,9 +7936,11 @@ function _calShiftBtnsHtml(dateStr, id, kind){
     const dest = addD(dateStr, d);
     if(dest < today) return ''; // 過去はスキップ（今日への移動は許可）
     if(dest === dateStr) return '';
-    const destCount = U.filter(u => !u.done && u.nextDate === dest).length
-      + PLAN.filter(p => !p.done && p.type!=='daily' && _planOccursOn(p, dest)).length
-      + TODOS.filter(x => !x.done && x.date === dest).length;
+    // 移動先が「今日」の場合は、今日タブに合流している期限超過分もあわせて件数に数える
+    const destIsToday = dest === today;
+    const destCount = U.filter(u => !u.done && (destIsToday ? u.nextDate <= dest : u.nextDate === dest)).length
+      + PLAN.filter(p => !p.done && p.type!=='daily' && (_planOccursOn(p, dest) || (destIsToday && planIsOverdue(p)))).length
+      + TODOS.filter(x => !x.done && (destIsToday ? x.date <= dest : x.date === dest)).length;
     const warn = destCount >= _calDenseThreshold() ? '⚠️' : '';
     const label = (d > 0 ? '+' : '') + d + '日' + warn;
     const fn = kind==='plan' ? `denseShiftPlan('${id}','${dest}')` : kind==='todo' ? `denseShiftTodo('${id}','${dest}')` : `denseShiftUnit('${id}','${dest}')`;
@@ -7934,12 +7950,16 @@ function _calShiftBtnsHtml(dateStr, id, kind){
 
 /* その日の復習・計画タスク・ToDoを一覧で返す（日表示の画面上でそのまま移動・編集できる） */
 function _calDayItemsHtml(dateStr){
-  const reviewCands = U.filter(u => !u.done && u.nextDate === dateStr);
+  const isToday = dateStr === td();
+  // 「今日」の日付をタップした場合は、期限超過（過去日）のタスクも合流させる。
+  // 今日タブでは期限超過のタスクもすでに今日の一覧に合流して表示されているため、
+  // カレンダー側だけ昨日・一昨日の日付に取り残されていると数が合わなくなっていた。
+  const reviewCands = U.filter(u => !u.done && (isToday ? u.nextDate <= dateStr : u.nextDate === dateStr));
   // 毎日タスクは常に「今日」の日付にのみマッチする（planCalDateがtd()を返すため）ので、
   // ここでは除外せず一覧に含める。除外するとカレンダーの丸ピップ（_calEventMap）には
   // 数えられているのに、日付をタップした一覧には出てこないという不整合が起きていた。
-  const planCands = PLAN.filter(p => !p.done && _planOccursOn(p, dateStr));
-  const todoCands = TODOS.filter(x => !x.done && x.date === dateStr);
+  const planCands = PLAN.filter(p => !p.done && (_planOccursOn(p, dateStr) || (isToday && planIsOverdue(p))));
+  const todoCands = TODOS.filter(x => !x.done && (isToday ? x.date <= dateStr : x.date === dateStr));
   const rows = [
     ...reviewCands.map(u => ({ id: u.id, kind: 'review', name: u.name, label: STEPS[u.step] || `${u.step}回目`, color: 'var(--blue)', origDueDate: u.origDueDate })),
     ...planCands.map(p => ({ id: p.id, kind: 'plan', name: planDisplayName(p), label: p.type==='goal' ? '目標の期限' : PLAN_TYPE_LABEL[p.type], color: '#7C3AED', origDueDate: p.origDueDate, isDaily: p.type==='daily' })),
@@ -7991,29 +8011,29 @@ let _denseDate = null; // 現在シートで表示中の日付
 
 /* ══ スマート分散：風邪などでこなせなかった日の積み残しを、今後の空いている日に均等に振り分ける ══
    復習の1回目・2回目はタイミングが記憶定着に直結するため対象外（ほぼ動かさない）。
-   計画タスクも決まったルールで運用されているため対象外とし、3回目以降の復習とToDoだけを動かす。 */
+   計画タスクも決まったルールで運用されているため対象外。ToDoは「その日までにやる」という
+   利用者自身が決めた期日を持つため、対象外として自動では動かさない。
+   結果として、3回目以降の復習のみを動かす。 */
 function _smartSpreadCandidates(){
   const t = td();
   const units = U.filter(u => !u.done && u.step >= 2 && u.nextDate <= t)
     .sort((a,b) => a.nextDate.localeCompare(b.nextDate));
-  const todos = TODOS.filter(x => !x.done && x.date && x.date <= t)
-    .sort((a,b) => (a.date||'').localeCompare(b.date||''));
-  return { units, todos };
+  return { units, todos: [] };
 }
 
 function openSmartSpread(){
-  const { units, todos } = _smartSpreadCandidates();
-  const total = units.length + todos.length;
+  const { units } = _smartSpreadCandidates();
+  const total = units.length;
   if(total === 0){
-    toast(IC.alert, '分散できるタスクがありません（1・2回目の復習と計画タスクは対象外です）');
+    toast(IC.alert, '分散できるタスクがありません（1・2回目の復習、計画タスク、ToDoは対象外です）');
     return;
   }
-  const ok = confirm(`3回目以降の復習・ToDoを中心に${total}件を、今日から7日間で均等にならします。\n1・2回目の復習と計画タスクは動かしません。よろしいですか？`);
+  const ok = confirm(`3回目以降の復習${total}件を、今日から7日間で均等にならします。\n1・2回目の復習、計画タスク、ToDoは動かしません。よろしいですか？`);
   if(!ok) return;
-  runSmartSpread(units, todos);
+  runSmartSpread(units);
 }
 
-function runSmartSpread(units, todos){
+function runSmartSpread(units){
   const t = td();
   const evMap = _calEventMap();
   const threshold = _calDenseThreshold(evMap);
@@ -8037,7 +8057,6 @@ function runSmartSpread(units, todos){
   }
 
   const movedUnitIds = new Set();
-  const movedTodoIds = new Set();
   units.forEach(u=>{
     const dest = bestDest(null);
     load[dest]++;
@@ -8045,45 +8064,30 @@ function runSmartSpread(units, todos){
     u.nextDate = dest;
     movedUnitIds.add(u.id);
   });
-  todos.forEach(x=>{
-    const dest = bestDest(null);
-    load[dest]++;
-    if(!x.origDueDate) x.origDueDate = x.date;
-    x.date = dest;
-    movedTodoIds.add(x.id);
-  });
 
   // ── ならし残し対策：積み残しを流し込んでもなお過密な日が残っていたら、
-  // その日にもともと予定されていた「動かしやすいタスク（3回目以降の復習・ToDo）」だけを
-  // 軽い日へ少し逃がす。1・2回目の復習と計画タスクには一切触れない。
+  // その日にもともと予定されていた「動かしやすいタスク（3回目以降の復習）」だけを
+  // 軽い日へ少し逃がす。1・2回目の復習、計画タスク、ToDoには一切触れない。
   let leveledCount = 0;
   horizonDates.forEach(d=>{
     let guard = 0;
     while(load[d] > threshold && guard < 30){
       guard++;
       const movU = U.find(u=>!u.done && u.step>=2 && u.nextDate===d && !movedUnitIds.has(u.id));
-      const movX = !movU ? TODOS.find(x=>!x.done && x.date===d && !movedTodoIds.has(x.id)) : null;
-      if(!movU && !movX) break;
+      if(!movU) break;
       const dest = bestDest(d);
       if(dest===d || load[dest] >= load[d]-1) break; // これ以上動かしても改善しない
       load[d]--; load[dest]++;
-      if(movU){
-        if(!movU.origDueDate) movU.origDueDate = movU.nextDate;
-        movU.nextDate = dest;
-        movedUnitIds.add(movU.id);
-      } else {
-        if(!movX.origDueDate) movX.origDueDate = movX.date;
-        movX.date = dest;
-        movedTodoIds.add(movX.id);
-      }
+      if(!movU.origDueDate) movU.origDueDate = movU.nextDate;
+      movU.nextDate = dest;
+      movedUnitIds.add(movU.id);
       leveledCount++;
     }
   });
 
   save();
-  saveTodos();
   haptic('medium');
-  const totalMoved = units.length + todos.length;
+  const totalMoved = units.length;
   const msg = leveledCount>0
     ? `${totalMoved}件を分散し、混み合う日をさらに${leveledCount}件ならしました`
     : `${totalMoved}件のタスクを今日から7日間に分散しました`;
@@ -8109,12 +8113,14 @@ function _renderDenseSheet(){
   const dateStr = _denseDate;
   if(!dateStr) return;
   const today = td();
-  const reviewCands = U.filter(u => !u.done && u.nextDate === dateStr);
+  const isToday = dateStr === today;
+  // 「今日」を開いた場合は、期限超過（過去日）のタスクも合流させる（_calDayItemsHtmlと同様）。
+  const reviewCands = U.filter(u => !u.done && (isToday ? u.nextDate <= dateStr : u.nextDate === dateStr));
   // 毎日タスクは「特定の1日に移動する」という概念がないため、ずらす操作の対象からは除外するが、
   // 一覧そのものには含める（除外すると、この日をタップしたのに毎日タスクが表示されないという
   // 不整合が起きていた）。
-  const planCands = PLAN.filter(p => !p.done && _planOccursOn(p, dateStr));
-  const todoCands = TODOS.filter(x => !x.done && x.date === dateStr);
+  const planCands = PLAN.filter(p => !p.done && (_planOccursOn(p, dateStr) || (isToday && planIsOverdue(p))));
+  const todoCands = TODOS.filter(x => !x.done && (isToday ? x.date <= dateStr : x.date === dateStr));
   const allCount = reviewCands.length + planCands.length + todoCands.length;
 
   // ヘッダー
@@ -8225,10 +8231,11 @@ function _denseShiftRowOut(id){
       row.style.opacity = '0';
     }));
     setTimeout(() => {
-      // 残件数が0になったらシートを閉じる
-      const remaining = U.filter(u => !u.done && u.nextDate === _denseDate).length
-        + PLAN.filter(p => !p.done && p.type!=='daily' && _planOccursOn(p, _denseDate)).length
-        + TODOS.filter(x => !x.done && x.date === _denseDate).length;
+      // 残件数が0になったらシートを閉じる（「今日」は期限超過分も合流させて数える）
+      const _isToday = _denseDate === td();
+      const remaining = U.filter(u => !u.done && (_isToday ? u.nextDate <= _denseDate : u.nextDate === _denseDate)).length
+        + PLAN.filter(p => !p.done && p.type!=='daily' && (_planOccursOn(p, _denseDate) || (_isToday && planIsOverdue(p)))).length
+        + TODOS.filter(x => !x.done && (_isToday ? x.date <= _denseDate : x.date === _denseDate)).length;
       if(remaining === 0){
         closeDenseSheet();
         _renderCalGrid();
@@ -8264,9 +8271,11 @@ function calJumpToDate(dateStr){
 
   // 3. 期限切れのタスクは「今日のタスク」タブ（復習・ToDo）または「計画」タブ（計画タスク）に
   //    表示されるため、該当するタブへ切り替える
-  const reviewTargets = U.filter(u => !u.done && u.nextDate === dateStr);
-  const todoTargets = TODOS.filter(x => !x.done && x.date === dateStr);
-  const planTargets = PLAN.filter(p => !p.done && p.type!=='daily' && _planOccursOn(p, dateStr));
+  // 「今日」をタップした場合は、今日タブに合流している期限超過分もあわせて対象にする
+  const _jumpIsToday = dateStr === td();
+  const reviewTargets = U.filter(u => !u.done && (_jumpIsToday ? u.nextDate <= dateStr : u.nextDate === dateStr));
+  const todoTargets = TODOS.filter(x => !x.done && (_jumpIsToday ? x.date <= dateStr : x.date === dateStr));
+  const planTargets = PLAN.filter(p => !p.done && p.type!=='daily' && (_planOccursOn(p, dateStr) || (_jumpIsToday && planIsOverdue(p))));
   const todayTargets = [...reviewTargets, ...todoTargets];
   const destTabName = todayTargets.length ? 'today' : (planTargets.length ? 'plan' : 'today');
   const destTabBtn = document.querySelector(`.tab-btn[data-tab="${destTabName}"]`);
