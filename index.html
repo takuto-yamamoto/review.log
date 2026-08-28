@@ -500,7 +500,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .plan-add-cta-txt{display:flex;flex-direction:column;gap:2px;min-width:0}
 .plan-add-cta-ttl{font-size:14.5px;font-weight:700;color:var(--lbl)}
 .plan-add-cta-sub{font-size:12px;color:var(--lbl2)}
-.plan-type-seg{display:flex;gap:6px;background:var(--fill);border-radius:12px;padding:3px;margin-bottom:12px}
+.plan-type-seg{display:flex;flex-wrap:wrap;gap:6px;background:var(--fill);border-radius:12px;padding:3px;margin-bottom:12px}
 .plan-wizard-progress{display:flex;gap:6px;justify-content:center;margin-bottom:16px}
 .plan-wizard-dot{width:8px;height:8px;border-radius:50%;background:var(--fill);cursor:pointer;transition:background .15s,transform .15s;flex-shrink:0}
 .plan-wizard-dot.done{background:var(--plan-bd)}
@@ -517,7 +517,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .plan-edit-sec:first-child{margin-top:0;padding-top:0;border-top:none}
 
 .plan-type-seg button{
-  flex:1;border:none;background:none;border-radius:9px;padding:9px 4px;font-size:12.5px;font-weight:600;
+  flex:1 1 30%;min-width:64px;border:none;background:none;border-radius:9px;padding:9px 4px;font-size:12.5px;font-weight:600;
   color:var(--lbl2);cursor:pointer;font-family:inherit;transition:background .12s,color .12s
 }
 .plan-type-seg button.on{background:var(--card);color:var(--plan-d);box-shadow:0 1px 4px rgba(0,0,0,.12)}
@@ -2885,7 +2885,7 @@ const PLAN_RULE_TYPES = {
     pickHint:param=>`${param}日連続で表示されたら、次の1日はまとめて休みにします`,
   },
 };
-const PLAN_TYPE_LABEL = { daily:'毎日', weekday:'曜日指定', interval:'間隔', goal:'目標' };
+const PLAN_TYPE_LABEL = { daily:'毎日', weekday:'曜日指定', interval:'間隔', goal:'目標', schedule:'日程指定' };
 const WD_LABELS = ['日','月','火','水','木','金','土'];
 // ルール作成シートの種類選択カードで使う、種類ごとの小アイコン
 const RULE_TYPE_ICON = {
@@ -2907,6 +2907,7 @@ const PLAN_TYPE_ICON = {
   weekday:  `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M8 15l2.5 2.5L16 12"/></svg>`,
   interval: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h12M6 22h12"/><path d="M6 2c0 5 12 5 12 10s-12 5-12 10M18 2c0 5-12 5-12 10s12 5 12 10"/></svg>`,
   goal:     `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>`,
+  schedule: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M8 15h.01M12 15h.01M16 15h.01M8 18h.01M12 18h.01"/></svg>`,
 };
 function planOccurrenceIdx(p){
   // 0始まりの「今回・次回」インデックス
@@ -2916,9 +2917,30 @@ function planCompletedOccurrenceIdx(p){
   // 完了直後の「今回終わったばかりの」インデックス（表示用。occurrenceCountは
   // 完了時にインクリメント済みのため、1つ前を指す）
   if(p.type==='goal') return planOccurrenceIdx(p);
+  if(p.type==='schedule'){
+    // 個別日程は日付順とは限らず完了させられるため、インデックスではなく
+    // 「今日完了扱いになった項目そのもの」を返す（planDisplayNameで直接使う）
+    const doneToday=(p.schedule||[]).filter(x=>x.doneDate===td());
+    return doneToday.length ? doneToday[doneToday.length-1] : null;
+  }
   return Math.max(0, (p.occurrenceCount||0) - 1);
 }
+// 個別日程（schedule型）の「今から着手すべき／直近の」項目を返す純粋関数。
+// 完了済みでない項目のうち日付が最も早いものを優先し、無ければ末尾（最後の項目）を返す。
+function planScheduleCurrentItem(p){
+  const items=(p&&p.schedule)||[];
+  if(!items.length) return null;
+  const undone=items.filter(x=>!x.done).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  if(undone.length) return undone[0];
+  return items.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')).pop();
+}
 function planDisplayName(p, idxOverride){
+  if(p.type==='schedule'){
+    // idxOverride には数値ではなく「対象の項目そのもの」が渡ってくる想定（schedule型専用）
+    const item = (idxOverride && typeof idxOverride==='object') ? idxOverride : planScheduleCurrentItem(p);
+    const label = (item && item.label && item.label.trim()) ? item.label.trim() : '';
+    return label ? `${p.name} ${label}` : p.name;
+  }
   const mode = p.nameMode || 'fixed';
   if(mode==='fixed') return p.name;
   const idx = (idxOverride!=null) ? idxOverride : planOccurrenceIdx(p);
@@ -3339,6 +3361,17 @@ function planNextWeekday(fromDateExclusive, weekdays){
   }
   return addD(fromDateExclusive,7);
 }
+// 個別日程（schedule型）で「延期」「ドラッグでの移動」をしたときに、
+// 表示用の p.nextDate だけでなく、実体である schedule 内の該当項目の日付も
+// 書き換える（そうしないと元の日付に戻ったように見えてしまう）。
+function _planScheduleRetarget(p, newDate){
+  const items=p.schedule||[];
+  const cur = items.find(it=>!it.done && it.date===p.nextDate) || items.find(it=>!it.done);
+  if(cur) cur.date=newDate;
+  const undone=items.filter(it=>!it.done).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  p.nextDate = undone.length ? undone[0].date : newDate;
+  if(p.endDate && newDate>p.endDate) p.endDate=newDate;
+}
 function planComplete(id, qty){
   const p=PLAN.find(x=>x.id===id); if(!p) return;
   const t=td();
@@ -3361,6 +3394,22 @@ function planComplete(id, qty){
     toast(IC.checkCircle, msg);
     return;
   }
+  if(p.type==='schedule'){
+    const items=p.schedule||[];
+    const item=planScheduleCurrentItem(p);
+    if(!item || item.done) return;
+    item.done=true; item.doneDate=t;
+    p.occurrenceCount=items.filter(x=>x.done).length;
+    p.doneCount=p.occurrenceCount;
+    delete p.origDueDate;
+    const next=planScheduleCurrentItem(p);
+    if(next && !next.done){ p.nextDate=next.date; p.lastDoneDate=t; }
+    else { p.done=true; p.completedAt=Date.now(); p.nextDate=item.date; p.lastDoneDate=t; }
+    savePlan(); haptic('medium');
+    flashThenShrink('c-'+id, 'w-'+id, ()=>render());
+    toast(IC.check, esc(doneLabel)+'を完了しました！');
+    return;
+  }
   if(p.lastDoneDate===t) return; // already done today
   p.lastDoneDate=t;
   p.occurrenceCount=(p.occurrenceCount||0)+1;
@@ -3370,6 +3419,27 @@ function planComplete(id, qty){
   savePlan(); haptic('medium');
   flashThenShrink('c-'+id, 'w-'+id, ()=>render());
   toast(IC.check, esc(doneLabel)+'を完了しました！');
+}
+// 個別日程（schedule型）の詳細シートから、特定の1件だけを完了⇔未完了に切り替える。
+// planComplete（「次の1件」を進める用）とは別に、過去分の実施記録や取り消しに対応するため
+// 任意の項目を直接タップで切り替えられるようにしている。
+function planScheduleToggleItem(id, idx){
+  const p=PLAN.find(x=>x.id===id); if(!p) return;
+  const items=p.schedule||[];
+  const item=items[idx]; if(!item) return;
+  item.done=!item.done;
+  item.doneDate=item.done?td():null;
+  p.occurrenceCount=items.filter(x=>x.done).length;
+  p.doneCount=p.occurrenceCount;
+  const undone=items.filter(x=>!x.done).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  p.nextDate = undone.length ? undone[0].date : items.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')).pop().date;
+  if(undone.length===0){ p.done=true; p.completedAt=p.completedAt||Date.now(); }
+  else { p.done=false; delete p.completedAt; }
+  if(item.done) delete p.origDueDate;
+  savePlan();
+  _renderPlanDetailSheet();
+  render();
+  haptic();
 }
 function planDelete(id){
   const idx=PLAN.findIndex(x=>x.id===id); if(idx<0) return;
@@ -3467,6 +3537,7 @@ function planCardHtml(p, opts){
   const showSnooze = fwd ? false : (opts.hideSnooze ? false : (p.type==='daily' ? !doneToday : (opts.alwaysSnooze || due || over)));
   const typeSub = p.type==='daily' ? '毎日'
     : p.type==='weekday' ? '毎週 '+(p.weekdays||[]).slice().sort().map(d=>WD_LABELS[d]).join('・')
+    : p.type==='schedule' ? `全${(p.schedule||[]).length}件中${(p.schedule||[]).filter(x=>x.done).length}件完了`
     : `${p.intervalDays}日ごと`;
   const okLabel2 = compact ? '完了にする' : (opts.todayMode?'時間を記録して完了':'完了にする');
   const snoozeBtn2 = compact
@@ -3475,7 +3546,7 @@ function planCardHtml(p, opts){
   const laterBtn = compact
     ? `<button class="btn-snooze" onclick="planForwardDismiss('${p.id}')" aria-label="今日はしない">${IC.moon}</button>`
     : `<button class="btn-snooze" onclick="planForwardDismiss('${p.id}')">${IC.moon} 今日はしない</button>`;
-  const snoozeNote2 = snoozeNoteHtml(p.origDueDate, (p.type==='weekday'||p.type==='interval') ? p.nextDate : p.snoozeUntil);
+  const snoozeNote2 = snoozeNoteHtml(p.origDueDate, (p.type==='weekday'||p.type==='interval'||p.type==='schedule') ? p.nextDate : p.snoozeUntil);
   const fwdNoteHtml = fwd ? `<div class="card-snooze-note" style="color:#B45309">${IC.info} ${fmtShort(opts.conflictDate)}に「${esc(planDisplayName(opts.conflictWith))}」と重なるため前倒しを提案しています</div>` : '';
 
   if(compact){
@@ -3588,6 +3659,7 @@ function planOverviewRowHtml(p){
   const doneToday = p.type==='daily' ? p.lastDoneDate===td() : (p.lastDoneDate===td() && !due && !over);
   const typeSub = p.type==='daily' ? '毎日'
     : p.type==='weekday' ? '毎週 '+(p.weekdays||[]).slice().sort().map(d=>WD_LABELS[d]).join('・')
+    : p.type==='schedule' ? `全${(p.schedule||[]).length}件中${(p.schedule||[]).filter(x=>x.done).length}件完了`
     : `${p.intervalDays}日ごと`;
   const statusText = p.type==='daily'
     ? (doneToday?'今日は完了済み':'今日のタスク')
@@ -3598,7 +3670,7 @@ function planOverviewRowHtml(p){
     <div class="plan-row-icon">${icon}</div>
     <div class="plan-row-main" onclick="openPlanDetailSheet('${p.id}')" role="button" aria-label="詳細を見る">
       <div class="plan-row-name">${esc(dispName)}</div>
-      <div class="plan-row-meta">${over?IC.alertSm:due?IC.clock:''} ${esc(typeSub)} · ${statusText}${snoozedDaysOf(p.origDueDate,(p.type==='weekday'||p.type==='interval')?p.nextDate:p.snoozeUntil)?` · ${IC.moon} ${snoozedDaysOf(p.origDueDate,(p.type==='weekday'||p.type==='interval')?p.nextDate:p.snoozeUntil)}日延期中`:''}</div>
+      <div class="plan-row-meta">${over?IC.alertSm:due?IC.clock:''} ${esc(typeSub)} · ${statusText}${snoozedDaysOf(p.origDueDate,(p.type==='weekday'||p.type==='interval'||p.type==='schedule')?p.nextDate:p.snoozeUntil)?` · ${IC.moon} ${snoozedDaysOf(p.origDueDate,(p.type==='weekday'||p.type==='interval'||p.type==='schedule')?p.nextDate:p.snoozeUntil)}日延期中`:''}</div>
       ${(p.tags&&p.tags.length)?`<div class="plan-row-tags">${p.tags.map(tid=>tagHtml(tid)).join('')}</div>`:''}
     </div>
     <div class="plan-row-acts">
@@ -3661,11 +3733,35 @@ function _renderPlanDetailSheet(){
       <div class="plan-detail-row"><span class="plan-detail-label">前回の記録</span><span class="plan-detail-value">${p.lastDoneDate?fmtShort(p.lastDoneDate):'まだありません'}</span></div>
       ${tagsHtml}
     `;
+  } else if(p.type==='schedule'){
+    const items=(p.schedule||[]).map((it,idx)=>({...it, idx})).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+    const doneCnt=items.filter(x=>x.done).length;
+    const pct=items.length?Math.round(doneCnt/items.length*100):0;
+    document.getElementById('plan-detail-sheet-sub').textContent = `個別日程 ・ 全${items.length}件中${doneCnt}件完了`;
+    bodyHtml=`
+      <div class="plan-detail-progress">
+        <div class="plan-progress-lbl"><span>${doneCnt} / ${items.length}</span><span>${pct}%</span></div>
+        <div class="plan-progress-track"><div class="plan-progress-fill" style="width:${pct}%"></div></div>
+      </div>
+      ${tagsHtml}
+      <div class="plan-sec-sub" style="margin:10px 0 4px">タップして各項目の完了・未完了を切り替えられます</div>
+      <div class="plan-list" style="box-shadow:none;border-radius:12px">
+        ${items.map(it=>`
+        <div class="plan-detail-row" style="cursor:pointer" onclick="planScheduleToggleItem('${p.id}',${it.idx})">
+          <span class="plan-detail-label" style="display:flex;align-items:center;gap:8px;min-width:0">
+            <span style="width:18px;height:18px;border-radius:50%;flex-shrink:0;font-size:11px;line-height:18px;text-align:center;background:${it.done?'var(--plan)':'var(--fill)'};color:#fff">${it.done?'✓':''}</span>
+            <span style="flex-shrink:0">${fmtShort(it.date)}</span>
+          </span>
+          <span class="plan-detail-value" style="${it.done?'text-decoration:line-through;color:var(--lbl3)':''}">${esc(it.label&&it.label.trim()?it.label.trim():'（内容未入力）')}</span>
+        </div>`).join('')}
+      </div>
+    `;
   } else {
     const over=planIsOverdue(p);
     const due=planIsDueToday(p);
     const typeSub = p.type==='daily' ? '毎日'
       : p.type==='weekday' ? '毎週 '+(p.weekdays||[]).slice().sort().map(d=>WD_LABELS[d]).join('・')
+      : p.type==='schedule' ? `全${(p.schedule||[]).length}件中${(p.schedule||[]).filter(x=>x.done).length}件完了`
       : `${p.intervalDays}日ごと`;
     const statusText = p.type==='daily'
       ? (p.lastDoneDate===td() ? '今日は完了済み' : '今日のタスク')
@@ -4081,7 +4177,7 @@ let _planStep=0;
 function _planDefaultDraft(){
   return {name:'', type:'daily', tags:[], weekdays:[], intervalDays:3, totalCount:10, doneCount:0, deadline:addD(td(),14),
     nameMode:'fixed', seqStart:1, seqUnit:'', customLabels:[''],
-    startDate:td(), endDate:'', noEnd:true};
+    startDate:td(), endDate:'', noEnd:true, schedule:[{date:td(), label:''}]};
 }
 function openPlanSheet(editId){
   _planStep=0;
@@ -4098,7 +4194,8 @@ function openPlanSheet(editId){
       deadline:(p.type==='goal' ? p.deadline : p.endDate) || addD(td(),14),
       nameMode:p.nameMode||'fixed', seqStart:(p.seqStart!=null?p.seqStart:1), seqUnit:p.seqUnit||'',
       customLabels:(p.customLabels&&p.customLabels.length)?[...p.customLabels]:[''],
-      startDate:p.startDate||p.createdDate||td(), endDate:p.endDate||'', noEnd:!p.endDate};
+      startDate:p.startDate||p.createdDate||td(), endDate:p.endDate||'', noEnd:!p.endDate,
+      schedule:(p.schedule&&p.schedule.length)?p.schedule.map(r=>({...r})):[{date:p.startDate||td(), label:''}]};
     document.getElementById('plan-modal-ttl').textContent='計画タスクを編集';
   } else {
     _planEditId=null;
@@ -4228,6 +4325,7 @@ function onPlanTotalInput(){
 function selectPlanType(t){
   if(!_planDraft) return;
   _syncPlanDraftFromDom();
+  if(_planDraft.type==='schedule') _syncPlanScheduleFromDom();
   _planDraft.type=t;
   if(_planDraft.nameMode==='custom'){ _syncPlanNameFieldsFromDom(); syncPlanCustomLabelCountToPeriod(); }
   renderPlanModalBody();
@@ -4266,6 +4364,41 @@ function removePlanCustomLabel(idx){
   const arr=[...(_planDraft.customLabels||[''])];
   arr.splice(idx,1);
   _planDraft.customLabels=arr.length?arr:[''];
+  renderPlanModalBody();
+}
+// ══ 個別日程（schedule型）: 日付＋内容の行を管理 ══
+// 「計画」の中に日付がバラバラな複数のToDo的な項目（例：9/3に2024年国語、9/14に2020年数学）を
+// まとめて登録できるようにする。1つの計画として一体感を持たせつつ、各項目は個別の日付で
+// 「今日」タブに出現する。
+function _syncPlanScheduleFromDom(){
+  if(!_planDraft) return;
+  const dateInps=document.querySelectorAll('.plan-schedule-date-inp');
+  if(!dateInps.length) return;
+  const lblInps=document.querySelectorAll('.plan-schedule-label-inp');
+  const rows=[];
+  for(let i=0;i<dateInps.length;i++){
+    rows.push({date:dateInps[i].value||td(), label:(lblInps[i]?lblInps[i].value:'')});
+  }
+  _planDraft.schedule=rows;
+}
+function addPlanScheduleRow(){
+  if(!_planDraft) return;
+  _syncPlanScheduleFromDom();
+  const rows=(_planDraft.schedule&&_planDraft.schedule.length)?_planDraft.schedule:[{date:td(),label:''}];
+  const lastDate=rows[rows.length-1]?.date||td();
+  _planDraft.schedule=[...rows, {date:lastDate, label:''}];
+  renderPlanModalBody();
+  setTimeout(()=>{
+    const inps=document.querySelectorAll('.plan-schedule-label-inp');
+    if(inps.length) inps[inps.length-1].focus();
+  },30);
+}
+function removePlanScheduleRow(idx){
+  if(!_planDraft) return;
+  _syncPlanScheduleFromDom();
+  const rows=[...(_planDraft.schedule||[{date:td(),label:''}])];
+  rows.splice(idx,1);
+  _planDraft.schedule=rows.length?rows:[{date:td(),label:''}];
   renderPlanModalBody();
 }
 function updatePlanPreview(){
@@ -4377,9 +4510,15 @@ function renderPlanTagSel(){
     </div>`;
 }
 function _planComputePreviewName(d){
+  const base = d.name || 'タスク名';
+  if(d.type==='schedule'){
+    const rows=(d.schedule||[]).filter(r=>r.date).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+    const first=rows[0];
+    const label=(first&&first.label&&first.label.trim())?first.label.trim():'';
+    return label?`${base} ${label}`:base;
+  }
   const editP = _planEditId ? PLAN.find(x=>x.id===_planEditId) : null;
   const idx = (d.type==='goal' ? (d.doneCount||0) : (editP ? (editP.occurrenceCount||0) : 0));
-  const base = d.name || 'タスク名';
   if(d.nameMode==='sequence'){
     const start = (d.seqStart!==''&&d.seqStart!=null) ? Number(d.seqStart) : 1;
     const unit = (d.seqUnit&&d.seqUnit.trim()) ? d.seqUnit.trim() : '回';
@@ -4397,11 +4536,16 @@ function _planRepeatSummaryText(d){
   if(d.type==='weekday') return d.weekdays.length ? '毎週 '+[...d.weekdays].sort().map(w=>WD_LABELS[w]).join('・') : '毎週（曜日未選択）';
   if(d.type==='interval') return `${d.intervalDays}日ごと`;
   if(d.type==='goal') return '目標のみ（くり返しなし）';
+  if(d.type==='schedule') return '日程指定（くり返しなし）';
   return '';
 }
 function _planPeriodSummaryText(d){
   const isGoal = d.type==='goal';
   if(isGoal) return `${fmtShort(d.startDate||td())} 〜 ${d.deadline?fmtShort(d.deadline):'未設定'}まで ・ 全${d.totalCount}個`;
+  if(d.type==='schedule'){
+    const rows=(d.schedule||[]).filter(r=>r.date);
+    return rows.length ? `全${rows.length}件` : '未入力';
+  }
   const startTxt = fmtShort(d.startDate||td());
   const endTxt = (d.noEnd!==false) ? '終了日なし' : (d.deadline?fmtShort(d.deadline):'未設定');
   return `${startTxt} 〜 ${endTxt}`;
@@ -4410,7 +4554,7 @@ function _planStepQuestionLabel(stepKey, d){
   switch(stepKey){
     case 'name': return '📝 何を計画しますか？';
     case 'tags': return '🏷️ タグを付けますか？（任意）';
-    case 'period': return d.type==='goal' ? '📅 いつまでに、何個やりますか？' : '📅 いつから、いつまで取り組みますか？';
+    case 'period': return d.type==='goal' ? '📅 いつまでに、何個やりますか？' : d.type==='schedule' ? '📅 日付ごとに、何をやりますか？' : '📅 いつから、いつまで取り組みますか？';
     case 'repeat': return '🔁 どのくらいの頻度でやりますか？';
     case 'nameMode': return '✏️ 毎回の表示名は？';
     case 'confirm': return '✅ この内容で追加しますか？';
@@ -4427,6 +4571,7 @@ function _planStepTagsHtml(d){
   return `<div class="plan-sec-sub" style="margin-top:-6px">選ばなくても次に進めます</div><div class="tag-sel-wrap" id="plan-tag-sel-wrap"></div>`;
 }
 function _planStepPeriodHtml(d){
+  if(d.type==='schedule') return _planStepScheduleHtml(d);
   const isGoal = d.type==='goal';
   const noEnd = d.noEnd!==false && !isGoal;
   const paceDeadline = noEnd ? '' : (d.deadline||'');
@@ -4462,12 +4607,33 @@ function _planStepPeriodHtml(d){
       </div>`:''}
     </div>`;
 }
+// 個別日程（schedule型）: 日付と内容の行をいくつでも追加できる入力UI。
+// 「過去問」のような1つの計画の中に、9/3=2024年国語、9/14=2020年数学…と
+// バラバラな日付のToDoをまとめて登録できるようにする。
+function _planStepScheduleHtml(d){
+  const rows=(d.schedule&&d.schedule.length)?d.schedule:[{date:td(),label:''}];
+  return `
+    <div class="plan-sec-sub" style="margin-top:-6px">実施する日付と内容を1件ずつ追加します（例：9/3に「2024年 国語」、9/14に「2020年 数学」）</div>
+    <div id="plan-schedule-list">
+      ${rows.map((r,i)=>`
+      <div class="plan-custom-row">
+        <input type="date" class="plan-schedule-date-inp edit-modal-inp" style="flex:0 0 132px;padding-left:8px;padding-right:4px" value="${r.date||td()}" oninput="updatePlanSchedulePreview()">
+        <input type="text" class="plan-schedule-label-inp edit-modal-inp" placeholder="内容（例：2024年 国語）" maxlength="30" autocomplete="off" autocorrect="off" value="${esc(r.label||'')}" oninput="updatePlanSchedulePreview()">
+        ${rows.length>1?`<button type="button" class="plan-custom-del" onclick="removePlanScheduleRow(${i})" aria-label="削除">${IC.trash}</button>`:''}
+      </div>`).join('')}
+    </div>
+    <button type="button" class="plan-custom-add" onclick="addPlanScheduleRow()" style="margin-bottom:0">＋ 日程を追加</button>`;
+}
+function updatePlanSchedulePreview(){
+  _syncPlanScheduleFromDom();
+}
 function _planStepRepeatHtml(d, singleScreen){
   const typeSegHtml = `<div class="plan-type-seg">
     <button class="${d.type==='daily'?'on':''}" onclick="selectPlanType('daily')">毎日</button>
     <button class="${d.type==='weekday'?'on':''}" onclick="selectPlanType('weekday')">曜日指定</button>
     <button class="${d.type==='interval'?'on':''}" onclick="selectPlanType('interval')">間隔</button>
     <button class="${d.type==='goal'?'on':''}" onclick="selectPlanType('goal')">目標のみ</button>
+    <button class="${d.type==='schedule'?'on':''}" onclick="selectPlanType('schedule')">日程指定</button>
   </div>`;
   let repeatSubHtml='';
   if(d.type==='weekday'){
@@ -4485,6 +4651,11 @@ function _planStepRepeatHtml(d, singleScreen){
     repeatSubHtml=`<div style="font-size:12.5px;color:var(--lbl2)">毎日「今日」タブに表示されます</div>`;
   } else if(d.type==='goal'){
     repeatSubHtml=`<div style="font-size:12.5px;color:var(--lbl2)">曜日や間隔を決めず、${singleScreen?'上の':'前の画面で入力した'}期限・個数だけで進捗を管理します</div>`;
+  } else if(d.type==='schedule'){
+    const cnt=(d.schedule||[]).filter(r=>r.date).length;
+    repeatSubHtml = singleScreen
+      ? `<div style="font-size:12.5px;color:var(--lbl2)">曜日や間隔を決めず、上で入力した日付ごとに「今日」タブへ表示されます（現在${cnt}件）</div>`
+      : `<div style="font-size:12.5px;color:var(--lbl2)">曜日や間隔を決めず、日付を指定して1件ずつ登録します（現在${cnt}件）。<button type="button" class="plan-pace-apply-btn" style="margin-top:9px" onclick="planWizardJump(${PLAN_WIZARD_STEPS.indexOf('period')})">← 前の画面で日程を入力する</button></div>`;
   }
   const topSub = singleScreen ? '上の実施期間を参考に、実施パターンを選んでください' : '前の画面のペースを参考に、実施パターンを選んでください';
   return `
@@ -4493,6 +4664,9 @@ function _planStepRepeatHtml(d, singleScreen){
     <div class="plan-sub-card">${repeatSubHtml}</div>`;
 }
 function _planStepNameModeHtml(d){
+  if(d.type==='schedule'){
+    return `<div class="plan-sec-sub" style="margin-top:-6px">個別日程では、日付ごとに入力した内容がそのまま表示名になります（例：「${esc(d.name||'タスク名')} 2024年 国語」）</div>`;
+  }
   const previewName = _planComputePreviewName(d);
   let nameModeExtraHtml='';
   if(d.nameMode==='sequence'){
@@ -4526,8 +4700,24 @@ function _planStepNameModeHtml(d){
     <div class="plan-name-preview-box" id="plan-name-preview-wrap">表示例：<b id="plan-name-preview">${esc(previewName)}</b></div>`;
 }
 function _planStepConfirmHtml(d){
-  const previewName = _planComputePreviewName(d);
   const tagsHtml = (d.tags&&d.tags.length) ? `<div class="card-tags-row" style="margin-top:6px;margin-bottom:0">${d.tags.map(tid=>tagHtml(tid)).join('')}</div>` : '';
+  if(d.type==='schedule'){
+    const rows=(d.schedule||[]).filter(r=>r.date).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+    return `
+      <div class="plan-goal-card" style="display:flex;flex-direction:column;gap:14px">
+        <div>
+          <div class="plan-field-label" style="margin-top:0">タスク名</div>
+          <div style="font-size:15px;font-weight:700;color:var(--lbl)">${esc(d.name||'タスク名')}</div>
+          ${tagsHtml}
+        </div>
+        <div>
+          <div class="plan-field-label" style="margin-top:0">日程（${rows.length}件）</div>
+          ${rows.map(r=>`<div style="font-size:13.5px;color:var(--lbl2);display:flex;justify-content:space-between;gap:8px;padding:3px 0"><span style="flex-shrink:0">${fmtShort(r.date)}</span><span style="text-align:right">${esc(r.label&&r.label.trim()?r.label.trim():'（内容未入力）')}</span></div>`).join('')}
+        </div>
+      </div>
+      <div class="plan-sec-sub" style="margin-top:10px">内容を確認して「${_planEditId?'保存する':'追加する'}」を押してください。前の画面に戻って修正することもできます。</div>`;
+  }
+  const previewName = _planComputePreviewName(d);
   return `
     <div class="plan-goal-card" style="display:flex;flex-direction:column;gap:14px">
       <div>
@@ -4556,7 +4746,7 @@ function _planEditFormHtml(d){
     <div class="plan-edit-sec">タグ</div>
     ${_planStepTagsHtml(d)}
 
-    <div class="plan-edit-sec">実施期間</div>
+    <div class="plan-edit-sec">${d.type==='schedule'?'日程':'実施期間'}</div>
     ${_planStepPeriodHtml(d)}
 
     <div class="plan-edit-sec">くり返し方</div>
@@ -4629,7 +4819,13 @@ function planWizardNext(){
     }
   } else if(stepKey==='period'){
     _syncPlanDraftFromDom();
-    if(_planDraft.type==='goal' && !(parseInt(_planDraft.totalCount,10)>=1)){
+    if(_planDraft.type==='schedule'){
+      _syncPlanScheduleFromDom();
+      const rows=(_planDraft.schedule||[]).filter(r=>r.date);
+      if(!rows.length){
+        toast(IC.alertSm,'日程を1件以上入力してください'); haptic('medium'); return;
+      }
+    } else if(_planDraft.type==='goal' && !(parseInt(_planDraft.totalCount,10)>=1)){
       toast(IC.alertSm,'個数を入力してください'); haptic('medium'); return;
     }
   } else if(stepKey==='repeat'){
@@ -4672,6 +4868,50 @@ function savePlanTask(){
       if(inp){ inp.classList.remove('shake'); void inp.offsetWidth; inp.classList.add('shake'); inp.focus(); }
     },30);
     haptic('medium'); return;
+  }
+  if(d.type==='schedule'){
+    _syncPlanScheduleFromDom();
+    const rowsRaw=(d.schedule||[]).filter(r=>r.date);
+    if(!rowsRaw.length){
+      if(!_planEditId){ _planStep=PLAN_WIZARD_STEPS.indexOf('period'); renderPlanModalBody(); }
+      toast(IC.alertSm,'日程を1件以上入力してください'); haptic('medium'); return;
+    }
+    const tags=[...d.tags];
+    // 編集時、日付＋内容が完全一致する行があれば完了状態を引き継ぐ（並び替えても消えないように）
+    const prevItems = (_planEditId && (PLAN.find(x=>x.id===_planEditId)||{}).schedule) || [];
+    const items = rowsRaw.map(r=>{
+      const date=r.date;
+      const label=(r.label||'').trim();
+      const prev=prevItems.find(pi=>pi.date===date && (pi.label||'').trim()===label);
+      return {date, label, done: prev?!!prev.done:false, doneDate: prev?(prev.doneDate||null):null};
+    }).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+    const doneCnt=items.filter(x=>x.done).length;
+    const undone=items.filter(x=>!x.done);
+    const startVal2=items[0].date;
+    const endVal2=items[items.length-1].date;
+    const nextDateVal=undone.length?undone[0].date:items[items.length-1].date;
+    const isDoneAll=undone.length===0;
+    if(_planEditId){
+      const p=PLAN.find(x=>x.id===_planEditId); if(!p) return;
+      p.name=name; p.type='schedule'; p.tags=tags; p.nameMode='fixed';
+      p.schedule=items; p.startDate=startVal2; p.endDate=endVal2;
+      p.nextDate=nextDateVal; p.occurrenceCount=doneCnt; p.doneCount=doneCnt;
+      p.done=isDoneAll;
+      if(isDoneAll){ p.completedAt=p.completedAt||Date.now(); } else { delete p.completedAt; }
+      delete p.origDueDate;
+      savePlan(); closePlanModal(); render();
+      toast(IC.check, esc(name)+'を更新しました');
+      haptic('medium');
+      return;
+    }
+    const task={id:'plan-'+Date.now().toString(), name, type:'schedule', tags, createdDate:td(), lastDoneDate:null,
+      nameMode:'fixed', occurrenceCount:doneCnt, startDate:startVal2, endDate:endVal2,
+      schedule:items, nextDate:nextDateVal, doneCount:doneCnt, done:isDoneAll};
+    PLAN.unshift(task);
+    savePlan(); closePlanModal(); render();
+    toast(IC.checkCircle, esc(name)+'を追加しました');
+    haptic('medium');
+    return;
   }
   if(d.type==='weekday' && !d.weekdays.length){
     if(!_planEditId){ _planStep=PLAN_WIZARD_STEPS.indexOf('repeat'); renderPlanModalBody(); }
@@ -5602,9 +5842,10 @@ function applySnooze(days){
   if(kind==='plan'){
     const p=PLAN.find(x=>x.id===id); if(!p) return;
     // 初回の延期時のみ、延期前の元の期日を記録しておく（バッジ表示用）
-    if(!p.origDueDate) p.origDueDate = (p.type==='weekday'||p.type==='interval') ? (p.nextDate||td()) : (p.snoozeUntil||td());
+    if(!p.origDueDate) p.origDueDate = (p.type==='weekday'||p.type==='interval'||p.type==='schedule') ? (p.nextDate||td()) : (p.snoozeUntil||td());
     const until=addD(td(),days);
-    if(p.type==='weekday'||p.type==='interval') p.nextDate=until;
+    if(p.type==='schedule') _planScheduleRetarget(p, until);
+    else if(p.type==='weekday'||p.type==='interval') p.nextDate=until;
     else p.snoozeUntil=until; // daily / goal は次回発生日という概念がないため専用フィールドで隠す
     savePlan();
     haptic('medium'); render(); _renderCalGrid();
@@ -5834,6 +6075,17 @@ function undoPlanCompleteFromDone(id){
     p.todayCount = 0;
     delete p.todayDate;
     if(p.done){ p.done = false; delete p.completedAt; }
+  } else if(p.type==='schedule'){
+    const items=p.schedule||[];
+    const doneToday=items.filter(x=>x.doneDate===td());
+    const target=doneToday[doneToday.length-1];
+    if(target){ target.done=false; target.doneDate=null; }
+    p.occurrenceCount=items.filter(x=>x.done).length;
+    p.doneCount=p.occurrenceCount;
+    const next=planScheduleCurrentItem(p);
+    p.nextDate = next ? next.date : td();
+    if(!doneToday.length || doneToday.length<=1) delete p.lastDoneDate;
+    if(p.done){ p.done=false; delete p.completedAt; }
   } else {
     delete p.lastDoneDate;
     if(p.type==='weekday' || p.type==='interval'){
@@ -7548,6 +7800,7 @@ function planCalDate(p){
 const PLAN_PROJECTION_HORIZON_DAYS = 366;
 function _planOccurrenceDates(p){
   if(p.type==='goal')  return p.deadline ? [p.deadline] : [];
+  if(p.type==='schedule') return (p.schedule||[]).filter(x=>!x.done && x.date).map(x=>x.date);
   if(p.type==='daily'){
     const start = (p.startDate && p.startDate > td()) ? p.startDate : td();
     const limitDate = p.endDate || addD(td(), PLAN_PROJECTION_HORIZON_DAYS);
@@ -7592,6 +7845,7 @@ function _planOccurrenceDates(p){
    （_planOccurrenceDates を毎回全展開しなくても、日付クリック時の一覧などで軽量に判定できるように） */
 function _planOccursOn(p, dateStr){
   if(p.type==='goal')  return dateStr===p.deadline;
+  if(p.type==='schedule') return (p.schedule||[]).some(x=>!x.done && x.date===dateStr);
   if(p.type==='daily'){
     const start = (p.startDate && p.startDate > td()) ? p.startDate : td();
     if(dateStr < start) return false;
@@ -8211,6 +8465,7 @@ function denseShiftPlan(pid, destDate){
   if(!p) return;
   if(!p.origDueDate) p.origDueDate = (p.type==='goal') ? p.deadline : p.nextDate;
   if(p.type==='goal'){ p.deadline = destDate; p.nextDate = destDate; }
+  else if(p.type==='schedule'){ _planScheduleRetarget(p, destDate); }
   else p.nextDate = destDate;
   savePlan();
   haptic('medium');
