@@ -2983,8 +2983,13 @@ function planScheduleCurrentItem(p){
 }
 function planDisplayName(p, idxOverride){
   if(p.type==='schedule'){
-    // idxOverride には数値ではなく「対象の項目そのもの」が渡ってくる想定（schedule型専用）
-    const item = (idxOverride && typeof idxOverride==='object') ? idxOverride : planScheduleCurrentItem(p);
+    // idxOverride には数値ではなく「対象の項目そのもの」が渡ってくる想定（schedule型専用）。
+    // __scheduleItemIdx は getDuePlanList() 等が「同じ日の複数項目のうち、これ」と
+    // 明示している場合に付く（未指定なら従来通り「一番近い未完了項目」で代表させる）。
+    let item;
+    if(idxOverride && typeof idxOverride==='object') item = idxOverride;
+    else if(p.__scheduleItemIdx!=null) item = (p.schedule||[])[p.__scheduleItemIdx];
+    else item = planScheduleCurrentItem(p);
     const label = (item && item.label && item.label.trim()) ? item.label.trim() : '';
     return label ? `${p.name} ${label}` : p.name;
   }
@@ -3110,18 +3115,37 @@ function _planGoalTodayStatus(p){
 // 今日タブに表示すべき計画タスク（毎日/曜日指定/間隔/目標型）を取得。
 // 今日タブのバッジ数・本文表示で共通利用する
 function getDuePlanList(){
-  const list = PLAN.filter(p=>{
-    if(p.done || !planInPeriod(p)) return false;
-    if(p.snoozeUntil && p.snoozeUntil>td()) return false; // 延期中は今日タブから隠す
-    if(p.hiddenTodayDate===td()) return false; // 今日タブでゴミ箱ボタンを押した分（今日だけ非表示。削除ではない）
+  const t0=td();
+  const list = [];
+  PLAN.forEach(p=>{
+    if(p.done || !planInPeriod(p)) return;
+    if(p.snoozeUntil && p.snoozeUntil>t0) return; // 延期中は今日タブから隠す
     if(p.type==='goal'){
       // 今日「本当にやる必要がある」場合のみ表示する（ペースに余裕がある日は表示しない）。
       // 表示される日でも、その日の目安分をすでに達成していれば今日タブからは消す。
+      if(p.hiddenTodayDate===t0) return;
       const {todayCount, target} = _planGoalTodayStatus(p);
-      return target>0 && todayCount<target;
+      if(target>0 && todayCount<target) list.push(p);
+      return;
     }
-    return planIsDueToday(p)||planIsOverdue(p);
-  }).sort((a,b)=>{
+    if(p.type==='schedule'){
+      if(p.hiddenTodayDate===t0) return; // 念のため：計画単位で「今日は消す」された場合も尊重
+      // 個別日程は1計画に複数の日付付き項目を持てるため、今日時点で未完了かつ
+      // 期日（当日／超過）を迎えている項目それぞれを、独立したカードとして出す。
+      // こうしないと「同じ日に2件」を立てても1枚しかカードが出ない状態になってしまう。
+      const items=p.schedule||[];
+      const hiddenItems=p.hiddenTodayItems||{};
+      items.forEach((it,idx)=>{
+        if(it.done || !it.date || it.date>t0) return;
+        if(hiddenItems[idx]===t0) return; // このカードだけ「今日は消す」された
+        list.push(Object.assign({}, p, { __scheduleItemIdx:idx, nextDate:it.date }));
+      });
+      return;
+    }
+    if(p.hiddenTodayDate===t0) return; // 今日タブでゴミ箱ボタンを押した分（今日だけ非表示。削除ではない）
+    if(planIsDueToday(p)||planIsOverdue(p)) list.push(p);
+  });
+  list.sort((a,b)=>{
       const ka = a.type==='goal' ? (a.deadline||'') : (a.nextDate||'');
       const kb = b.type==='goal' ? (b.deadline||'') : (b.nextDate||'');
       return ka.localeCompare(kb);
@@ -3370,9 +3394,16 @@ function planForwardDismiss(id){
 // （lastDoneDate/nextDate等は一切変更しないため、完了状況や次回予定には影響しない。
 //   日付が変わればまた通常どおり評価され、必要なら明日また表示される）
 function planDismissToday(id){
-  const p = PLAN.find(x=>x.id===id); if(!p) return;
-  const name = planDisplayName(p);
-  p.hiddenTodayDate = td();
+  const {planId, itemIdx}=_parsePlanCardId(id);
+  const p = PLAN.find(x=>x.id===planId); if(!p) return;
+  const name = (p.type==='schedule' && itemIdx!=null) ? planDisplayName(p, (p.schedule||[])[itemIdx]) : planDisplayName(p);
+  if(p.type==='schedule' && itemIdx!=null){
+    // 個別日程は同じ日に複数件あり得るので、計画単位ではなく「この項目だけ」を今日は消す
+    p.hiddenTodayItems = p.hiddenTodayItems||{};
+    p.hiddenTodayItems[itemIdx] = td();
+  } else {
+    p.hiddenTodayDate = td();
+  }
   savePlan(); haptic();
   toast(IC.check, esc(name)+'を今日のリストから消しました（削除はされていません）');
   flashThenShrink('c-'+id, 'w-'+id, ()=>render());
@@ -3383,21 +3414,32 @@ function planDismissToday(id){
 // goal: 今日分の目安を達成した、または目標そのものを今日達成したもの
 function getPlanDoneTodayList(){
   const t=td();
-  return PLAN.filter(p=>{
-    if(!planInPeriod(p)) return false;
+  const out=[];
+  PLAN.forEach(p=>{
+    if(!planInPeriod(p)) return;
     if(p.type==='goal'){
       if(p.done){
-        if(!p.completedAt) return false;
+        if(!p.completedAt) return;
         const d=new Date(p.completedAt);
         const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-        return ds===t;
+        if(ds===t) out.push(p);
+        return;
       }
-      if(p.todayDate!==t || !((p.todayCount||0)>0)) return false;
+      if(p.todayDate!==t || !((p.todayCount||0)>0)) return;
       const {todayCount, target} = _planGoalTodayStatus(p);
-      return target>0 && todayCount>=target;
+      if(target>0 && todayCount>=target) out.push(p);
+      return;
     }
-    return p.lastDoneDate===t;
+    if(p.type==='schedule'){
+      // 同じ日に複数件完了していたら、それぞれを別の完了カードとして出す
+      (p.schedule||[]).forEach((it,idx)=>{
+        if(it.done && it.doneDate===t) out.push(Object.assign({}, p, { __scheduleItemIdx:idx }));
+      });
+      return;
+    }
+    if(p.lastDoneDate===t) out.push(p);
   });
+  return out;
 }
 function planNextWeekday(fromDateExclusive, weekdays){
   if(!weekdays || !weekdays.length) return addD(fromDateExclusive,1);
@@ -3411,6 +3453,23 @@ function planNextWeekday(fromDateExclusive, weekdays){
 // 個別日程（schedule型）で「延期」「ドラッグでの移動」をしたときに、
 // 表示用の p.nextDate だけでなく、実体である schedule 内の該当項目の日付も
 // 書き換える（そうしないと元の日付に戻ったように見えてしまう）。
+// 個別日程（schedule型）は1つの計画の中に複数の日付付き項目を持つため、
+// 「今日タブ」に同日の項目が複数あるときはカードを複数枚出す必要がある。
+// その際、各カードのDOM idや操作対象を「計画ID::項目インデックス」という
+// 合成idで区別する。通常のプラン（項目分割なし）はこれまで通り素のidのまま。
+function _parsePlanCardId(id){
+  const i = String(id).indexOf('::');
+  if(i<0) return {planId:id, itemIdx:null};
+  return {planId:id.slice(0,i), itemIdx:parseInt(id.slice(i+2),10)};
+}
+function _planScheduleRetargetIdx(p, idx, newDate){
+  const items=p.schedule||[];
+  const cur=items[idx];
+  if(cur) cur.date=newDate;
+  const undone=items.filter(it=>!it.done).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  p.nextDate = undone.length ? undone[0].date : newDate;
+  if(p.endDate && newDate>p.endDate) p.endDate=newDate;
+}
 function _planScheduleRetarget(p, newDate){
   const items=p.schedule||[];
   const cur = items.find(it=>!it.done && it.date===p.nextDate) || items.find(it=>!it.done);
@@ -3420,9 +3479,10 @@ function _planScheduleRetarget(p, newDate){
   if(p.endDate && newDate>p.endDate) p.endDate=newDate;
 }
 function planComplete(id, qty){
-  const p=PLAN.find(x=>x.id===id); if(!p) return;
+  const {planId, itemIdx}=_parsePlanCardId(id);
+  const p=PLAN.find(x=>x.id===planId); if(!p) return;
   const t=td();
-  const doneLabel=planDisplayName(p);
+  const doneLabel = (p.type==='schedule' && itemIdx!=null) ? planDisplayName(p, (p.schedule||[])[itemIdx]) : planDisplayName(p);
   if(p.type==='goal'){
     const n=Math.max(1, parseInt(qty,10)||1);
     if(p.todayDate!==t){ p.todayDate=t; p.todayCount=0; }
@@ -3443,7 +3503,7 @@ function planComplete(id, qty){
   }
   if(p.type==='schedule'){
     const items=p.schedule||[];
-    const item=planScheduleCurrentItem(p);
+    const item = itemIdx!=null ? items[itemIdx] : planScheduleCurrentItem(p);
     if(!item || item.done) return;
     item.done=true; item.doneDate=t;
     p.occurrenceCount=items.filter(x=>x.done).length;
@@ -3532,6 +3592,11 @@ function planCardHtml(p, opts){
   opts = opts || {};
   const compact = !!opts.compact;
   const dispName = planDisplayName(p);
+  // 個別日程（schedule型）で同じ日に複数項目がある場合、getDuePlanList() が
+  // p.__scheduleItemIdx を持つ「仮想的な1件分」オブジェクトを渡してくる。
+  // その項目だけを操作対象にできるよう、完了・延期・今日は消す等のボタンには
+  // 「計画ID::項目インデックス」の合成idを使う（編集ボタンは計画全体を開くので実IDのまま）。
+  const cardId = (p.__scheduleItemIdx!=null) ? `${p.id}::${p.__scheduleItemIdx}` : p.id;
   if(p.type==='goal'){
     const pace=planPace(p);
     const pct=Math.min(100,Math.round(((p.doneCount||0)/p.totalCount)*100));
@@ -3588,8 +3653,8 @@ function planCardHtml(p, opts){
     : `${p.intervalDays}日ごと`;
   const okLabel2 = compact ? '完了にする' : (opts.todayMode?'時間を記録して完了':'完了にする');
   const snoozeBtn2 = compact
-    ? `<button class="btn-snooze" onclick="openPlanSnooze('${p.id}')" aria-label="延期">${IC.moon}</button>`
-    : `<button class="btn-snooze" onclick="openPlanSnooze('${p.id}')">${IC.moon} 延期</button>`;
+    ? `<button class="btn-snooze" onclick="openPlanSnooze('${cardId}')" aria-label="延期">${IC.moon}</button>`
+    : `<button class="btn-snooze" onclick="openPlanSnooze('${cardId}')">${IC.moon} 延期</button>`;
   const laterBtn = compact
     ? `<button class="btn-snooze" onclick="planForwardDismiss('${p.id}')" aria-label="今日はしない">${IC.moon}</button>`
     : `<button class="btn-snooze" onclick="planForwardDismiss('${p.id}')">${IC.moon} 今日はしない</button>`;
@@ -3606,13 +3671,13 @@ function planCardHtml(p, opts){
       : due
       ? `<div class="card-when-chip due">${IC.clock} 今日が期限</div>`
       : `<div class="card-when-chip">${IC.calendar} ${fmtShort(p.nextDate)}</div>`;
-    return `<div class="cw" id="w-${p.id}" data-id="${p.id}">
-      <div class="card plan${fwd?' fwd':over?' over':due?' due':''}" id="c-${p.id}">
+    return `<div class="cw" id="w-${cardId}" data-id="${p.id}">
+      <div class="card plan${fwd?' fwd':over?' over':due?' due':''}" id="c-${cardId}">
         <div class="card-top">
           <div class="card-name">${esc(dispNameToday)}</div>
           <div class="card-icon-row">
             <button class="btn-edit" onclick="openPlanSheet('${p.id}')" aria-label="編集">${IC.pencil}</button>
-            <button class="btn-del" onclick="planDismissToday('${p.id}')" aria-label="今日のリストから消す">${IC.trash}</button>
+            <button class="btn-del" onclick="planDismissToday('${cardId}')" aria-label="今日のリストから消す">${IC.trash}</button>
           </div>
         </div>
         ${(p.tags&&p.tags.length)?`<div class="card-tags-row">${p.tags.map(tid=>tagHtml(tid)).join('')}</div>`:''}
@@ -3622,7 +3687,7 @@ function planCardHtml(p, opts){
         </div>
         ${fwd?fwdNoteHtml:snoozeNote2}
         ${(showComplete||showSnooze||fwd)?`<div class="acts">
-          ${showComplete?`<button class="btn-plan-ok" onclick="${opts.todayMode?`openStudyTimerForPlan('${p.id}')`:`planComplete('${p.id}')`}">${opts.todayMode?IC.timerSm:IC.check} ${okLabel2}</button>`:''}
+          ${showComplete?`<button class="btn-plan-ok" onclick="${opts.todayMode?`openStudyTimerForPlan('${cardId}')`:`planComplete('${cardId}')`}">${opts.todayMode?IC.timerSm:IC.check} ${okLabel2}</button>`:''}
           ${fwd?laterBtn:(showSnooze?snoozeBtn2:'')}
         </div>`:''}
       </div>
@@ -3639,13 +3704,13 @@ function planCardHtml(p, opts){
     : due
     ? `<div class="card-when due">${IC.clock} 今日が期限</div>`
     : `<div class="card-when">${IC.calendar} ${fmtShort(p.nextDate)}</div>`;
-  return `<div class="cw" id="w-${p.id}" data-id="${p.id}">
-    <div class="card plan${fwd?' fwd':over?' over':due?' due':''}" id="c-${p.id}">
+  return `<div class="cw" id="w-${cardId}" data-id="${p.id}">
+    <div class="card plan${fwd?' fwd':over?' over':due?' due':''}" id="c-${cardId}">
       <div class="card-top">
         <div class="card-name">${esc(dispNameToday)}</div>
         <div class="card-icon-row">
           <button class="btn-edit" onclick="openPlanSheet('${p.id}')" aria-label="編集">${IC.pencil}</button>
-          <button class="btn-del" onclick="planDismissToday('${p.id}')" aria-label="今日のリストから消す">${IC.trash}</button>
+          <button class="btn-del" onclick="planDismissToday('${cardId}')" aria-label="今日のリストから消す">${IC.trash}</button>
         </div>
       </div>
       <div class="card-meta-row">
@@ -3655,7 +3720,7 @@ function planCardHtml(p, opts){
       ${when}
       ${fwd?fwdNoteHtml:snoozeNote2}
       ${(showComplete||showSnooze||fwd)?`<div class="acts">
-        ${showComplete?`<button class="btn-plan-ok" onclick="${opts.todayMode?`openStudyTimerForPlan('${p.id}')`:`planComplete('${p.id}')`}">${opts.todayMode?IC.timerSm:IC.check} ${okLabel2}</button>`:''}
+        ${showComplete?`<button class="btn-plan-ok" onclick="${opts.todayMode?`openStudyTimerForPlan('${cardId}')`:`planComplete('${cardId}')`}">${opts.todayMode?IC.timerSm:IC.check} ${okLabel2}</button>`:''}
         ${fwd?laterBtn:(showSnooze?snoozeBtn2:'')}
       </div>`:''}
     </div>
@@ -5875,7 +5940,8 @@ function closeSnooze(){
   _snoozeKind='review';
 }
 function openPlanSnooze(id){
-  const p=PLAN.find(x=>x.id===id); if(!p) return;
+  const {planId}=_parsePlanCardId(id);
+  const p=PLAN.find(x=>x.id===planId); if(!p) return;
   _openSnoozePicker('plan', id, p.name);
 }
 function openTodoSnooze(id){
@@ -5887,17 +5953,22 @@ function applySnooze(days){
   const id = _snoozeId, kind=_snoozeKind;
   closeSnooze();                                 // clears _snoozeId immediately
   if(kind==='plan'){
-    const p=PLAN.find(x=>x.id===id); if(!p) return;
+    const {planId, itemIdx}=_parsePlanCardId(id);
+    const p=PLAN.find(x=>x.id===planId); if(!p) return;
     // 初回の延期時のみ、延期前の元の期日を記録しておく（バッジ表示用）
     if(!p.origDueDate) p.origDueDate = (p.type==='weekday'||p.type==='interval'||p.type==='schedule') ? (p.nextDate||td()) : (p.snoozeUntil||td());
     const until=addD(td(),days);
-    if(p.type==='schedule') _planScheduleRetarget(p, until);
+    const doneLabel = (p.type==='schedule' && itemIdx!=null) ? planDisplayName(p, (p.schedule||[])[itemIdx]) : planDisplayName(p);
+    if(p.type==='schedule'){
+      if(itemIdx!=null) _planScheduleRetargetIdx(p, itemIdx, until);
+      else _planScheduleRetarget(p, until);
+    }
     else if(p.type==='weekday'||p.type==='interval') p.nextDate=until;
     else p.snoozeUntil=until; // daily / goal は次回発生日という概念がないため専用フィールドで隠す
     savePlan();
     haptic('medium'); render(); _renderCalGrid();
     const label=days===1?'明日':days===7?'1週間後':`${days}日後`;
-    toast(IC.moon, esc(planDisplayName(p))+`を${label}に延期しました`);
+    toast(IC.moon, esc(doneLabel)+`を${label}に延期しました`);
     return;
   }
   if(kind==='todo'){
@@ -6112,9 +6183,10 @@ function undoCompleteFromDone(id){
 }
 
 function undoPlanCompleteFromDone(id){
-  const p = PLAN.find(x => x.id === id);
+  const {planId, itemIdx}=_parsePlanCardId(id);
+  const p = PLAN.find(x => x.id === planId);
   if(!p) return;
-  const doneLabel = planDisplayName(p, planCompletedOccurrenceIdx(p));
+  const doneLabel = (p.type==='schedule' && itemIdx!=null) ? planDisplayName(p, (p.schedule||[])[itemIdx]) : planDisplayName(p, planCompletedOccurrenceIdx(p));
   if(p.type==='goal'){
     // 今日分の記録をすべて取り消す
     const todayCount = p.todayCount||0;
@@ -6124,14 +6196,19 @@ function undoPlanCompleteFromDone(id){
     if(p.done){ p.done = false; delete p.completedAt; }
   } else if(p.type==='schedule'){
     const items=p.schedule||[];
-    const doneToday=items.filter(x=>x.doneDate===td());
-    const target=doneToday[doneToday.length-1];
+    // 「戻す」を押したカードが分かっている場合はその項目を直接戻す。
+    // 分からない場合（従来呼び出し）は「今日完了した中で最後の1件」を戻す。
+    const target = itemIdx!=null ? items[itemIdx] : (()=>{
+      const doneToday=items.filter(x=>x.doneDate===td());
+      return doneToday[doneToday.length-1];
+    })();
     if(target){ target.done=false; target.doneDate=null; }
     p.occurrenceCount=items.filter(x=>x.done).length;
     p.doneCount=p.occurrenceCount;
     const next=planScheduleCurrentItem(p);
     p.nextDate = next ? next.date : td();
-    if(!doneToday.length || doneToday.length<=1) delete p.lastDoneDate;
+    const stillDoneToday = items.some(x=>x.doneDate===td());
+    if(!stillDoneToday) delete p.lastDoneDate;
     if(p.done){ p.done=false; delete p.completedAt; }
   } else {
     delete p.lastDoneDate;
@@ -6333,10 +6410,11 @@ function rToday(list, hasActive, allDone){
         </div>
       </div>`;
     }).join('') + planDoneToday.map(p => {
-      const name = planDisplayName(p, planCompletedOccurrenceIdx(p));
+      const name = (p.type==='schedule' && p.__scheduleItemIdx!=null) ? planDisplayName(p) : planDisplayName(p, planCompletedOccurrenceIdx(p));
       const metaLabel = p.type==='goal'
         ? (p.done ? '目標を達成しました！' : `今日分の目安を達成 · 通算 ${p.doneCount||0}/${p.totalCount}`)
         : '計画タスク完了';
+      const undoId = (p.type==='schedule' && p.__scheduleItemIdx!=null) ? `${p.id}::${p.__scheduleItemIdx}` : p.id;
       return `<div class="today-done-item">
         <div class="today-done-item-icon">
           ${IC.checkGreen}
@@ -6346,7 +6424,7 @@ function rToday(list, hasActive, allDone){
           <div class="today-done-item-meta">${metaLabel}</div>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
-          <button class="done-undo" onclick="undoPlanCompleteFromDone('${p.id}')" aria-label="計画タスクに戻す" style="font-size:11px;padding:4px 8px;min-height:32px">↩ 戻す</button>
+          <button class="done-undo" onclick="undoPlanCompleteFromDone('${undoId}')" aria-label="計画タスクに戻す" style="font-size:11px;padding:4px 8px;min-height:32px">↩ 戻す</button>
           <button class="today-done-item-del" onclick="planDelete('${p.id}')" aria-label="削除">${IC.trash}</button>
         </div>
       </div>`;
@@ -7166,13 +7244,13 @@ function _studyTagBreakdownHtml(){
 }
 
 /* ══ Study timer sheet ══════════════════ */
-let _timerUnitId=null, _timerPlanId=null, _timerTodoId=null, _timerStart=null, _timerInterval=null;
+let _timerUnitId=null, _timerPlanId=null, _timerPlanItemIdx=null, _timerTodoId=null, _timerStart=null, _timerInterval=null;
 let _timerElapsed=0; // 累積経過秒数（一時停止時に保持）
 let _manualInpEdited=false; // 手動入力欄をユーザーが自分で編集したか（trueならタイマー側で上書きしない）
 const TIMER_KEY='fukushu_timer_v1';
 function _saveTimerState(){
   if(_timerStart || _timerElapsed>0){
-    try{ localStorage.setItem(TIMER_KEY, JSON.stringify({start:_timerStart, elapsed:_timerElapsed, unitId:_timerUnitId, planId:_timerPlanId, todoId:_timerTodoId})); }catch(_){}
+    try{ localStorage.setItem(TIMER_KEY, JSON.stringify({start:_timerStart, elapsed:_timerElapsed, unitId:_timerUnitId, planId:_timerPlanId, planItemIdx:_timerPlanItemIdx, todoId:_timerTodoId})); }catch(_){}
   } else {
     try{ localStorage.removeItem(TIMER_KEY); }catch(_){}
   }
@@ -7181,11 +7259,12 @@ function _restoreTimerState(){
   try{
     const s=localStorage.getItem(TIMER_KEY);
     if(!s) return;
-    const {start, elapsed, unitId, planId, todoId}=JSON.parse(s);
+    const {start, elapsed, unitId, planId, planItemIdx, todoId}=JSON.parse(s);
     _timerElapsed=elapsed||0;
     if(start){ _timerStart=start; }
     _timerUnitId=unitId||null;
     _timerPlanId=planId||null;
+    _timerPlanItemIdx=(planItemIdx!=null?planItemIdx:null);
     _timerTodoId=todoId||null;
   }catch(_){}
 }
@@ -7282,9 +7361,11 @@ function openStudyTimer(unitId){
   haptic();
 }
 
-function openStudyTimerForPlan(planId){
-  _startOrResumeStudyTimer(()=>_timerPlanId===planId && !_timerUnitId && !_timerTodoId);
+function openStudyTimerForPlan(cardId){
+  const {planId, itemIdx}=_parsePlanCardId(cardId);
+  _startOrResumeStudyTimer(()=>_timerPlanId===planId && _timerPlanItemIdx===itemIdx && !_timerUnitId && !_timerTodoId);
   _timerPlanId=planId;
+  _timerPlanItemIdx=itemIdx;
   _timerUnitId=null;
   _timerTodoId=null;
   _studySheetMode='review';
@@ -7406,7 +7487,7 @@ function _renderStudySheet(){
     </div>`:''}
     ${_studySheetMode==='review'&&p?`<div style="background:var(--plan-bg);border-radius:10px;padding:10px 14px;margin-bottom:14px">
       <div style="font-size:11px;font-weight:700;color:var(--plan-d);letter-spacing:.5px;margin-bottom:3px">記録タイトル（自動）</div>
-      <div style="font-size:14px;font-weight:700;color:var(--plan-d)">🗓️ ${esc(planDisplayName(p))}</div>
+      <div style="font-size:14px;font-weight:700;color:var(--plan-d)">🗓️ ${esc((p.type==='schedule' && _timerPlanItemIdx!=null) ? planDisplayName(p, (p.schedule||[])[_timerPlanItemIdx]) : planDisplayName(p))}</div>
     </div>`:''}
     ${_studySheetMode==='review'&&td_?`<div style="background:var(--blue-bg);border-radius:10px;padding:10px 14px;margin-bottom:14px">
       <div style="font-size:11px;font-weight:700;color:var(--blue);letter-spacing:.5px;margin-bottom:3px">記録タイトル（自動）</div>
@@ -7639,7 +7720,7 @@ function saveStudyRecord(){
   } else if(_studySheetMode==='review'&&_timerPlanId){
     const p=PLAN.find(x=>x.id===_timerPlanId);
     if(p){
-      title=planDisplayName(p);
+      title = (p.type==='schedule' && _timerPlanItemIdx!=null) ? planDisplayName(p, (p.schedule||[])[_timerPlanItemIdx]) : planDisplayName(p);
       if(p.type==='goal' && _savedQty>1) title += ` ×${_savedQty}`;
     }
   } else {
@@ -7652,6 +7733,7 @@ function saveStudyRecord(){
   }
   const _savedUnitId=_timerUnitId;
   const _savedPlanId=_timerPlanId;
+  const _savedPlanItemIdx=_timerPlanItemIdx;
   addStudyLog({
     date:resolvedDate,
     unitId:_savedUnitId||null,
@@ -7666,7 +7748,7 @@ function saveStudyRecord(){
   if(_savedUnitId){
     complete(_savedUnitId); // complete() calls render()内部で呼ぶ
   } else if(_savedPlanId){
-    planComplete(_savedPlanId, _savedQty); // planComplete() calls render() internally
+    planComplete(_savedPlanItemIdx!=null ? `${_savedPlanId}::${_savedPlanItemIdx}` : _savedPlanId, _savedQty); // planComplete() calls render() internally
   } else {
     render();
     const activeTab=document.querySelector('.tab-btn.on');
@@ -7690,6 +7772,7 @@ function saveStudyRecordForTodo(isComplete){
   const _savedQty=_studySheetQty;
   const _savedUnitId=_timerUnitId;
   const _savedPlanId=_timerPlanId;
+  const _savedPlanItemIdx=_timerPlanItemIdx;
   const _savedTodoId=_timerTodoId;
   const u=_savedUnitId?U.find(x=>x.id===_savedUnitId):null;
   const p=_savedPlanId?PLAN.find(x=>x.id===_savedPlanId):null;
@@ -7698,7 +7781,7 @@ function saveStudyRecordForTodo(isComplete){
   // 0分（記録なし）でも、完了／途中の操作自体は妨げない。時間の記録だけスキップする。
   let title='';
   if(u) title=`${u.name} - ${STEPS[u.step]||`${u.step}回目`}`;
-  else if(p){ title=planDisplayName(p); if(p.type==='goal' && _savedQty>1) title += ` ×${_savedQty}`; }
+  else if(p){ title=(p.type==='schedule' && _savedPlanItemIdx!=null) ? planDisplayName(p, (p.schedule||[])[_savedPlanItemIdx]) : planDisplayName(p); if(p.type==='goal' && _savedQty>1) title += ` ×${_savedQty}`; }
   else if(item) title=item.text;
 
   const resolvedDate=_resolveStudyDate();
@@ -7736,7 +7819,7 @@ function saveStudyRecordForTodo(isComplete){
     }
   } else if(p){
     if(isComplete){
-      planComplete(_savedPlanId, _savedQty); // planComplete()内でrender()まで行う
+      planComplete(_savedPlanItemIdx!=null ? `${_savedPlanId}::${_savedPlanItemIdx}` : _savedPlanId, _savedQty); // planComplete()内でrender()まで行う
     } else {
       render();
     }
