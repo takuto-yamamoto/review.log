@@ -34,8 +34,17 @@
   --orange:#F97316;--orange-d:#EA580C;--orange-bg:#FFF4E9;--orange-bd:rgba(249,115,22,.2);
   --lbl:#0F0F14;--lbl2:rgba(60,60,67,.52);--lbl3:rgba(60,60,67,.26);
   --sep:rgba(60,60,67,.09);--fill:rgba(120,120,128,.09);
-  --shadow:0 1px 3px rgba(0,0,0,.05),0 6px 20px rgba(0,0,0,.07);
-  --shadow-sm:0 1px 2px rgba(0,0,0,.05),0 2px 8px rgba(0,0,0,.05);
+  /* 影は「近い・柔らかい」層と「遠い・広い」層を重ねることで、フラットな1枚影より
+     奥行きを感じさせる。あわせて極薄の輪郭線（--card-bd）を添えることで、影が
+     薄い明るい背景でもカードの境界がぼやけずシャープに見える。 */
+  --shadow:0 1px 2px rgba(15,15,20,.045),0 10px 24px -8px rgba(15,15,20,.12);
+  --shadow-sm:0 1px 1.5px rgba(15,15,20,.04),0 4px 12px -4px rgba(15,15,20,.08);
+  --shadow-lg:0 8px 16px -4px rgba(15,15,20,.1),0 24px 48px -12px rgba(15,15,20,.22);
+  --card-bd:1px solid rgba(15,15,20,.045);
+  /* イージング: バラバラな cubic-bezier を用途別に統一し、動きの「らしさ」を揃える */
+  --ease-out:cubic-bezier(.25,.46,.45,.94);
+  --ease-spring:cubic-bezier(.34,1.56,.64,1);
+  --ease-sheet:cubic-bezier(.32,.72,0,1);
   --tab-h:49px;--r:16px;
   --safe-bottom:env(safe-area-inset-bottom,0px);
   --safe-top:env(safe-area-inset-top,0px);
@@ -95,6 +104,7 @@ body{
   -webkit-backdrop-filter:saturate(200%) blur(24px);
   backdrop-filter:saturate(200%) blur(24px);
   border-bottom:.5px solid var(--sep);
+  box-shadow:0 1px 0 rgba(15,15,20,.02),0 8px 16px -12px rgba(15,15,20,.1);
   padding-top:0;
   flex-shrink:0;z-index:50;
   transform:translateZ(0);
@@ -134,11 +144,11 @@ body.pwa .navbar{
 /* Animation applied via separate classes only when transitioning */
 .panel.slide-in{
   display:block;
-  animation:panelIn .22s cubic-bezier(.25,.46,.45,.94) both
+  animation:panelIn .22s var(--ease-out) both
 }
 .panel.slide-back{
   display:block;
-  animation:panelBack .22s cubic-bezier(.25,.46,.45,.94) both
+  animation:panelBack .22s var(--ease-out) both
 }
 /* Visible-at-rest state (no animation) */
 .panel.visible{display:block}
@@ -163,7 +173,7 @@ body.pwa .navbar{
   background:var(--card);border-radius:20px;
   width:min(360px, calc(min(100vw, var(--app-w)) - 40px));
   padding:18px 18px calc(18px + var(--safe-bottom));
-  transform:scale(.92);opacity:0;transition:transform .25s cubic-bezier(.32,.72,0,1),opacity .2s;
+  transform:scale(.92);opacity:0;transition:transform .25s var(--ease-sheet),opacity .2s;
   box-shadow:0 20px 60px rgba(0,0,0,.3);
 }
 .icrop-overlay.on .icrop-modal{transform:scale(1);opacity:1}
@@ -203,6 +213,18 @@ body.pwa .navbar{
 
 /* ══ Touch: remove 300ms tap delay on all interactive elements ══ */
 button,a,input,[role="button"]{touch-action:manipulation}
+
+/* ══ キーボード操作時のフォーカスリング ══
+   マウス/タップでのフォーカスでは出さず、キーボード操作（Tab移動）のときだけ
+   はっきり見えるリングを表示する。タップ時に:focusのアウトラインが常に残る
+   従来の見た目を崩さずに、キーボードアクセシビリティを確保する。 */
+button:focus-visible,a:focus-visible,input:focus-visible,[role="button"]:focus-visible,
+.tab-btn:focus-visible,.tagf-chip:focus-visible{
+  outline:2.5px solid var(--blue);
+  outline-offset:2px;
+  border-radius:8px;
+}
+button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 
 /* ══ Section label ═════════════════════ */
 .sec{
@@ -268,7 +290,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
   background:var(--card);border-radius:var(--r);padding:10px 14px;
   position:relative;z-index:1;
   will-change:transform;
-  transition:transform .22s cubic-bezier(.25,.46,.45,.94);
+  transition:transform .22s var(--ease-out);
   box-shadow:var(--shadow)
 }
 .card.over{border-left:3px solid var(--red);padding-left:11px}
@@ -640,12 +662,12 @@ button,a,input,[role="button"]{touch-action:manipulation}
 }
 .tag-prog-bar-fill{
   height:100%;border-radius:8px;
-  transition:width .5s cubic-bezier(.25,.46,.45,.94)
+  transition:width .5s var(--ease-out)
 }
 /* unit list inside tag card */
 .tag-prog-units{
   max-height:0;overflow:hidden;
-  transition:max-height .3s cubic-bezier(.25,.46,.45,.94)
+  transition:max-height .3s var(--ease-out)
 }
 .tag-prog-card.open .tag-prog-units{max-height:3000px}
 .tag-prog-unit-row{
@@ -781,9 +803,15 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .dow-wkd{background:var(--fill);color:var(--lbl2)}
 
 /* ══ Empty state ═══════════════════════ */
-.empty{text-align:center;padding:48px 24px}
-.empty-icon{width:60px;height:60px;border-radius:18px;background:var(--fill);display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
-.empty h3{font-size:17px;font-weight:700;color:var(--lbl);margin-bottom:6px}
+.empty{text-align:center;padding:48px 24px;animation:fadeInUp .3s var(--ease-out) both}
+.empty-icon{
+  width:60px;height:60px;border-radius:18px;
+  background:radial-gradient(circle at 32% 28%,rgba(37,99,235,.1),var(--fill) 70%);
+  box-shadow:inset 0 0 0 1px rgba(15,15,20,.04);
+  display:flex;align-items:center;justify-content:center;margin:0 auto 14px;
+  color:var(--lbl3);
+}
+.empty h3{font-size:17px;font-weight:700;color:var(--lbl);margin-bottom:6px;letter-spacing:-.1px}
 .empty p{font-size:14px;line-height:1.8;color:var(--lbl2)}
 
 /* ══ Tab bar ═══════════════════════════ */
@@ -808,7 +836,20 @@ button,a,input,[role="button"]{touch-action:manipulation}
   min-height:44px;padding:4px 0;
   transition:color .15s;position:relative
 }
-.tab-lbl{font-size:10px;font-weight:600;letter-spacing:.2px;line-height:1}
+/* 選択中タブの背後にふわっと浮かぶピル。アイコンより先に描画されるため
+   svg/ラベルは常にその上に重なる（z-indexなしで自然に前面になる） */
+.tab-btn::before{
+  content:'';position:absolute;top:1px;left:50%;
+  width:38px;height:30px;border-radius:11px;
+  background:var(--blue-bg);
+  opacity:0;transform:translateX(-50%) scale(.72);
+  transition:opacity .18s var(--ease-out),transform .18s var(--ease-spring);
+  pointer-events:none;
+}
+.tab-btn.on::before{opacity:1;transform:translateX(-50%) scale(1)}
+.tab-btn svg{position:relative;transition:transform .18s var(--ease-spring)}
+.tab-btn.on svg{transform:translateY(-1px) scale(1.04)}
+.tab-lbl{font-size:10px;font-weight:600;letter-spacing:.2px;line-height:1;position:relative}
 .tab-btn.on{color:var(--blue)}
 .tbadge{
   position:absolute;top:2px;left:calc(50% + 7px);
@@ -829,12 +870,15 @@ button,a,input,[role="button"]{touch-action:manipulation}
   border:none;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
   box-shadow:0 4px 24px rgba(37,99,235,.45),0 1px 6px rgba(37,99,235,.25);
-  transition:transform .12s,box-shadow .12s,opacity .2s;
+  transition:transform .18s var(--ease-spring),box-shadow .18s var(--ease-out),opacity .2s;
   touch-action:manipulation;
   -webkit-tap-highlight-color:transparent;
 }
 .float-fab:active{transform:scale(.88);box-shadow:0 2px 10px rgba(37,99,235,.28)}
 .float-fab.hidden{opacity:0;pointer-events:none;transform:scale(.8)}
+@media (hover:hover){
+  .float-fab:hover{transform:translateY(-1px) scale(1.03);box-shadow:0 6px 28px rgba(37,99,235,.5),0 2px 8px rgba(37,99,235,.3)}
+}
 
 /* ══ Search bar ════════════════════════ */
 .search-wrap{
@@ -883,7 +927,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
   position:fixed;bottom:0;left:0;right:0;z-index:101;
   background:var(--card);border-radius:24px 24px 0 0;
   transform:translateY(110%);
-  transition:transform .38s cubic-bezier(.32,.72,0,1);
+  transition:transform .38s var(--ease-sheet);
   padding-bottom:var(--safe-bottom);
   padding-left:var(--safe-left);
   padding-right:var(--safe-right);
@@ -892,6 +936,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
   /* Ensure sheet renders above everything in PWA */
   -webkit-transform:translateY(110%);
   will-change:transform,bottom,max-height;
+  box-shadow:var(--shadow-lg);
 }
 .sheet.on{transform:translateY(0);-webkit-transform:translateY(0)}
 .sheet-pull{
@@ -1005,7 +1050,8 @@ button,a,input,[role="button"]{touch-action:manipulation}
   -webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);
   color:#fff;padding:10px 18px;border-radius:100px;
   font-size:14px;font-weight:500;z-index:999;
-  opacity:0;transition:opacity .2s,transform .28s cubic-bezier(.34,1.56,.64,1);
+  box-shadow:0 8px 28px rgba(0,0,0,.28),0 2px 8px rgba(0,0,0,.18);
+  opacity:0;transition:opacity .2s,transform .28s var(--ease-spring);
   pointer-events:none;display:flex;align-items:center;gap:8px;
   max-width:calc(min(100vw, var(--app-w)) - 32px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis
 }
@@ -1098,7 +1144,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
   position:fixed;z-index:9000;
   border-radius:16px;
   pointer-events:none;
-  transition:all .35s cubic-bezier(.25,.46,.45,.94);
+  transition:all .35s var(--ease-out);
   border:2.5px solid rgba(255,255,255,.85);
   box-shadow:0 0 0 3px rgba(255,255,255,.2);
   display:none;
@@ -1116,7 +1162,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
   box-shadow:0 8px 40px rgba(0,0,0,.20);
   pointer-events:none;
   opacity:0;transform:translateY(8px);
-  transition:opacity .28s ease,transform .28s cubic-bezier(.25,.46,.45,.94);
+  transition:opacity .28s ease,transform .28s var(--ease-out);
 }
 .ob-bubble.on{opacity:1;transform:translateY(0);pointer-events:all}
 .ob-bubble::after{
@@ -1187,7 +1233,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
   border-radius:24px 24px 0 0;
   padding:8px 20px calc(20px + var(--safe-bottom));
   transform:translateY(110%);
-  transition:transform .4s cubic-bezier(.32,.72,0,1);
+  transition:transform .4s var(--ease-sheet);
   box-shadow:0 -4px 30px rgba(0,0,0,.15);
 }
 .pwa-sheet.on{transform:translateY(0)}
@@ -1271,7 +1317,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
   box-shadow:0 6px 20px rgba(0,0,0,.18),0 0 0 6px rgba(255,255,255,.08);
   overflow:hidden;
   position:relative;z-index:1;
-  animation:allDonePop .5s cubic-bezier(.34,1.56,.64,1);
+  animation:allDonePop .5s var(--ease-spring);
 }
 .all-done-icon-wrap img{width:100%;height:100%;object-fit:cover;display:block}
 .all-done-icon-fallback{font-size:36px}
@@ -1294,7 +1340,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
   position:relative;width:100%;background:var(--card);
   border-radius:24px 24px 0 0;
   padding:0 calc(16px + var(--safe-right)) calc(16px + var(--safe-bottom)) calc(16px + var(--safe-left));
-  transform:translateY(110%);transition:transform .32s cubic-bezier(.32,.72,0,1)
+  transform:translateY(110%);transition:transform .32s var(--ease-sheet)
 }
 .snooze-pick.on .snooze-pick-box{transform:translateY(0)}
 .snooze-pick-pull{
@@ -1333,7 +1379,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
   position:relative;width:100%;background:var(--card);
   border-radius:24px 24px 0 0;
   padding:0 calc(20px + var(--safe-right)) calc(20px + var(--safe-bottom)) calc(20px + var(--safe-left));
-  transform:translateY(110%);transition:transform .32s cubic-bezier(.32,.72,0,1);
+  transform:translateY(110%);transition:transform .32s var(--ease-sheet);
   text-align:center
 }
 .expired-plan-sheet.on .expired-plan-box{transform:translateY(0)}
@@ -1372,7 +1418,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
   position:relative;width:100%;background:var(--card);
   border-radius:24px 24px 0 0;
   padding:16px calc(20px + var(--safe-right)) calc(20px + var(--safe-bottom)) calc(20px + var(--safe-left));
-  transform:translateY(110%);transition:transform .32s cubic-bezier(.32,.72,0,1);
+  transform:translateY(110%);transition:transform .32s var(--ease-sheet);
 }
 .edit-modal.on .edit-modal-box{transform:translateY(0)}
 .edit-modal-pull{
@@ -1400,6 +1446,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
   border-radius:14px;padding:12px 16px;
   display:flex;align-items:center;gap:10px;
   z-index:1000;
+  box-shadow:0 8px 28px rgba(0,0,0,.28),0 2px 8px rgba(0,0,0,.18);
   transform:translateY(20px);opacity:0;pointer-events:none;
   transition:transform .28s cubic-bezier(.34,1.3,.64,1),opacity .2s;
 }
@@ -1472,7 +1519,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .prog-bar-wrap{height:5px;background:var(--fill);border-radius:5px;overflow:hidden}
 .prog-bar-fill{height:100%;border-radius:5px;
   background:linear-gradient(90deg,var(--blue),#60A5FA);
-  transition:width .4s cubic-bezier(.25,.46,.45,.94)}
+  transition:width .4s var(--ease-out)}
 .prog-card-pct{
   font-family:'Outfit',sans-serif;font-size:13px;font-weight:800;
   color:var(--blue);flex-shrink:0;min-width:38px;text-align:right
@@ -1486,7 +1533,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
   transform:translate(-50%,-50%) scale(.8);
   background:var(--card);border-radius:24px;padding:32px 40px;text-align:center;
   z-index:501;pointer-events:none;opacity:0;
-  transition:opacity .18s,transform .28s cubic-bezier(.34,1.56,.64,1);
+  transition:opacity .18s,transform .28s var(--ease-spring);
   box-shadow:0 20px 60px rgba(0,0,0,.2);
 }
 .celebrate-box.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
@@ -1531,7 +1578,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
   margin-bottom:10px;overflow:hidden;
   box-shadow:var(--shadow-sm);
   max-height:0;
-  transition:max-height .3s cubic-bezier(.25,.46,.45,.94),opacity .2s;
+  transition:max-height .3s var(--ease-out),opacity .2s;
   opacity:0;pointer-events:none;
 }
 .cal-wrap.open{max-height:600px;opacity:1;pointer-events:auto}
@@ -1690,7 +1737,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
   position:fixed;bottom:0;left:0;right:0;z-index:120;
   background:var(--card);border-radius:24px 24px 0 0;
   transform:translateY(110%);
-  transition:transform .38s cubic-bezier(.32,.72,0,1);
+  transition:transform .38s var(--ease-sheet);
   padding-bottom:var(--safe-bottom);
   padding-left:var(--safe-left);
   padding-right:var(--safe-right);
@@ -1885,7 +1932,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .tag-mgr-sheet{
   position:fixed;bottom:0;left:0;right:0;z-index:110;
   background:var(--card);border-radius:24px 24px 0 0;
-  transform:translateY(110%);transition:transform .38s cubic-bezier(.32,.72,0,1);
+  transform:translateY(110%);transition:transform .38s var(--ease-sheet);
   padding-bottom:var(--safe-bottom);
   padding-left:var(--safe-left);
   padding-right:var(--safe-right);
@@ -2022,7 +2069,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .cat-bd-bar{padding:8px 14px 12px}
 .cat-bd-body{
   max-height:0;overflow:hidden;
-  transition:max-height .28s cubic-bezier(.25,.46,.45,.94)
+  transition:max-height .28s var(--ease-out)
 }
 .cat-bd-card.open .cat-bd-body{max-height:800px}
 .cat-bd-tag-row{
@@ -2065,7 +2112,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .backup-sheet{
   position:fixed;bottom:0;left:0;right:0;z-index:110;
   background:var(--card);border-radius:24px 24px 0 0;
-  transform:translateY(110%);transition:transform .38s cubic-bezier(.32,.72,0,1);
+  transform:translateY(110%);transition:transform .38s var(--ease-sheet);
   padding-bottom:var(--safe-bottom);
   display:flex;flex-direction:column;max-height:85vh
 }
@@ -2076,7 +2123,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .all-logs-sheet{
   position:fixed;bottom:0;left:0;right:0;z-index:108;
   background:var(--card);border-radius:24px 24px 0 0;
-  transform:translateY(110%);transition:transform .38s cubic-bezier(.32,.72,0,1);
+  transform:translateY(110%);transition:transform .38s var(--ease-sheet);
   padding-bottom:var(--safe-bottom);
   display:flex;flex-direction:column;max-height:85vh
 }
@@ -2125,7 +2172,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .guide-sheet{
   position:fixed;bottom:0;left:0;right:0;z-index:110;
   background:var(--card);border-radius:24px 24px 0 0;
-  transform:translateY(110%);transition:transform .38s cubic-bezier(.32,.72,0,1);
+  transform:translateY(110%);transition:transform .38s var(--ease-sheet);
   padding-bottom:var(--safe-bottom);
   display:flex;flex-direction:column;max-height:88vh
 }
@@ -2152,7 +2199,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .guide-acc-chev{color:var(--lbl3);flex-shrink:0;display:flex;transition:transform .22s ease}
 .guide-acc.open .guide-acc-chev{transform:rotate(180deg)}
 .guide-acc.open .guide-acc-header{border-bottom:.5px solid var(--sep)}
-.guide-acc-body{max-height:0;overflow:hidden;transition:max-height .32s cubic-bezier(.25,.46,.45,.94)}
+.guide-acc-body{max-height:0;overflow:hidden;transition:max-height .32s var(--ease-out)}
 .guide-acc.open .guide-acc-body{max-height:2400px}
 .guide-acc-inner{padding:4px 14px 16px}
 .guide-acc-inner p{font-size:13px;color:var(--lbl2);line-height:1.7;margin:0 0 8px}
@@ -2221,7 +2268,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .today-done-acc.open .today-done-chev{transform:rotate(180deg)}
 .today-done-body{
   max-height:0;overflow:hidden;
-  transition:max-height .3s cubic-bezier(.25,.46,.45,.94);
+  transition:max-height .3s var(--ease-out);
   background:var(--card);
   border-radius:0 0 var(--r) var(--r);
   box-shadow:var(--shadow-sm);
@@ -2372,8 +2419,8 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .dense-shift-btn:active{transform:scale(.94)}
 
 /* ── Card: slightly more breathing room ── */
-.card{padding:11px 14px}
-.cw{margin-bottom:7px}
+.card{padding:12px 15px;border:var(--card-bd)}
+.cw{margin-bottom:10px}
 
 /* ── Section labels ── */
 .sec{font-size:12px;letter-spacing:.8px}
