@@ -6050,7 +6050,14 @@ function flashThenShrink(cardId, wrapId, cb){
    ただし平均を「今日以降ずっと先まで」の全日程で取ると、何ヶ月も先の
    ぽつぽつとした予定に平均が引きずられて低くなり、スマート分散で直近を
    均等にならしただけでも「過密」判定されてしまう。そこで直近1〜3週間の
-   平均のうち高い方を基準にすることで、この誤判定を防ぐ。 */
+   平均のうち高い方を基準にすることで、この誤判定を防ぐ。
+   さらに、「今日」は期限超過タスクがすべて合流する集計上の受け皿（_calEventMap参照）
+   であり、風邪などで溜まった積み残しがあるとその日だけ件数が跳ね上がる。
+   これを平均の材料に含めてしまうと、しきい値自体が積み残しの量に引きずられて
+   過大になり、スマート分散で「今日」以外の日に均等に振り分けたはずなのに、
+   その膨らんだしきい値のせいでどの日も「過密ではない」と判定されて分散後も
+   見た目には混み合ったまま、という本末転倒が起きる。そのため平均の算出からは
+   「今日」を除外し、それ以降の実態に即した日だけを基準にする。 */
 const CAL_DENSE_MIN  = 3;   // 平均が低くても、これ未満の件数では過密としない下限
 const CAL_DENSE_MULT = 1.6; // 平均の何倍を超えたら過密とみなすか
 
@@ -6061,7 +6068,8 @@ function _calDenseThreshold(evMap){
   function avgOver(days){
     const end = addD(today, days-1);
     const counts = Object.keys(evMap)
-      .filter(d => d >= today && d <= end && evMap[d].count > 0)
+      // 「今日」は期限超過分の受け皿で件数が本来より膨らみがちなので、平均の対象から除外する
+      .filter(d => d > today && d <= end && evMap[d].count > 0)
       .map(d => evMap[d].count);
     if(!counts.length) return 0;
     return counts.reduce((s,c)=>s+c,0) / counts.length;
@@ -8450,14 +8458,18 @@ function runSmartSpread(units){
   });
 
   // ── ならし残し対策：積み残しを流し込んでもなお過密な日が残っていたら、
-  // その日にもともと予定されていた「動かしやすいタスク（3回目以降の復習）」だけを
-  // 軽い日へ少し逃がす。1・2回目の復習、計画タスク、ToDoには一切触れない。
+  // その日にある「動かしやすいタスク（3回目以降の復習）」を軽い日へ少し逃がす。
+  // 1・2回目の復習、計画タスク、ToDoには一切触れない。
+  // 上のならし込み（1周目）自体が候補過多で1日に積みすぎてしまうことがあるため、
+  // 1周目で今動かしたばかりのタスクも対象から除外しない（除外すると、1周目が
+  // 作った過密を2周目で一切直せなくなってしまう）。無限に行き来しないよう、
+  // 「動かしても改善しない」場合はその日をその場で打ち切る安全策は維持する。
   let leveledCount = 0;
   horizonDates.forEach(d=>{
     let guard = 0;
     while(load[d] > threshold && guard < 30){
       guard++;
-      const movU = U.find(u=>!u.done && u.step>=2 && u.nextDate===d && !movedUnitIds.has(u.id));
+      const movU = U.find(u=>!u.done && u.step>=2 && u.nextDate===d);
       if(!movU) break;
       const dest = bestDest(d);
       if(dest===d || load[dest] >= load[d]-1) break; // これ以上動かしても改善しない
