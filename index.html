@@ -226,6 +226,20 @@ button:focus-visible,a:focus-visible,input:focus-visible,[role="button"]:focus-v
 }
 button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 
+/* ══ 入力欄のフォーカス時フィードバック ══
+   これまで大半の入力欄（背景がグレーの塗りつぶし + border:none）は
+   タップしても見た目が一切変わらず、「今どこに入力しているか」が
+   分かりづらかった。うっすらとした青いリングと背景の色づきだけを加えて、
+   フォームの角丸・余白など既存のレイアウトには手を触れずに解決する。
+   （目標型の計画フォーム等、紫のリングを個別に持つ入力欄はそのまま） */
+.sheet-inp,.edit-modal-inp,.tag-add-inp,.date-inp,.cat-list-name-inp{
+  transition:background .15s var(--ease-out),box-shadow .15s var(--ease-out);
+}
+.sheet-inp:focus,.edit-modal-inp:focus,.tag-add-inp:focus,.date-inp:focus,.cat-list-name-inp:focus{
+  background:var(--blue-bg);
+  box-shadow:0 0 0 2px var(--blue-bd);
+}
+
 /* ══ Section label ═════════════════════ */
 .sec{
   font-size:11px;font-weight:700;letter-spacing:1.1px;text-transform:uppercase;
@@ -597,8 +611,11 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 }
 .plan-row.over .plan-row-icon{background:rgba(255,59,48,.1);color:var(--red)}
 .plan-row.due .plan-row-icon{background:var(--blue-bg);color:var(--blue)}
-.plan-row-main{flex:1;min-width:0;cursor:pointer}
+.plan-row-main{flex:1;min-width:0;cursor:pointer;border-radius:8px;margin:-4px -6px;padding:4px 6px;transition:background .1s}
+.plan-row-main:active{background:var(--fill)}
 .plan-detail-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:.5px solid var(--sep)}
+.plan-detail-row.tappable{cursor:pointer;border-radius:8px;margin:0 -8px;padding:11px 8px;transition:background .1s}
+.plan-detail-row.tappable:active{background:var(--fill)}
 .plan-detail-row:last-child{border-bottom:none}
 .plan-detail-label{font-size:13px;color:var(--lbl2);flex-shrink:0}
 .plan-detail-value{font-size:14px;font-weight:700;color:var(--lbl);text-align:right}
@@ -1321,6 +1338,15 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 }
 .all-done-icon-wrap img{width:100%;height:100%;object-fit:cover;display:block}
 .all-done-icon-fallback{font-size:36px}
+.hero-streak-line{
+  display:inline-flex;align-items:center;gap:5px;
+  margin-top:12px;padding:5px 12px;border-radius:100px;
+  background:rgba(255,255,255,.18);color:#fff;
+  font-size:13px;font-weight:800;font-family:'Outfit',sans-serif;letter-spacing:.2px;
+  position:relative;z-index:1;
+  animation:heroStreakLineIn .4s .35s var(--ease-spring) both;
+}
+@keyframes heroStreakLineIn{0%{transform:translateY(4px) scale(.85);opacity:0}100%{transform:translateY(0) scale(1);opacity:1}}
 @keyframes allDonePop{
   0%{transform:scale(.4);opacity:0}
   60%{transform:scale(1.08);opacity:1}
@@ -1533,6 +1559,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
   transform:translate(-50%,-50%) scale(.8);
   background:var(--card);border-radius:24px;padding:32px 40px;text-align:center;
   z-index:501;pointer-events:none;opacity:0;
+  max-width:calc(100vw - 56px);
   transition:opacity .18s,transform .28s var(--ease-spring);
   box-shadow:0 20px 60px rgba(0,0,0,.2);
 }
@@ -2315,8 +2342,10 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
   display:flex;align-items:center;gap:14px;
   padding:15px 16px;border-bottom:.5px solid var(--sep);
   min-height:56px;
+  transition:background .1s;
 }
 .settings-row:last-child{border-bottom:none}
+.settings-row[onclick]:active{background:var(--fill)}
 .settings-row-icon{
   width:36px;height:36px;border-radius:10px;
   display:flex;align-items:center;justify-content:center;
@@ -3859,7 +3888,7 @@ function _renderPlanDetailSheet(){
       <div class="plan-sec-sub" style="margin:10px 0 4px">タップして各項目の完了・未完了を切り替えられます</div>
       <div class="plan-list" style="box-shadow:none;border-radius:12px">
         ${items.map(it=>`
-        <div class="plan-detail-row" style="cursor:pointer" onclick="planScheduleToggleItem('${p.id}',${it.idx})">
+        <div class="plan-detail-row tappable" onclick="planScheduleToggleItem('${p.id}',${it.idx})">
           <span class="plan-detail-label" style="display:flex;align-items:center;gap:8px;min-width:0">
             <span style="width:18px;height:18px;border-radius:50%;flex-shrink:0;font-size:11px;line-height:18px;text-align:center;background:${it.done?'var(--plan)':'var(--fill)'};color:#fff">${it.done?'✓':''}</span>
             <span style="flex-shrink:0">${fmtShort(it.date)}</span>
@@ -6486,11 +6515,18 @@ function rToday(list, hasActive, allDone){
       const allDoneIconHtml = APP_ICON
         ? `<div class="all-done-icon-wrap"><img src="${APP_ICON}"></div>`
         : `<div class="all-done-icon-wrap all-done-icon-fallback">🎉</div>`;
+      const streakN = getStreak();
+      // 「今日のタスクを全部終えた」瞬間は、このアプリで一番気持ちが盛り上がる場面。
+      // 連続日数はずっと裏で計算されているだけで表に出てこなかったので、
+      // ここでこそ「積み重なってきたもの」として本人に返してあげる。
+      const streakLineHtml = streakN>=2
+        ? `<div class="hero-streak-line">🔥 ${streakN}日連続達成中！</div>` : '';
       el.innerHTML=bannerHtml+`
         <div class="hero all-done" style="text-align:center">
           ${allDoneIconHtml}
           <div class="hero-msg">今日もお疲れ様です</div>
           <div class="hero-sub" style="margin-top:6px">ナイスファイト！！</div>
+          ${streakLineHtml}
         </div>`+todayTagFilterBar+wrap(todoCardsHtml)+todayDoneAccHtml();
     } else {
       el.innerHTML=bannerHtml+`
