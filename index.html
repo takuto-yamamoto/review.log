@@ -288,6 +288,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
   background:rgba(245,158,11,.14);border-radius:6px;padding:1px 6px;margin-left:6px;
   vertical-align:middle;
 }
+.todo-half-tag.longterm{color:var(--blue-d);background:var(--blue-bg)}
 .todo-seg-note{font-size:12px;color:var(--lbl2);margin:2px 4px 14px}
 
 /* ══ Card wrap (swipe container) ══════ */
@@ -464,7 +465,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 .cal-spread-btn{
   width:100%;display:flex;align-items:center;gap:12px;text-align:left;
   background:var(--orange-bg);border:1.5px solid var(--orange-bd);border-radius:14px;
-  padding:11px 12px;cursor:pointer;font-family:inherit;transition:opacity .12s,transform .12s;
+  padding:11px 12px;cursor:pointer;font-family:inherit;transition:opacity .12s var(--ease-out),transform .12s var(--ease-out);
 }
 .cal-spread-btn:active{transform:scale(.98);opacity:.85}
 .cal-spread-icon{
@@ -5358,8 +5359,11 @@ function applyIntervalRetroactive(){
   const isTag = _intervalTarget !== 'global';
   const newInts = isTag ? DEV_SETTINGS.byTag[_intervalTarget] : DEV_SETTINGS.global;
   if(!Array.isArray(newInts) || newInts.length!==MAX_STEP){ toast(IC.alert,'先に間隔を設定してください'); return; }
-  const targetsDesc = isTag ? `「${getTag(_intervalTarget)?.name||''}」タグが付いた単元` : '対象の単元';
-  if(!confirm(`${targetsDesc}の今後の復習日を、新しい間隔で再計算します。よろしいですか？`)) return;
+  // 以前はここでもネイティブのconfirm()を使っていたが、スマート分散と同じ理由（アプリの
+  // 他の操作と体験が不揃いになる／PWA環境ではconfirm()自体が正しく動かないことがある）で
+  // 撤去し、即実行＋元に戻すバーに統一する。チェックボックス＋「実行する」ボタンという
+  // 2段階の操作自体が既に十分な確認になっている。
+  const snapshot = [];
   let count=0;
   U.forEach(u=>{
     if(u.done) return;
@@ -5372,14 +5376,23 @@ function applyIntervalRetroactive(){
     }
     const oldInts = u.ints || INTS;
     const delta = newInts[u.step] - oldInts[u.step];
+    snapshot.push({id:u.id, ints:u.ints, nextDate:u.nextDate});
     u.ints = newInts.slice();
     u.nextDate = addD(u.nextDate, delta);
     count++;
   });
   save();
   render();
-  toast(IC.checkCircle, `${count}件の単元に反映しました`);
   chk.checked=false;
+  showUndo(`${count}件に反映しました`, ()=>{
+    snapshot.forEach(s=>{
+      const u=U.find(x=>x.id===s.id); if(!u) return;
+      u.ints = s.ints;
+      u.nextDate = s.nextDate;
+    });
+    save();
+    render();
+  });
 }
 function toggleIntervalCustom(on){
   if(_intervalTarget==='global'){
@@ -6378,6 +6391,7 @@ function rToday(list, hasActive, allDone){
     list = list.filter(u=>(u.tags||[]).includes(activeTagIdToday));
   }
   const todoCardsHtml = renderTodoSectionHtml(compact, activeTagIdToday); // 復習カードと並列に、hero直下へ差し込むToDoカード群
+  const longtermTodoCardsHtml = renderLongtermTodoSectionHtml(compact, activeTagIdToday); // 長期タスクは一番後ろに固定表示
 
   // 計画タブで作成したタスクのうち、今日やること（毎日/曜日指定/間隔/目標型）。
   // 通常の復習カードと見出しなしで同じリストに並べる
@@ -6507,7 +6521,7 @@ function rToday(list, hasActive, allDone){
       el.innerHTML=bannerHtml+`
         <div class="hero">
           <div class="hero-msg">${msg}</div>
-        </div>`+todayTagFilterBar+wrap(todoCardsHtml+duePlanSecHtml()+forwardPushSecHtml())+todayDoneAccHtml();
+        </div>`+todayTagFilterBar+wrap(todoCardsHtml+duePlanSecHtml()+forwardPushSecHtml()+longtermTodoCardsHtml)+todayDoneAccHtml();
       _restoreTodayTagfScroll(el);
       return;
     }
@@ -6527,13 +6541,13 @@ function rToday(list, hasActive, allDone){
           <div class="hero-msg">今日もお疲れ様です</div>
           <div class="hero-sub" style="margin-top:6px">ナイスファイト！！</div>
           ${streakLineHtml}
-        </div>`+todayTagFilterBar+wrap(todoCardsHtml)+todayDoneAccHtml();
+        </div>`+todayTagFilterBar+wrap(todoCardsHtml+longtermTodoCardsHtml)+todayDoneAccHtml();
     } else {
       el.innerHTML=bannerHtml+`
         <div class="hero">
           <div class="hero-msg">単元を追加しましょう</div>
           <div class="hero-sub" style="margin-top:6px">＋ボタンから最初の単元を登録できます</div>
-        </div>`+todayTagFilterBar+wrap(todoCardsHtml)+`
+        </div>`+todayTagFilterBar+wrap(todoCardsHtml+longtermTodoCardsHtml)+`
         <div class="empty">
           <div class="empty-icon">${IC.calendarLg}</div>
           <p>復習したい単元を追加すると<br>スケジュールが自動で組まれます</p>
@@ -6568,7 +6582,7 @@ function rToday(list, hasActive, allDone){
       ? `「${esc(_filterTagToday.name)}」のタグが付いた今日の復習は<br>見つかりませんでした`
       : '今日の復習はありません';
     html+=`<div class="empty" style="padding:28px 0"><div class="empty-icon">${IC.searchLg}</div><h3>該当する単元がありません</h3><p>${_emptyMsgToday}</p></div>`;
-    html += wrap(duePlanSecHtml()+forwardPushSecHtml()) + todayDoneAccHtml();
+    html += wrap(duePlanSecHtml()+forwardPushSecHtml()+longtermTodoCardsHtml) + todayDoneAccHtml();
     el.innerHTML=html; _restoreTodayTagfScroll(el); return;
   }
   // 今日タブのメインカード群（ToDo・期限切れ・今日が期限・計画タスク）を
@@ -6582,7 +6596,7 @@ function rToday(list, hasActive, allDone){
     gridHtml+=`<div class="sec${filteredOverdue.length?'':' sec-first'}">今日が期限 · ${filteredDueToday.length}件</div>`;
     gridHtml+=filteredDueToday.map(u=>cHtml(u, compact)).join('');
   }
-  gridHtml += duePlanSecHtml() + forwardPushSecHtml();
+  gridHtml += duePlanSecHtml() + forwardPushSecHtml() + longtermTodoCardsHtml;
   html += wrap(gridHtml);
   html += todayDoneAccHtml();
   el.innerHTML=html;
@@ -8456,8 +8470,11 @@ function openSmartSpread(){
     toast(IC.alert, '分散できるタスクがありません（1・2回目の復習、計画タスク、ToDoは対象外です）');
     return;
   }
-  const ok = confirm(`3回目以降の復習${total}件を、今日から7日間で均等にならします。\n1・2回目の復習、計画タスク、ToDoは動かしません。よろしいですか？`);
-  if(!ok) return;
+  // 以前はここでネイティブのconfirm()を挟んでいたが、アプリの他の操作
+  // （削除など）はすべて「即実行 + 元に戻すバー」で完結しており、そこだけ
+  // OSの素っ気ないポップアップが割り込むのは体験として浮いていた。
+  // ボタン自体に件数と対象期間がすでに書いてあるので、そのまま実行して
+  // 5秒間だけ「元に戻す」を出す方が、他の操作と一貫していて心地よい。
   runSmartSpread(units);
 }
 
@@ -8485,9 +8502,18 @@ function runSmartSpread(units){
   }
 
   const movedUnitIds = new Set();
+  // 元に戻せるように、動かす直前の状態を1件ごとに記録しておく（同じユニットが
+  // 2周目でも動く場合があるため、最初の1回分＝本当の元の状態だけを残す）
+  const snapshot = new Map();
+  function _snapBefore(u){
+    if(!snapshot.has(u.id)){
+      snapshot.set(u.id, { nextDate: u.nextDate, hadOrigDueDate: !!u.origDueDate, origDueDate: u.origDueDate });
+    }
+  }
   units.forEach(u=>{
     const dest = bestDest(null);
     load[dest]++;
+    _snapBefore(u);
     if(!u.origDueDate) u.origDueDate = u.nextDate;
     u.nextDate = dest;
     movedUnitIds.add(u.id);
@@ -8510,6 +8536,7 @@ function runSmartSpread(units){
       const dest = bestDest(d);
       if(dest===d || load[dest] >= load[d]-1) break; // これ以上動かしても改善しない
       load[d]--; load[dest]++;
+      _snapBefore(movU);
       if(!movU.origDueDate) movU.origDueDate = movU.nextDate;
       movU.nextDate = dest;
       movedUnitIds.add(movU.id);
@@ -8523,7 +8550,16 @@ function runSmartSpread(units){
   const msg = leveledCount>0
     ? `${totalMoved}件を分散し、混み合う日をさらに${leveledCount}件ならしました`
     : `${totalMoved}件のタスクを今日から7日間に分散しました`;
-  toast(IC.check, msg);
+  showUndo(msg, ()=>{
+    snapshot.forEach((s, id)=>{
+      const u=U.find(x=>x.id===id); if(!u) return;
+      u.nextDate = s.nextDate;
+      if(s.hadOrigDueDate) u.origDueDate = s.origDueDate; else delete u.origDueDate;
+    });
+    save();
+    render();
+    _renderCalGrid();
+  });
   render();
 }
 
@@ -9262,8 +9298,10 @@ let _todoDraftTags = [];
 let _todoEditId = null; // null = 追加モード, idあり = 編集モード
 
 // 'custom' の場合は日付入力欄の値を返す（未入力ならnull）
+// 'longterm'（長期タスク）は「今日から毎日表示する」ので基準日は常に今日
 function _todoDateFromMode(mode){
   if(mode==='tomorrow') return addD(td(),1);
+  if(mode==='longterm') return td();
   if(mode==='custom'){
     const inp=document.getElementById('todo-date-custom-inp');
     const v=inp?.value||'';
@@ -9271,11 +9309,24 @@ function _todoDateFromMode(mode){
   }
   return td();
 }
+// 長期タスクの「いつまでに終わらせたいか」の目安日（クイック選択 or 個別指定）
+function _todoLongtermDeadlineValue(){
+  const inp=document.getElementById('todo-longterm-deadline-inp');
+  const v=inp?.value||'';
+  return v||null;
+}
 
 function _updateTodoSegNote(){
-  const dateStr = _todoDateFromMode(_todoDateMode);
   const note = document.getElementById('todo-seg-note');
   if(!note) return;
+  if(_todoDateMode==='longterm'){
+    const dl = _todoLongtermDeadlineValue();
+    note.textContent = dl
+      ? `今日から毎日「今日」タブに表示され、${fmtShortText(dl)}が目安の期限になります（期限を過ぎても「遅延」とは表示されません）`
+      : '目安の期限を選んでください';
+    return;
+  }
+  const dateStr = _todoDateFromMode(_todoDateMode);
   note.textContent = dateStr ? `${fmtShortText(dateStr)}の「今日」タブに表示されます` : '日付を選択してください';
 }
 
@@ -9293,6 +9344,36 @@ function selectTodoDateSeg(btn){
         }
       },50);
     }
+  }
+  const ltWrap=document.getElementById('todo-longterm-wrap');
+  if(ltWrap) ltWrap.style.display = _todoDateMode==='longterm' ? 'block' : 'none';
+  if(_todoDateMode==='longterm'){
+    // 長期タスクに切り替えた直後、クイック選択が何も選ばれていなければ「1週間後」を初期値にする
+    const seg=document.getElementById('todo-longterm-quick-seg');
+    if(seg && !seg.querySelector('.seg-btn.on')){
+      const wk=seg.querySelector('[data-days="7"]');
+      if(wk) selectTodoLongtermQuick(wk);
+    }
+  }
+  haptic();
+  _updateTodoSegNote();
+}
+// 長期タスクの期限クイック選択（3日後／1週間後／2週間後／日付指定）
+function selectTodoLongtermQuick(btn){
+  document.querySelectorAll('#todo-longterm-quick-seg .seg-btn').forEach(b=>b.classList.toggle('on',b===btn));
+  const deadlineInp=document.getElementById('todo-longterm-deadline-inp');
+  const days=btn.dataset.days;
+  if(days===''){
+    if(deadlineInp){
+      deadlineInp.style.display='block'; deadlineInp.min=td();
+      if(!deadlineInp.value) deadlineInp.value=addD(td(),7);
+      setTimeout(()=>{
+        deadlineInp.focus();
+        if(typeof deadlineInp.showPicker==='function'){ try{ deadlineInp.showPicker(); }catch(_){} }
+      },50);
+    }
+  } else {
+    if(deadlineInp){ deadlineInp.style.display='none'; deadlineInp.value=addD(td(),parseInt(days,10)); }
   }
   haptic();
   _updateTodoSegNote();
@@ -9354,6 +9435,10 @@ function openTodoAddSheet(){
   document.getElementById('todo-inp').value='';
   const customInp=document.getElementById('todo-date-custom-inp');
   if(customInp){ customInp.value=''; customInp.min=td(); customInp.style.display='none'; }
+  const ltWrap=document.getElementById('todo-longterm-wrap'); if(ltWrap) ltWrap.style.display='none';
+  const ltDeadlineInp=document.getElementById('todo-longterm-deadline-inp');
+  if(ltDeadlineInp){ ltDeadlineInp.value=''; ltDeadlineInp.min=td(); ltDeadlineInp.style.display='none'; }
+  document.querySelectorAll('#todo-longterm-quick-seg .seg-btn').forEach(b=>b.classList.toggle('on',b.dataset.days==='7'));
   renderTodoTagSel();
   const ttl=document.getElementById('todo-sheet-ttl'); if(ttl) ttl.textContent='ToDoを追加する';
   const btn=document.getElementById('todo-sheet-btn'); if(btn) btn.textContent='追加する';
@@ -9386,7 +9471,7 @@ function openTodoEditSheet(id){
   document.getElementById('todo-inp').value=x.text;
 
   const tomorrow=addD(td(),1);
-  const mode = x.date===td() ? 'today' : (x.date===tomorrow ? 'tomorrow' : 'custom');
+  const mode = x.longterm ? 'longterm' : (x.date===td() ? 'today' : (x.date===tomorrow ? 'tomorrow' : 'custom'));
   _todoDateMode=mode;
   document.querySelectorAll('#todo-date-seg .seg-btn').forEach(b=>b.classList.toggle('on',b.dataset.val===mode));
   const customInp=document.getElementById('todo-date-custom-inp');
@@ -9394,6 +9479,24 @@ function openTodoEditSheet(id){
     customInp.min=td();
     customInp.value = x.date || td();
     customInp.style.display = mode==='custom' ? 'block' : 'none';
+  }
+  const ltWrap=document.getElementById('todo-longterm-wrap');
+  const ltDeadlineInp=document.getElementById('todo-longterm-deadline-inp');
+  if(ltWrap) ltWrap.style.display = mode==='longterm' ? 'block' : 'none';
+  if(mode==='longterm'){
+    const deadline = x.deadline || addD(td(),7);
+    const daysAway = diff(deadline);
+    const presetBtn = document.querySelector(`#todo-longterm-quick-seg [data-days="${daysAway}"]`);
+    document.querySelectorAll('#todo-longterm-quick-seg .seg-btn').forEach(b=>b.classList.toggle('on',b===presetBtn));
+    if(ltDeadlineInp){
+      ltDeadlineInp.min=td();
+      ltDeadlineInp.value=deadline;
+      ltDeadlineInp.style.display = presetBtn ? 'none' : 'block';
+    }
+    if(!presetBtn){
+      const customBtn=document.querySelector('#todo-longterm-quick-seg [data-days=""]');
+      if(customBtn) customBtn.classList.add('on');
+    }
   }
   renderTodoTagSel();
   const ttl=document.getElementById('todo-sheet-ttl'); if(ttl) ttl.textContent='ToDoを編集する';
@@ -9430,10 +9533,21 @@ function addTodo(){
     inp.classList.add('shake');
     haptic('medium'); inp.focus(); return;
   }
+  const isLongterm = _todoDateMode==='longterm';
   let date=_todoDateFromMode(_todoDateMode);
   if(!date){
-    toast(IC.alert,'日付を選択してください');
+    toast(IC.alert, isLongterm ? '期限を選択してください' : '日付を選択してください');
     haptic('medium'); return;
+  }
+  let deadline=null;
+  if(isLongterm){
+    deadline=_todoLongtermDeadlineValue();
+    if(!deadline){
+      toast(IC.alert,'期限を選択してください');
+      haptic('medium'); return;
+    }
+    // 「明日までに」なども入力できるよう、期限自体は今日より前でなければ許容する
+    if(deadline<td()) deadline=td();
   }
   // input要素のmin属性はUIの目安に過ぎず、手入力等で回避され得るため保存時にも再検証する
   if(date<td()) date=td();
@@ -9441,6 +9555,8 @@ function addTodo(){
     const x=TODOS.find(t=>t.id===_todoEditId);
     if(!x){ closeTodoAddSheet(); return; }
     x.text=text; x.date=date; x.tags=[..._todoDraftTags];
+    if(isLongterm){ x.longterm=true; x.deadline=deadline; }
+    else { delete x.longterm; delete x.deadline; }
     saveTodos();
     closeTodoAddSheet();
     render();
@@ -9448,12 +9564,14 @@ function addTodo(){
     haptic('medium');
     return;
   }
-  TODOS.unshift({id:Date.now().toString(), text, date, done:false, half:false, elapsedMs:0, timerStart:null, tags:[..._todoDraftTags], createdAt:Date.now()});
+  const task={id:Date.now().toString(), text, date, done:false, half:false, elapsedMs:0, timerStart:null, tags:[..._todoDraftTags], createdAt:Date.now()};
+  if(isLongterm){ task.longterm=true; task.deadline=deadline; }
+  TODOS.unshift(task);
   saveTodos();
   inp.value='';
   closeTodoAddSheet();
   render();
-  const suffix = date!==td() ? `（${fmtShortText(date)}）` : '';
+  const suffix = isLongterm ? `（${fmtShortText(deadline)}までに）` : (date!==td() ? `（${fmtShortText(date)}）` : '');
   setTimeout(()=>toast(IC.checkCircle, 'ToDoを追加'+suffix), 340);
   haptic('medium');
 }
@@ -9486,18 +9604,29 @@ function deleteTodo(id){
 function todoCardHtml(x, compact){
   const tagsHtml = (x.tags&&x.tags.length)?`<div class="card-tags-row">${x.tags.map(tid=>tagHtml(tid)).join('')}</div>`:'';
   const t = td();
-  const over = x.date && x.date < t;
-  const whenChip = over
-    ? `<div class="card-when-chip over">${IC.alert} ${Math.abs(diff(x.date))}日超過</div>`
-    : `<div class="card-when-chip">${IC.calendar} 今日やること</div>`;
+  // 長期タスクは「その日までに終わらせられればOK」という緩やかな目安であり、
+  // 日々の進み方が気分やその日の余裕次第でバラつくのが前提。他のToDoのような
+  // 「◯日超過」という赤字の遅延表示は、この手のタスクにはそぐわないため出さない。
+  const over = !x.longterm && x.date && x.date < t;
+  let whenChip;
+  if(x.longterm){
+    const remain = diff(x.deadline||t);
+    const dLabel = fmtShortText(x.deadline||t);
+    const remainTxt = remain>0 ? `あと${remain}日（${dLabel}まで）` : remain===0 ? '今日が目安の期限' : `${dLabel}が目安でした`;
+    whenChip = `<div class="card-when-chip due">${IC.calendar} ${remainTxt}</div>`;
+  } else {
+    whenChip = over
+      ? `<div class="card-when-chip over">${IC.alert} ${Math.abs(diff(x.date))}日超過</div>`
+      : `<div class="card-when-chip">${IC.calendar} 今日やること</div>`;
+  }
   const okLabel = compact ? '完了にする' : '時間を記録して完了';
-  const snoozeBtn = compact
+  const snoozeBtn = (x.longterm ? '' : (compact
     ? `<button class="btn-snooze" onclick="openTodoSnooze('${x.id}')" aria-label="延期">${IC.moon}</button>`
-    : `<button class="btn-snooze" onclick="openTodoSnooze('${x.id}')">${IC.moon} 延期</button>`;
+    : `<button class="btn-snooze" onclick="openTodoSnooze('${x.id}')">${IC.moon} 延期</button>`));
   return `<div class="cw" id="w-todo-${x.id}" data-id="${x.id}">
     <div class="card todo${over?' over':''}" id="c-todo-${x.id}">
       <div class="card-top">
-        <div class="card-name">${esc(x.text)}${x.half?'<span class="todo-half-tag">途中まで</span>':''}</div>
+        <div class="card-name">${esc(x.text)}${x.longterm?'<span class="todo-half-tag longterm">長期</span>':''}${x.half?'<span class="todo-half-tag">途中まで</span>':''}</div>
         <div class="card-icon-row">
           <button class="btn-del" onclick="deleteTodo('${x.id}')" aria-label="削除">${IC.trash}</button>
         </div>
@@ -9506,7 +9635,7 @@ function todoCardHtml(x, compact){
       <div class="card-status-row">
         ${whenChip}
       </div>
-      ${snoozeNoteHtml(x.origDueDate, x.date)}
+      ${x.longterm ? '' : snoozeNoteHtml(x.origDueDate, x.date)}
       <div class="acts">
         <button class="btn-ok" onclick="openStudyTimerForTodo('${x.id}')">${IC.timerSm} ${okLabel}</button>
         ${snoozeBtn}
@@ -9520,10 +9649,25 @@ function todoCardHtml(x, compact){
 // 完了済みのToDoはここには含めず、他のカードと同様に「完了済み」アコーディオンへ移す。
 function renderTodoSectionHtml(compact, tagId){
   const t = td();
-  let list = TODOS.filter(x=>x.date && x.date<=t && !x.done).sort((a,b)=>(a.date||'').localeCompare(b.date||'')||(a.createdAt||0)-(b.createdAt||0));
+  // 長期タスクはここでは出さず、今日タブの一番後ろにまとめて表示する
+  // （renderLongtermTodoSectionHtml側で担当。理由は関数末尾のコメント参照）
+  let list = TODOS.filter(x=>x.date && x.date<=t && !x.done && !x.longterm).sort((a,b)=>(a.date||'').localeCompare(b.date||'')||(a.createdAt||0)-(b.createdAt||0));
   if(tagId) list = list.filter(x=>(x.tags||[]).includes(tagId));
   if(!list.length) return '';
   return list.map(x=>todoCardHtml(x, compact)).join('');
+}
+
+// 長期タスク（〜日までにやりたい、日々の進み方は気分次第の緩やかなタスク）専用の表示。
+// 通常のToDo・期限切れの復習・今日の計画タスクより優先度が低いという位置づけなので、
+// 今日タブの一番下（前倒し提案よりさらに後ろ）にまとめて出す。緊急度の高いものを
+// 先に目に入れてもらい、長期タスクは「余裕があれば」の位置に自然に下げる狙い。
+function renderLongtermTodoSectionHtml(compact, tagId){
+  let list = TODOS.filter(x=>x.longterm && !x.done)
+    .sort((a,b)=>(a.deadline||'').localeCompare(b.deadline||'')||(a.createdAt||0)-(b.createdAt||0));
+  if(tagId) list = list.filter(x=>(x.tags||[]).includes(tagId));
+  if(!list.length) return '';
+  const header = `<div class="sec">🎯 長期タスク · ${list.length}件</div>`;
+  return header + list.map(x=>todoCardHtml(x, compact)).join('');
 }
 
 /* ══ ToDoフィルタ（予定タブのタグバー「ToDo」チップ） ══
@@ -9539,6 +9683,15 @@ function todoFilterListHtml(){
   const t = td();
   const sorted = [...TODOS].sort((a,b)=>{
     if(a.done!==b.done) return a.done?1:-1;
+    // 長期タスクはグループが分断されないよう、通常のToDoとは別枠にまとめて隣接させる
+    // （x.date は作成日で固定のため、そのまま日付順に混ぜるとグループが飛び飛びになってしまう）
+    const aLt=!!a.longterm, bLt=!!b.longterm;
+    if(aLt!==bLt) return aLt?1:-1;
+    if(aLt){
+      const da=a.deadline||'', db=b.deadline||'';
+      if(da!==db) return da.localeCompare(db);
+      return (a.createdAt||0)-(b.createdAt||0);
+    }
     const da=a.date||'', db=b.date||'';
     if(da!==db) return da.localeCompare(db);
     return (a.createdAt||0)-(b.createdAt||0);
@@ -9548,6 +9701,7 @@ function todoFilterListHtml(){
   sorted.forEach(x=>{
     let g;
     if(x.done) g='完了済み';
+    else if(x.longterm) g='長期タスク'; // 作成日で固定された x.date で判定すると日が経つほど「期限超過」に誤分類されてしまうため別枠にする
     else if(!x.date) g='日付未設定';
     else if(x.date < t) g='期限超過';
     else if(x.date === t) g='今日';
@@ -9565,7 +9719,7 @@ function todoFilterListHtml(){
 }
 
 function todoAllRowHtml(x){
-  const dateLbl = x.date ? fmtShortText(x.date) : '';
+  const dateLbl = x.longterm ? `${fmtShortText(x.deadline||x.date)}まで` : (x.date ? fmtShortText(x.date) : '');
   const tagsHtml = (x.tags&&x.tags.length) ? `<div class="card-tags-row" style="margin-top:3px">${x.tags.map(tid=>tagHtml(tid)).join('')}</div>` : '';
   const leadBtn = x.done
     ? `<button class="todo-all-check on" onclick="toggleTodo('${x.id}')" aria-label="未完了に戻す">${IC.check}</button>`
@@ -9573,7 +9727,7 @@ function todoAllRowHtml(x){
   return `<div class="todo-all-row" id="todo-all-row-${x.id}">
     ${leadBtn}
     <div class="todo-all-body">
-      <div class="todo-all-name${x.done?' done':''}">${esc(x.text)}${(x.half&&!x.done)?'<span class="todo-half-tag">途中まで</span>':''}</div>
+      <div class="todo-all-name${x.done?' done':''}">${esc(x.text)}${(x.longterm&&!x.done)?'<span class="todo-half-tag longterm">長期</span>':''}${(x.half&&!x.done)?'<span class="todo-half-tag">途中まで</span>':''}</div>
       ${dateLbl?`<div class="todo-all-date">${dateLbl}</div>`:''}
       ${tagsHtml}
     </div>
@@ -10452,8 +10606,22 @@ if('serviceWorker' in navigator){
       <button class="seg-btn on" data-val="today" onclick="selectTodoDateSeg(this)">今日</button>
       <button class="seg-btn" data-val="tomorrow" onclick="selectTodoDateSeg(this)">明日</button>
       <button class="seg-btn" data-val="custom" onclick="selectTodoDateSeg(this)">日付指定</button>
+      <button class="seg-btn" data-val="longterm" onclick="selectTodoDateSeg(this)">長期</button>
     </div>
     <input type="date" id="todo-date-custom-inp" style="display:none;margin-top:10px;width:100%;background:var(--fill);border:1.5px solid var(--sep);border-radius:12px;padding:12px 14px;font-family:inherit;font-size:16px;color:var(--lbl);outline:none" oninput="_updateTodoSegNote()">
+    <div id="todo-longterm-wrap" style="display:none;margin-top:10px">
+      <div class="date-label" style="margin-top:0">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>
+        いつまでに終わらせたい？
+      </div>
+      <div class="seg" id="todo-longterm-quick-seg">
+        <button class="seg-btn" data-days="3" onclick="selectTodoLongtermQuick(this)">3日後</button>
+        <button class="seg-btn on" data-days="7" onclick="selectTodoLongtermQuick(this)">1週間後</button>
+        <button class="seg-btn" data-days="14" onclick="selectTodoLongtermQuick(this)">2週間後</button>
+        <button class="seg-btn" data-days="" onclick="selectTodoLongtermQuick(this)">日付指定</button>
+      </div>
+      <input type="date" id="todo-longterm-deadline-inp" style="display:none;margin-top:10px;width:100%;background:var(--fill);border:1.5px solid var(--sep);border-radius:12px;padding:12px 14px;font-family:inherit;font-size:16px;color:var(--lbl);outline:none" oninput="_updateTodoSegNote()">
+    </div>
     <div class="todo-seg-note" id="todo-seg-note"></div>
     <div id="todo-tag-sel-wrap"></div>
     <button class="sheet-ok" id="todo-sheet-btn" onclick="addTodo()">追加する</button>
