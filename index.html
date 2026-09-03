@@ -32,7 +32,7 @@
   --red:#FF3B30;
   --plan:#7C3AED;--plan-d:#6D28D9;--plan-bg:#F5F3FF;--plan-bd:rgba(124,58,237,.18);
   --orange:#F97316;--orange-d:#EA580C;--orange-bg:#FFF4E9;--orange-bd:rgba(249,115,22,.2);
-  --lbl:#0F0F14;--lbl2:rgba(60,60,67,.52);--lbl3:rgba(60,60,67,.26);
+  --lbl:#0F0F14;--lbl2:rgba(60,60,67,.52);--lbl3:rgba(60,60,67,.26);--icon-muted:rgba(60,60,67,.62);
   --sep:rgba(60,60,67,.09);--fill:rgba(120,120,128,.09);
   /* 影は「近い・柔らかい」層と「遠い・広い」層を重ねることで、フラットな1枚影より
      奥行きを感じさせる。あわせて極薄の輪郭線（--card-bd）を添えることで、影が
@@ -194,7 +194,7 @@ body.pwa .navbar{
   max-width:none;
 }
 .icrop-zoom-row{display:flex;align-items:center;gap:10px;margin-bottom:18px}
-.icrop-zoom-row svg{flex-shrink:0;color:var(--lbl3)}
+.icrop-zoom-row svg{flex-shrink:0;color:var(--icon-muted)}
 .icrop-zoom-row input[type=range]{
   flex:1;-webkit-appearance:none;appearance:none;height:4px;border-radius:3px;
   background:var(--fill);outline:none;
@@ -243,8 +243,10 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 /* ══ Section label ═════════════════════ */
 .sec{
   font-size:11px;font-weight:700;letter-spacing:1.1px;text-transform:uppercase;
-  color:var(--lbl3);padding:0 4px;margin:16px 0 7px
+  color:var(--lbl3);padding:0 4px;margin:16px 0 7px;
+  display:flex;align-items:center;gap:5px
 }
+.sec svg{flex-shrink:0}
 .sec.sec-first{margin-top:4px}
 
 /* ══ Hero card ═════════════════════════ */
@@ -343,7 +345,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 .card-when-chip.over{color:#C0392B;background:#FFF1F0;border:1px solid rgba(255,59,48,.18)}
 .card-when-chip.fwd{color:#B45309;background:#FFFBEB;border:1px solid rgba(245,158,11,.3)}
 .card-snooze-note{
-  display:flex;align-items:center;gap:4px;font-size:11.5px;color:var(--lbl3);
+  display:flex;align-items:center;gap:4px;font-size:11.5px;color:var(--icon-muted);
   margin-top:-2px;margin-bottom:10px
 }
 .card-snooze-note svg{width:12px;height:12px;flex-shrink:0}
@@ -454,7 +456,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 }
 .btn-start:active{background:var(--blue);color:#fff}
 .btn-snooze{
-  background:var(--fill);color:var(--lbl3);border:none;border-radius:12px;
+  background:var(--fill);color:var(--icon-muted);border:none;border-radius:12px;
   padding:11px 13px;min-height:44px;
   font-size:13px;font-weight:600;cursor:pointer;
   white-space:nowrap;display:flex;align-items:center;gap:5px;
@@ -635,7 +637,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 .plan-row-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
 .plan-row-acts{display:flex;gap:1px;flex-shrink:0}
 .plan-row-btn{
-  width:30px;height:30px;border-radius:9px;border:none;background:transparent;color:var(--lbl3);
+  width:30px;height:30px;border-radius:9px;border:none;background:transparent;color:var(--icon-muted);
   display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .12s,color .12s
 }
 .plan-row-btn:active{background:var(--fill);color:var(--lbl2)}
@@ -669,7 +671,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
   font-family:'Outfit',sans-serif;font-size:16px;font-weight:800;
   min-width:38px;text-align:right
 }
-.tag-prog-chev{color:var(--lbl3);display:flex;transition:transform .22s ease}
+.tag-prog-chev{color:var(--icon-muted);display:flex;transition:transform .22s ease}
 .tag-prog-card.open .tag-prog-chev{transform:rotate(180deg)}
 /* bar */
 .tag-prog-bar-wrap{
@@ -753,6 +755,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
   width:18px;height:18px;display:flex;align-items:center;justify-content:center;
   box-shadow:0 1px 3px rgba(0,0,0,.15)
 }
+.study-bar-badge svg{width:11px;height:11px}
 
 /* ══ Study log preview card (勉強の記録プレビュー) ═══ */
 .chat-thread-wrap{
@@ -782,7 +785,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 .chat-bubble-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
 .chat-tag{background:rgba(124,58,237,.12);border-radius:100px;padding:2px 8px;font-size:11px;font-weight:600;color:#7C3AED}
 .chat-time{font-size:10px;color:var(--lbl3);flex-shrink:0;padding-bottom:3px;white-space:nowrap}
-.chat-del{background:none;border:none;cursor:pointer;color:var(--lbl3);min-width:36px;min-height:36px;display:flex;align-items:center;justify-content:center;border-radius:50%;flex-shrink:0;transition:color .12s}
+.chat-del{background:none;border:none;cursor:pointer;color:var(--icon-muted);min-width:36px;min-height:36px;display:flex;align-items:center;justify-content:center;border-radius:50%;flex-shrink:0;transition:color .12s}
 .chat-del:active{color:var(--red)}
 .chat-date-sep{text-align:center;font-size:11px;font-weight:700;color:var(--lbl3);letter-spacing:.5px;padding:10px 0 4px;position:relative}
 .chat-date-sep::before,.chat-date-sep::after{content:'';position:absolute;top:50%;width:28%;height:.5px;background:var(--sep)}
@@ -794,7 +797,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 /* U1: 44pt touch target for delete button */
 .done-del{
   background:none;border:none;cursor:pointer;
-  min-width:44px;min-height:44px;color:var(--lbl3);
+  min-width:44px;min-height:44px;color:var(--icon-muted);
   display:flex;align-items:center;justify-content:center;
   transition:color .12s
 }
@@ -827,7 +830,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
   background:radial-gradient(circle at 32% 28%,rgba(37,99,235,.1),var(--fill) 70%);
   box-shadow:inset 0 0 0 1px rgba(15,15,20,.04);
   display:flex;align-items:center;justify-content:center;margin:0 auto 14px;
-  color:var(--lbl3);
+  color:var(--icon-muted);
 }
 .empty h3{font-size:17px;font-weight:700;color:var(--lbl);margin-bottom:6px;letter-spacing:-.1px}
 .empty p{font-size:14px;line-height:1.8;color:var(--lbl2)}
@@ -849,7 +852,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 }
 .tab-btn{
   flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:3px;background:none;border:none;cursor:pointer;color:var(--lbl3);
+  gap:3px;background:none;border:none;cursor:pointer;color:var(--icon-muted);
   /* U1: ensure 44pt min-height for entire tab tap area */
   min-height:44px;padding:4px 0;
   transition:color .15s;position:relative
@@ -1078,7 +1081,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 /* ══ Edit button on card ════════════════ */
 .btn-edit{
   background:none;border:none;cursor:pointer;
-  padding:4px 6px;color:var(--lbl3);
+  padding:4px 6px;color:var(--icon-muted);
   display:flex;align-items:center;
   border-radius:6px;transition:background .12s,color .12s;
   flex-shrink:0;margin-top:1px;
@@ -1087,7 +1090,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 
 .btn-del{
   background:none;border:none;cursor:pointer;
-  padding:4px 6px;color:var(--lbl3);
+  padding:4px 6px;color:var(--icon-muted);
   display:flex;align-items:center;
   border-radius:6px;transition:background .12s,color .12s;
   flex-shrink:0;margin-top:1px;
@@ -1215,7 +1218,8 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
   font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;
   border-radius:100px;padding:2px 9px;margin-bottom:8px;letter-spacing:.3px;
 }
-.ob-emoji{font-size:28px;margin-bottom:6px;display:block;line-height:1}
+.ob-emoji{margin-bottom:8px;display:flex;color:var(--blue)}
+.ob-emoji svg{width:28px;height:28px}
 .ob-ttl{font-size:17px;font-weight:700;color:var(--lbl);margin-bottom:5px;line-height:1.35}
 .ob-body{font-size:14px;color:var(--lbl2);line-height:1.7;margin-bottom:14px}
 .ob-body strong{color:var(--lbl);font-weight:700}
@@ -1597,7 +1601,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 .cal-toggle-label{font-size:15px;font-weight:700;color:var(--lbl)}
 .cal-toggle-sub{font-size:12px;color:var(--lbl2);margin-top:1px}
 .cal-toggle-chev{
-  color:var(--lbl3);display:flex;transition:transform .22s ease;flex-shrink:0
+  color:var(--icon-muted);display:flex;transition:transform .22s ease;flex-shrink:0
 }
 .cal-toggle-chev.open{transform:rotate(180deg)}
 
@@ -1780,7 +1784,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 .dense-sheet-head{padding:12px 20px 10px;flex-shrink:0}
 .dense-sheet-ttl{font-size:17px;font-weight:700;color:var(--lbl);margin-bottom:3px}
 .dense-sheet-sub{font-size:13px;color:var(--lbl2);line-height:1.5}
-.dense-sheet-note{font-size:12px;color:var(--lbl3);margin-top:6px;line-height:1.5;
+.dense-sheet-note{font-size:12px;color:var(--icon-muted);margin-top:6px;line-height:1.5;
   background:var(--fill);border-radius:8px;padding:8px 10px}
 .dense-sheet-scroll{overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
   flex:1;min-height:0;padding:8px 16px 16px}
@@ -1864,7 +1868,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 .plan-rule-pick-row.disabled{opacity:.4;pointer-events:none}
 .plan-rule-pick-check{
   width:22px;height:22px;border-radius:7px;flex-shrink:0;border:1.5px solid var(--sep);
-  background:var(--card);display:flex;align-items:center;justify-content:center;color:var(--lbl3);
+  background:var(--card);display:flex;align-items:center;justify-content:center;color:var(--icon-muted);
   font-size:15px;font-weight:600;line-height:1;transition:background .12s,border-color .12s;
 }
 .plan-rule-pick-check.on{background:#7C3AED;border-color:#7C3AED;color:#fff}
@@ -1989,12 +1993,12 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 .tag-list-del{
   background:none;border:none;cursor:pointer;
   min-width:36px;min-height:36px;display:flex;align-items:center;justify-content:center;
-  color:var(--lbl3);border-radius:8px;transition:color .12s
+  color:var(--icon-muted);border-radius:8px;transition:color .12s
 }
 .tag-list-del:active{color:var(--red)}
 .tag-drag-handle{
   display:flex;align-items:center;justify-content:center;
-  min-width:32px;min-height:44px;color:var(--lbl3);
+  min-width:32px;min-height:44px;color:var(--icon-muted);
   cursor:grab;flex-shrink:0;touch-action:none;
 }
 .tag-drag-handle:active{cursor:grabbing;color:var(--blue)}
@@ -2043,7 +2047,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
   padding:2px 0
 }
 .cat-list-del{
-  background:none;border:none;cursor:pointer;color:var(--lbl3);
+  background:none;border:none;cursor:pointer;color:var(--icon-muted);
   min-width:36px;min-height:36px;
   display:flex;align-items:center;justify-content:center;
   transition:color .12s;border-radius:8px
@@ -2090,7 +2094,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
   font-family:'Outfit',sans-serif;font-size:15px;font-weight:800;flex-shrink:0
 }
 .cat-bd-chev{
-  color:var(--lbl3);flex-shrink:0;display:flex;
+  color:var(--icon-muted);flex-shrink:0;display:flex;
   transition:transform .22s ease
 }
 .cat-bd-card.open .cat-bd-chev{transform:rotate(180deg)}
@@ -2177,7 +2181,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 .backup-row-body{flex:1;min-width:0}
 .backup-row-ttl{font-size:15px;font-weight:700;color:var(--lbl);margin-bottom:2px}
 .backup-row-sub{font-size:12px;color:var(--lbl2);line-height:1.5}
-.backup-row-arrow{color:var(--lbl3);flex-shrink:0}
+.backup-row-arrow{color:var(--icon-muted);flex-shrink:0}
 .backup-last{
   text-align:center;font-size:12px;color:var(--lbl3);margin-top:14px;line-height:1.7
 }
@@ -2224,7 +2228,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
   font-size:17px;flex-shrink:0
 }
 .guide-acc-ttl{flex:1;font-size:14.5px;font-weight:700;color:var(--lbl)}
-.guide-acc-chev{color:var(--lbl3);flex-shrink:0;display:flex;transition:transform .22s ease}
+.guide-acc-chev{color:var(--icon-muted);flex-shrink:0;display:flex;transition:transform .22s ease}
 .guide-acc.open .guide-acc-chev{transform:rotate(180deg)}
 .guide-acc.open .guide-acc-header{border-bottom:.5px solid var(--sep)}
 .guide-acc-body{max-height:0;overflow:hidden;transition:max-height .32s var(--ease-out)}
@@ -2245,7 +2249,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
   border:1px solid #F59E0B;border-radius:14px;padding:13px 15px;
   display:flex;align-items:center;gap:12px;cursor:pointer
 }
-.backup-reminder-icon{font-size:22px;flex-shrink:0}
+.backup-reminder-icon{font-size:22px;flex-shrink:0;color:#B45309}
 .backup-reminder-body{flex:1;min-width:0}
 .backup-reminder-ttl{font-size:13px;font-weight:700;color:#78350F;margin-bottom:1px}
 .backup-reminder-sub{font-size:12px;color:#92400E;line-height:1.4}
@@ -2290,7 +2294,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
   padding:3px 10px;flex-shrink:0
 }
 .today-done-chev{
-  color:var(--lbl3);flex-shrink:0;display:flex;
+  color:var(--icon-muted);flex-shrink:0;display:flex;
   transition:transform .22s ease
 }
 .today-done-acc.open .today-done-chev{transform:rotate(180deg)}
@@ -2329,7 +2333,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
   background:none;border:none;cursor:pointer;
   min-width:44px;min-height:44px;
   display:flex;align-items:center;justify-content:center;
-  color:var(--lbl3);border-radius:8px;transition:color .12s;flex-shrink:0
+  color:var(--icon-muted);border-radius:8px;transition:color .12s;flex-shrink:0
 }
 .today-done-item-del:active{color:var(--red)}
 
@@ -2361,7 +2365,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 .layout-toggle-btn{
   border:none;background:none;border-radius:8px;width:40px;height:36px;
   display:flex;align-items:center;justify-content:center;cursor:pointer;
-  color:var(--lbl3);transition:background .15s,color .15s,box-shadow .15s;
+  color:var(--icon-muted);transition:background .15s,color .15s,box-shadow .15s;
 }
 .layout-toggle-btn.on{background:var(--card);color:var(--blue);box-shadow:0 1px 4px rgba(0,0,0,.12)}
 .layout-toggle-btn:active{opacity:.7}
@@ -2494,7 +2498,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
       <div class="nav-row">
         <div style="display:flex;align-items:center;gap:9px">
           <div id="nav-icon-wrap" onclick="switchTab(document.querySelector('[data-tab=settings]'))" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" role="button" tabindex="0" aria-label="設定を開く" style="cursor:pointer;flex-shrink:0">
-            <div id="nav-icon" style="width:38px;height:38px;border-radius:50%;overflow:hidden;background:var(--blue-bg);border:2px solid var(--blue-bd);display:flex;align-items:center;justify-content:center;font-size:20px;transition:opacity .15s">📚</div>
+            <div id="nav-icon" style="width:38px;height:38px;border-radius:50%;overflow:hidden;background:var(--blue-bg);border:2px solid var(--blue-bd);display:flex;align-items:center;justify-content:center;color:var(--blue-d);transition:opacity .15s"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
           </div>
           <div class="nav-title" id="nav-title">今日のタスク</div>
         </div>
@@ -2594,11 +2598,11 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
   <div class="expired-plan-bg" onclick="expiredPlanKeep()"></div>
   <div class="expired-plan-box">
     <div class="expired-plan-pull"></div>
-    <div class="expired-plan-icon">🏁</div>
+    <div class="expired-plan-icon" style="color:#fff"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4c2-1 4-1 6 0s4 1 6 0v10c-2 1-4 1-6 0s-4-1-6 0"/></svg></div>
     <div class="expired-plan-ttl" id="expired-plan-name">-</div>
     <div class="expired-plan-sub" id="expired-plan-period">-</div>
     <div class="expired-plan-body">お疲れさまでした！実施期間が終わりました。<br>このまま完了として残しますか？削除もできます。</div>
-    <button class="expired-plan-keep" onclick="expiredPlanKeep()">✓ 完了として残す</button>
+    <button class="expired-plan-keep" onclick="expiredPlanKeep()" style="display:flex;align-items:center;justify-content:center;gap:6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> 完了として残す</button>
     <button class="expired-plan-del" onclick="expiredPlanDelete()">削除する</button>
   </div>
 </div>
@@ -2649,7 +2653,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 
 <!-- P5: Celebration overlay -->
 <div class="celebrate-box" id="celebrate-box">
-  <span class="celebrate-emoji">🎉</span>
+  <span class="celebrate-emoji"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l3-9 9-3-2 8-8 2z" fill="#F59E0B" stroke="#F59E0B"/><circle cx="18" cy="4" r="1.6" fill="#EC4899" stroke="none"/><circle cx="21" cy="9" r="1.2" fill="#6366F1" stroke="none"/><circle cx="15" cy="2" r="1.1" fill="#22C55E" stroke="none"/><circle cx="4" cy="4" r="1.3" fill="#06B6D4" stroke="none"/></svg></span>
   <div class="celebrate-title">全復習完了！</div>
   <div class="celebrate-sub" id="celebrate-sub"></div>
 </div>
@@ -2699,7 +2703,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
    B5 fix: define proper large/small variants, no string.replace() hacks
 ══════════════════════════════════════════ */
 /* ══ App version ════════════════════════ */
-const APP_VERSION = 'v2.9.7';
+const APP_VERSION = 'v2.10.3';
 const APP_BUILD   = '2026-09-03';
 
 const IC = {
@@ -2716,10 +2720,10 @@ const IC = {
   clockLg:    `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>`,
   alert:      `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
   alertSm:    `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
-  book:       `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`,
+  book:       `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`,
   trophy:     `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 21 12 21 16 21"/><line x1="12" y1="17" x2="12" y2="21"/><path d="M7 4H17l-1 7a5 5 0 0 1-4 4 5 5 0 0 1-4-4L7 4z"/><path d="M5 9H3a2 2 0 0 1-2-2V5a1 1 0 0 1 1-1h3"/><path d="M19 9h2a2 2 0 0 0 2-2V5a1 1 0 0 0-1-1h-3"/></svg>`,
-  zap:        `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
-  wand:       `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4V2M15 16v-2M8 9H2M20 9h-2M17.8 11.8L19 13M15 9h.01M11 7l-1.2-1.2M17.8 6.2L19 5"/><path d="M9 17l-7 7"/><path d="M12.2 12.2L21 21"/></svg>`,
+  zap:        `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
+  wand:       `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4V2M15 16v-2M8 9H2M20 9h-2M17.8 11.8L19 13M15 9h.01M11 7l-1.2-1.2M17.8 6.2L19 5"/><path d="M9 17l-7 7"/><path d="M12.2 12.2L21 21"/></svg>`,
   arrow:      `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`,
   chevDown:   `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`,
   timerSm:    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>`,
@@ -2733,6 +2737,22 @@ const IC = {
   pause:      `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>`,
   info:       `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`,
   spread:     `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.8-1.1 2-1.7 3.3-1.7H22"/><path d="m18 2 4 4-4 4"/><path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"/><path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8"/><path d="m18 14 4 4-4 4"/></svg>`,
+  target:     `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>`,
+  listCheck:  `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg>`,
+  zapSm:      `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
+  link:       `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11.5 4.5"/><path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L12.5 19.5"/></svg>`,
+  save:       `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>`,
+  folder:     `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`,
+  bulb:       `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/></svg>`,
+  gear:       `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
+  image:      `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`,
+  flag:       `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4c2-1 4-1 6 0s4 1 6 0v10c-2 1-4 1-6 0s-4-1-6 0"/></svg>`,
+  fire:       `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c4 0 7-2.5 7-6.5C19 11 15 9 15 5c0 2-1.5 3.5-2 4-1-2-1-4-1-6-3 2-6 6-6 10.5C6 18.5 9 22 12 22z"/></svg>`,
+  star:       `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+  rocket:     `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>`,
+  chartBar:   `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>`,
+  phone:      `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><line x1="11" y1="18" x2="13" y2="18"/></svg>`,
+  brain:      `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 0 0-5.2-2A3 3 0 0 0 4 6a3 3 0 0 0-1 5.8A3 3 0 0 0 5 17a3 3 0 0 0 3 3 3 3 0 0 0 4-1"/><path d="M12 5a3 3 0 0 1 5.2-2A3 3 0 0 1 20 6a3 3 0 0 1 1 5.8A3 3 0 0 1 19 17a3 3 0 0 1-3 3 3 3 0 0 1-4-1"/><path d="M12 5v15"/></svg>`,
 };
 
 /* ══════════════════════════════════════════
@@ -3635,7 +3655,7 @@ function planCardHtml(p, opts){
     const pace=planPace(p);
     const pct=Math.min(100,Math.round(((p.doneCount||0)/p.totalCount)*100));
     const over=!p.done && diff(p.deadline)<0;
-    const paceLbl = p.done ? '🎉 達成しました！'
+    const paceLbl = p.done ? '達成しました！'
       : over ? `${IC.alertSm} 期限を過ぎています`
       : pace.remain<=0 ? ''
       : pace.daysPerOne>0 ? ''
@@ -3778,7 +3798,7 @@ function planOverviewRowHtml(p){
     const pace=planPace(p);
     const pct=Math.min(100,Math.round(((p.doneCount||0)/p.totalCount)*100));
     const over=!p.done && diff(p.deadline)<0;
-    const metaText = p.done ? '🎉 達成しました！'
+    const metaText = p.done ? '達成しました！'
       : over ? `期限切れ（${fmtShort(p.deadline)}まで）`
       : pace.remain<=0 ? `${fmtShort(p.deadline)}まで`
       : pace.daysPerOne>0 ? `${pace.daysPerOne}日に1個のペース · ${fmtShort(p.deadline)}まで`
@@ -3862,7 +3882,7 @@ function _renderPlanDetailSheet(){
     const pct=Math.min(100,Math.round(((p.doneCount||0)/p.totalCount)*100));
     const over=!p.done && diff(p.deadline)<0;
     const daysLeft=Math.max(diff(p.deadline),0);
-    const paceText = p.done ? '🎉 目標を達成しました'
+    const paceText = p.done ? '目標を達成しました'
       : over ? '期限を過ぎています'
       : pace.remain<=0 ? '達成済みです'
       : pace.daysPerOne>0 ? `${pace.daysPerOne}日に1個のペース`
@@ -3895,7 +3915,7 @@ function _renderPlanDetailSheet(){
         ${items.map(it=>`
         <div class="plan-detail-row tappable" onclick="planScheduleToggleItem('${p.id}',${it.idx})">
           <span class="plan-detail-label" style="display:flex;align-items:center;gap:8px;min-width:0">
-            <span style="width:18px;height:18px;border-radius:50%;flex-shrink:0;font-size:11px;line-height:18px;text-align:center;background:${it.done?'var(--plan)':'var(--fill)'};color:#fff">${it.done?'✓':''}</span>
+            <span style="width:18px;height:18px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:${it.done?'var(--plan)':'var(--fill)'};color:#fff">${it.done?IC.check.replace('width="16" height="16"','width="11" height="11"'):''}</span>
             <span style="flex-shrink:0">${fmtShort(it.date)}</span>
           </span>
           <span class="plan-detail-value" style="${it.done?'text-decoration:line-through;color:var(--lbl3)':''}">${esc(it.label&&it.label.trim()?it.label.trim():'（内容未入力）')}</span>
@@ -4195,7 +4215,7 @@ function renderPlanRuleAddSheet(){
       <div class="plan-rule-pri-btns">
         <button class="plan-rule-pri-btn" onclick="movePlanRuleDraftId('${id}',-1)" ${idx===0?'disabled':''} aria-label="優先度を上げる">▲</button>
         <button class="plan-rule-pri-btn" onclick="movePlanRuleDraftId('${id}',1)" ${idx===_planRuleDraftIds.length-1?'disabled':''} aria-label="優先度を下げる">▼</button>
-        <button class="plan-rule-pri-btn rm" onclick="togglePlanRuleDraftId('${id}')" aria-label="選択解除">✕</button>
+        <button class="plan-rule-pri-btn rm" onclick="togglePlanRuleDraftId('${id}')" aria-label="選択解除" style="display:flex;align-items:center;justify-content:center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
     </div>`;
   }).join('');
@@ -4224,7 +4244,7 @@ function renderPlanRuleAddSheet(){
       <div class="plan-rule-type-grid2">
         ${Object.entries(PLAN_RULE_TYPES).map(([key,c])=>`
           <button class="plan-rule-type-card${_planRuleDraftType===key?' on':''}" onclick="setPlanRuleDraftType('${key}')">
-            <span class="plan-rule-type-card-check">${IC.check||'✓'}</span>
+            <span class="plan-rule-type-card-check">${IC.check}</span>
             <span class="plan-rule-type-card-icon">${RULE_TYPE_ICON[key]||''}</span>
             <span class="plan-rule-type-card-body">
               <span class="plan-rule-type-card-lbl">${c.label}</span>
@@ -4579,7 +4599,7 @@ function _planPaceHintHtml(deadline, count){
   }
   const pace=_planPaceRaw(deadline, count, 0);
   if(pace.remain<=0){
-    return `<div class="plan-pace-hint" id="plan-pace-hint">🎉 今日が期限です。今日中に${count}個やりましょう</div>`;
+    return `<div class="plan-pace-hint" id="plan-pace-hint">今日が期限です。今日中に${count}個やりましょう</div>`;
   }
   const msg = pace.daysPerOne>1
     ? `${IC.zap.replace('white','currentColor')} 目安：${pace.daysPerOne}日に1回のペースでOK`
@@ -4697,13 +4717,14 @@ function _planPeriodSummaryText(d){
   return `${startTxt} 〜 ${endTxt}`;
 }
 function _planStepQuestionLabel(stepKey, d){
+  const ic = (svg)=>`<span style="display:inline-flex;vertical-align:-3px;margin-right:6px;color:var(--plan)">${svg}</span>`;
   switch(stepKey){
-    case 'name': return '📝 何を計画しますか？';
-    case 'tags': return '🏷️ タグを付けますか？（任意）';
-    case 'period': return d.type==='goal' ? '📅 いつまでに、何個やりますか？' : d.type==='schedule' ? '📅 日付ごとに、何をやりますか？' : '📅 いつから、いつまで取り組みますか？';
-    case 'repeat': return '🔁 どのくらいの頻度でやりますか？';
-    case 'nameMode': return '✏️ 毎回の表示名は？';
-    case 'confirm': return '✅ この内容で追加しますか？';
+    case 'name': return ic(IC.pencil)+'何を計画しますか？';
+    case 'tags': return ic(IC.tag)+'タグを付けますか？（任意）';
+    case 'period': return ic(IC.calendar)+(d.type==='goal' ? 'いつまでに、何個やりますか？' : d.type==='schedule' ? '日付ごとに、何をやりますか？' : 'いつから、いつまで取り組みますか？');
+    case 'repeat': return ic(IC.spread)+'どのくらいの頻度でやりますか？';
+    case 'nameMode': return ic(IC.pencil)+'毎回の表示名は？';
+    case 'confirm': return ic(IC.check)+'この内容で追加しますか？';
   }
   return '';
 }
@@ -5155,7 +5176,7 @@ function _updateNavIcon(){
     el.innerHTML=`<img src="${APP_ICON}" style="width:100%;height:100%;object-fit:cover">`;
     el.style.background='none'; el.style.border='2px solid var(--blue-bd)';
   } else {
-    el.innerHTML='📚';
+    el.innerHTML=`<span style="display:flex;color:var(--blue-d)">${IC.book}</span>`;
     el.style.background='var(--blue-bg)'; el.style.border='2px solid var(--blue-bd)';
   }
   _updateWebAppManifest();
@@ -5356,7 +5377,7 @@ function renderIntervalSettings(){
     </label>
     <div style="font-size:12px;color:var(--lbl3);margin-top:4px">数字は「復習日」からの経過日数です。例：1回目=1日後、2回目=3日後…</div>
     ${inputsHtml}
-    <div style="font-size:11px;color:var(--lbl3);line-height:1.6;background:var(--fill);border-radius:10px;padding:10px 12px;margin-top:6px">⚠️ ここでの変更は、<strong>新しく追加する単元</strong>には自動的に適用されます。既存の単元に適用したい場合は、下の「既存の単元にも反映する」を使ってください。${isTag?'':'タグを複数付けた単元は、設定済みのタグのうち先に追加したタグの間隔が優先されます。'}</div>
+    <div style="font-size:11px;color:var(--icon-muted);line-height:1.6;background:var(--fill);border-radius:10px;padding:10px 12px;margin-top:6px"><span style="display:inline-flex;vertical-align:-3px;margin-right:4px">${IC.alertSm}</span>ここでの変更は、<strong>新しく追加する単元</strong>には自動的に適用されます。既存の単元に適用したい場合は、下の「既存の単元にも反映する」を使ってください。${isTag?'':'タグを複数付けた単元は、設定済みのタグのうち先に追加したタグの間隔が優先されます。'}</div>
     ${useCustom?`
     <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;font-weight:600;color:var(--lbl2);cursor:pointer;margin-top:14px;padding-top:14px;border-top:1px solid var(--sep)">
       <input type="checkbox" id="interval-retro-chk" style="width:18px;height:18px;margin-top:1px">
@@ -6411,7 +6432,7 @@ function rToday(list, hasActive, allDone){
   const duePlan = activeTagIdToday ? duePlanAll.filter(p=>(p.tags||[]).includes(activeTagIdToday)) : duePlanAll;
   function duePlanSecHtml(){
     if(!duePlan.length) return '';
-    const header = `<div class="sec${todoCardsHtml?'':' sec-first'}">📅 計画タスク · ${duePlan.length}件</div>`;
+    const header = `<div class="sec${todoCardsHtml?'':' sec-first'}" style="color:var(--plan-d)">${IC.calendar}計画タスク · ${duePlan.length}件</div>`;
     return header + duePlan.map(p=>planCardHtml(p,{todayMode:true, compact})).join('');
   }
 
@@ -6419,7 +6440,7 @@ function rToday(list, hasActive, allDone){
   const forwardPushPlan = activeTagIdToday ? forwardPushAll.filter(({plan})=>(plan.tags||[]).includes(activeTagIdToday)) : forwardPushAll;
   function forwardPushSecHtml(){
     if(!forwardPushPlan.length) return '';
-    const header = `<div class="sec">⚡ 前倒し提案 · ${forwardPushPlan.length}件</div>`;
+    const header = `<div class="sec" style="color:#B45309">${IC.zapSm}前倒し提案 · ${forwardPushPlan.length}件</div>`;
     return header + forwardPushPlan.map(({plan,conflictWith,conflictDate})=>
       planCardHtml(plan,{todayMode:true, compact, forwardPush:true, conflictWith, conflictDate})
     ).join('');
@@ -6514,7 +6535,7 @@ function rToday(list, hasActive, allDone){
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
         <div class="today-done-label">完了済み</div>
-        <div class="today-done-count">✓ ${totalCount}件</div>
+        <div class="today-done-count" style="display:flex;align-items:center;gap:4px">${IC.check} ${totalCount}件</div>
         <div class="today-done-chev">${IC.chevDown}</div>
       </div>
       <div class="today-done-body">
@@ -6542,13 +6563,13 @@ function rToday(list, hasActive, allDone){
     if(hasActive){
       const allDoneIconHtml = APP_ICON
         ? `<div class="all-done-icon-wrap"><img src="${APP_ICON}"></div>`
-        : `<div class="all-done-icon-wrap all-done-icon-fallback">🎉</div>`;
+        : `<div class="all-done-icon-wrap all-done-icon-fallback" style="color:#F59E0B">${IC.trophy}</div>`;
       const streakN = getStreak();
       // 「今日のタスクを全部終えた」瞬間は、このアプリで一番気持ちが盛り上がる場面。
       // 連続日数はずっと裏で計算されているだけで表に出てこなかったので、
       // ここでこそ「積み重なってきたもの」として本人に返してあげる。
       const streakLineHtml = streakN>=2
-        ? `<div class="hero-streak-line">🔥 ${streakN}日連続達成中！</div>` : '';
+        ? `<div class="hero-streak-line" style="display:flex;align-items:center;gap:5px">${IC.fire} ${streakN}日連続達成中！</div>` : '';
       el.innerHTML=bannerHtml+`
         <div class="hero all-done" style="text-align:center">
           ${allDoneIconHtml}
@@ -6819,7 +6840,7 @@ function rStudy(){
   // アイコン表示
   const iconHtml = APP_ICON
     ? `<img src="${APP_ICON}" style="width:44px;height:44px;border-radius:12px;object-fit:cover;flex-shrink:0">`
-    : `<div style="width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">📚</div>`;
+    : `<div style="width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0">${IC.book}</div>`;
 
   // ヒーローカード（総勉強時間：100hごとに豪華になる演出、最大1000h）
   const heroTier = _studyHeroTierInfo(totalAllMins);
@@ -6927,8 +6948,8 @@ function _studyWeekTrendHtml(){
 
   return `<div style="margin-top:16px;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow-sm);overflow:hidden">
     <button onclick="toggleStudyWeekTrend()" style="width:100%;background:transparent;border:none;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-family:inherit" id="study-weektrend-toggle-btn">
-      <span style="font-size:13px;font-weight:700;color:var(--lbl2);letter-spacing:.5px">📊 週間合計の推移</span>
-      <svg id="study-weektrend-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--lbl3)" stroke-width="2.5" stroke-linecap="round" style="transition:transform .22s"><polyline points="6 9 12 15 18 9"/></svg>
+      <span style="font-size:13px;font-weight:700;color:var(--lbl2);letter-spacing:.5px;display:inline-flex;align-items:center;gap:5px">${IC.chartBar}週間合計の推移</span>
+      <svg id="study-weektrend-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--icon-muted)" stroke-width="2.5" stroke-linecap="round" style="transition:transform .22s"><polyline points="6 9 12 15 18 9"/></svg>
     </button>
     <div id="study-weektrend-body" style="max-height:0;overflow:hidden;transition:max-height .28s ease">
       <div style="padding:4px 16px 16px">
@@ -6988,7 +7009,7 @@ function _studyLogRowHtml(l){
   const titleDisp = l.title || unitName || '（無題）';
   const avatarHtml = APP_ICON
     ? `<img src="${APP_ICON}">`
-    : `<span>📚</span>`;
+    : `<span style="display:flex;color:var(--blue-d)">${IC.book}</span>`;
   const timeStr = l.createdAt ? (()=>{ const dt=new Date(l.createdAt); return `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`; })() : '';
   return `<div class="chat-msg" id="sl-${l.id}">
     <div class="chat-avatar">${avatarHtml}</div>
@@ -7001,7 +7022,7 @@ function _studyLogRowHtml(l){
       </div>
       ${tagChips ? `<div class="chat-bubble-tags">${tagChips}</div>` : ''}
     </div>
-    <button class="chat-del" onclick="openEditStudyLog('${l.id}')" aria-label="編集" style="color:var(--lbl3)">${IC.pencil}</button>
+    <button class="chat-del" onclick="openEditStudyLog('${l.id}')" aria-label="編集" style="color:var(--icon-muted)">${IC.pencil}</button>
     <button class="chat-del" onclick="delStudyLogAndRefresh('${l.id}')" aria-label="削除">${IC.trash}</button>
   </div>`;
 }
@@ -7139,7 +7160,7 @@ function _studyBarTier(m){
   if(m>=180) return 1;
   return 0;
 }
-const STUDY_TIER_BADGE = {1:'', 2:'✨', 3:'👑'};
+const STUDY_TIER_BADGE = {1:'', 2:IC.star, 3:IC.trophy};
 const STUDY_TIER_LABEL_COLOR = {1:'var(--blue)', 2:'#D97706', 3:'#DB2777'};
 
 function _studyWeekHtml(){
@@ -7169,7 +7190,7 @@ function _studyWeekHtml(){
     return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1">
       <div style="font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;line-height:1.25;color:${labelColor};min-height:26px;display:flex;align-items:flex-end;justify-content:center;text-align:center">${m>0?fmtMinutes(m):''}</div>
       <div style="width:100%;height:${BAR_MAX_H}px;display:flex;align-items:flex-end">
-        <div class="study-bar-fill${tier>0?` tier-${tier}`:''}" style="${fillStyle}">${badge?`<span class="study-bar-badge">${badge}</span>`:''}</div>
+        <div class="study-bar-fill${tier>0?` tier-${tier}`:''}" style="${fillStyle}">${badge?`<span class="study-bar-badge" style="display:flex;color:${labelColor}">${badge}</span>`:''}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:center;gap:1px">
         <div style="font-size:11px;font-weight:${isToday?'700':'500'};color:${isToday?'var(--blue)':'var(--lbl3)'}">${dayLabel}</div>
@@ -7555,15 +7576,15 @@ function _renderStudySheet(){
     ${_studySheetMode==='new'?`<input class="sheet-inp" id="study-title-inp" type="text" placeholder="内容（例：英単語、数学B）" maxlength="40" autocomplete="off" autocorrect="off">`:''}
     ${_studySheetMode==='review'&&u?`<div style="background:var(--blue-bg);border-radius:10px;padding:10px 14px;margin-bottom:14px">
       <div style="font-size:11px;font-weight:700;color:var(--blue);letter-spacing:.5px;margin-bottom:3px">記録タイトル（自動）</div>
-      <div style="font-size:14px;font-weight:700;color:var(--blue-d)">📖 ${esc(u.name)} - ${esc(STEPS[u.step]||`${u.step}回目`)}</div>
+      <div style="font-size:14px;font-weight:700;color:var(--blue-d);display:flex;align-items:center;gap:6px">${IC.book}${esc(u.name)} - ${esc(STEPS[u.step]||`${u.step}回目`)}</div>
     </div>`:''}
     ${_studySheetMode==='review'&&p?`<div style="background:var(--plan-bg);border-radius:10px;padding:10px 14px;margin-bottom:14px">
       <div style="font-size:11px;font-weight:700;color:var(--plan-d);letter-spacing:.5px;margin-bottom:3px">記録タイトル（自動）</div>
-      <div style="font-size:14px;font-weight:700;color:var(--plan-d)">🗓️ ${esc((p.type==='schedule' && _timerPlanItemIdx!=null) ? planDisplayName(p, (p.schedule||[])[_timerPlanItemIdx]) : planDisplayName(p))}</div>
+      <div style="font-size:14px;font-weight:700;color:var(--plan-d);display:flex;align-items:center;gap:6px">${IC.calendarLg}${esc((p.type==='schedule' && _timerPlanItemIdx!=null) ? planDisplayName(p, (p.schedule||[])[_timerPlanItemIdx]) : planDisplayName(p))}</div>
     </div>`:''}
     ${_studySheetMode==='review'&&td_?`<div style="background:var(--blue-bg);border-radius:10px;padding:10px 14px;margin-bottom:14px">
       <div style="font-size:11px;font-weight:700;color:var(--blue);letter-spacing:.5px;margin-bottom:3px">記録タイトル（自動）</div>
-      <div style="font-size:14px;font-weight:700;color:var(--blue-d)">📝 ${esc(td_.text)}</div>
+      <div style="font-size:14px;font-weight:700;color:var(--blue-d);display:flex;align-items:center;gap:6px">${IC.listCheck}${esc(td_.text)}</div>
     </div>`:''}
     ${_studyQtyHtml(p)}
     ${tagSelHtml}
@@ -7584,7 +7605,7 @@ function _renderStudySheet(){
       <span style="color:var(--lbl2);font-size:14px;font-weight:600;flex-shrink:0">分</span>
     </div>
     ${td_?'':`<div style="margin-bottom:16px">
-      <div style="font-size:13px;font-weight:600;color:var(--lbl2);margin-bottom:8px">📅 記録する日付</div>
+      <div style="font-size:13px;font-weight:600;color:var(--lbl2);margin-bottom:8px;display:flex;align-items:center;gap:5px">${IC.calendar}記録する日付</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap" id="study-date-btns">
         ${[['today','今日'],['yesterday','昨日'],['dayb4','一昨日'],['custom','日付指定']].map(([val,lbl])=>`
         <button onclick="setStudyDate('${val}')" id="sddate-${val}" style="border:1.5px solid ${_studySheetDate===val||(!_studySheetDate&&val==='today')?'var(--blue)':'var(--sep)'};background:${_studySheetDate===val||(!_studySheetDate&&val==='today')?'var(--blue-bg)':'var(--card)'};color:${_studySheetDate===val||(!_studySheetDate&&val==='today')?'var(--blue)':'var(--lbl2)'};border-radius:100px;padding:7px 14px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;white-space:nowrap;transition:all .15s">${lbl}</button>`).join('')}
@@ -7825,7 +7846,7 @@ function saveStudyRecord(){
     render();
     const activeTab=document.querySelector('.tab-btn.on');
     if(activeTab&&activeTab.dataset.tab==='study') rStudy();
-    toast(IC.checkCircle, fmtMinutes(minutes)+'を記録しました ✅');
+    toast(IC.checkCircle, fmtMinutes(minutes)+'を記録しました');
   }
   haptic('medium');
 }
@@ -7898,7 +7919,7 @@ function saveStudyRecordForTodo(isComplete){
   } else {
     render();
   }
-  toast(IC.checkCircle, minutes>0 ? (fmtMinutes(minutes)+'を記録しました ✅') : (isComplete?'完了にしました ✅':'途中までに設定しました'));
+  toast(IC.checkCircle, minutes>0 ? (fmtMinutes(minutes)+'を記録しました') : (isComplete?'完了にしました':'途中までに設定しました'));
   haptic('medium');
 }
 
@@ -8215,7 +8236,7 @@ function _calForecastText(evMap){
   if(total === 0) return '';
   const peak = next7.reduce((a,b) => b.count > a.count ? b : a, next7[0]);
   if(peak.count >= _calDenseThreshold(evMap)){
-    return `⚠️ ${fmtShortText(peak.date)}に${peak.count}件集中しています`;
+    return `<span style="display:inline-flex;vertical-align:-3px;margin-right:4px">${IC.alertSm}</span>${fmtShortText(peak.date)}に${peak.count}件集中しています`;
   }
   return `今後7日間で${total}件の予定があります`;
 }
@@ -8404,7 +8425,7 @@ function _calShiftBtnsHtml(dateStr, id, kind){
     const destCount = U.filter(u => !u.done && (destIsToday ? u.nextDate <= dest : u.nextDate === dest)).length
       + PLAN.filter(p => !p.done && p.type!=='daily' && (_planOccursOn(p, dest) || (destIsToday && planIsOverdue(p)))).length
       + TODOS.filter(x => !x.done && (destIsToday ? x.date <= dest : x.date === dest)).length;
-    const warn = destCount >= _calDenseThreshold() ? '⚠️' : '';
+    const warn = destCount >= _calDenseThreshold() ? `${IC.alertSm}` : '';
     const label = (d > 0 ? '+' : '') + d + '日' + warn;
     const fn = kind==='plan' ? `denseShiftPlan('${id}','${dest}')` : kind==='todo' ? `denseShiftTodo('${id}','${dest}')` : `denseShiftUnit('${id}','${dest}')`;
     return `<button class="dense-shift-btn" onclick="${fn}">${label}</button>`;
@@ -9310,12 +9331,12 @@ function backupBannerHtml(){
     : `最後の保存から ${days} 日が経ちました`;
   return `<div class="backup-reminder" id="backup-reminder-banner"
     onclick="if(!event.target.closest('.backup-reminder-close')){openBackupSheet();}">
-    <div class="backup-reminder-icon">💾</div>
+    <div class="backup-reminder-icon" style="display:flex;align-items:center;justify-content:center">${IC.save}</div>
     <div class="backup-reminder-body">
       <div class="backup-reminder-ttl">データのバックアップをしよう！</div>
       <div class="backup-reminder-sub">${daysText}。タップして復習記録を保存しましょう。</div>
     </div>
-    <button class="backup-reminder-close" onclick="event.stopPropagation();dismissBackupReminder()" aria-label="閉じる">✕</button>
+    <button class="backup-reminder-close" onclick="event.stopPropagation();dismissBackupReminder()" aria-label="閉じる" style="display:flex;align-items:center;justify-content:center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
   </div>`;
 }
 
@@ -9694,7 +9715,7 @@ function renderTodoSectionHtml(compact, tagId){
   let list = TODOS.filter(x=>x.date && x.date<=t && !x.done && !x.longterm).sort((a,b)=>(a.date||'').localeCompare(b.date||'')||(a.createdAt||0)-(b.createdAt||0));
   if(tagId) list = list.filter(x=>(x.tags||[]).includes(tagId));
   if(!list.length) return '';
-  const header = `<div class="sec sec-first">📝 ToDo · ${list.length}件</div>`;
+  const header = `<div class="sec sec-first" style="color:var(--blue-d)">${IC.listCheck}ToDo · ${list.length}件</div>`;
   return header + list.map(x=>todoCardHtml(x, compact)).join('');
 }
 
@@ -9707,7 +9728,7 @@ function renderLongtermTodoSectionHtml(compact, tagId){
     .sort((a,b)=>(a.deadline||'').localeCompare(b.deadline||'')||(a.createdAt||0)-(b.createdAt||0));
   if(tagId) list = list.filter(x=>(x.tags||[]).includes(tagId));
   if(!list.length) return '';
-  const header = `<div class="sec">🎯 長期タスク · ${list.length}件</div>`;
+  const header = `<div class="sec" style="color:#DB2777">${IC.target}長期タスク · ${list.length}件</div>`;
   return header + list.map(x=>todoCardHtml(x, compact)).join('');
 }
 
@@ -9781,37 +9802,37 @@ function todoAllRowHtml(x){
    各タブの機能を初心者にもわかるように解説するアコーディオン式ガイド。
    設定タブの「使い方ガイド」セクションから、タブごとに該当箇所を開いた状態で表示できる。 */
 const GUIDE_SECTIONS = [
-  { id:'overview', icon:'🚀', bg:'#EEF2FF', title:'はじめに（全体の仕組み）', body:`
+  { id:'overview', icon:`<span style="display:flex;color:var(--blue-d)">${IC.rocket}</span>`, bg:'#EEF2FF', title:'はじめに（全体の仕組み）', body:`
     <p>このアプリには3種類のタスクがあり、それぞれ役割が違います。</p>
     <ul>
-      <li><b>🔵 復習カード</b>：単語や暗記した内容を「1日後→7日後→14日後→…」のように、忘れかけたタイミングで自動的に思い出させてくれます。単元を登録すれば、あとは自動でスケジュールが組まれます。</li>
-      <li><b>🟣 計画タスク</b>：自分で決めた「毎日／曜日指定／○日ごと／期限までに◯個」のくり返しタスクです。問題集を進める、ノートをまとめる、といった継続的な作業に向いています。</li>
-      <li><b>🟠 ToDo</b>：一度きりのやることリストです。日付をつけて「その日までにやる」ことを管理できます。</li>
+      <li><span style="display:inline-flex;vertical-align:-2px;color:var(--blue)">●</span> <b>復習カード</b>：単語や暗記した内容を「1日後→7日後→14日後→…」のように、忘れかけたタイミングで自動的に思い出させてくれます。単元を登録すれば、あとは自動でスケジュールが組まれます。</li>
+      <li><span style="display:inline-flex;vertical-align:-2px;color:var(--plan)">●</span> <b>計画タスク</b>：自分で決めた「毎日／曜日指定／○日ごと／期限までに◯個」のくり返しタスクです。問題集を進める、ノートをまとめる、といった継続的な作業に向いています。</li>
+      <li><span style="display:inline-flex;vertical-align:-2px;color:#EA580C">●</span> <b>ToDo</b>：一度きりのやることリストです。日付をつけて「その日までにやる」ことを管理できます。</li>
     </ul>
     <p>この3つはすべて「今日」タブと「予定」タブに一緒に表示されるので、その日にやることを1か所で確認できます。</p>
-    <div class="guide-tip">💡 まずは「計画」タブでくり返しタスクを1つ作ってみる、または「今日」タブの＋ToDoボタンからやることを追加してみましょう。</div>
+    <div class="guide-tip"><span style="display:inline-flex;vertical-align:-3px;margin-right:4px">${IC.bulb}</span>まずは「計画」タブでくり返しタスクを1つ作ってみる、または「今日」タブの＋ToDoボタンからやることを追加してみましょう。</div>
   `},
-  { id:'today', icon:'📅', bg:'#EFF6FF', title:'「今日」タブの使い方', body:`
+  { id:'today', icon:`<span style="display:flex;color:var(--blue-d)">${IC.calendar}</span>`, bg:'#EFF6FF', title:'「今日」タブの使い方', body:`
     <p>その日にやるべきタスク（復習・計画・ToDo）がすべて1つのリストにまとまって表示されます。</p>
     <ul>
       <li>各カードの<b>「完了にする」</b>ボタンでその日の分を終わらせます。</li>
-      <li><b>🌙 延期</b>ボタンで、明日・2日後・3日後・1週間後に先送りできます。</li>
+      <li><span style="display:inline-flex;vertical-align:-3px;color:var(--lbl2)">${IC.moon}</span> <b>延期</b>ボタンで、明日・2日後・3日後・1週間後に先送りできます。</li>
       <li>タブアイコンの数字バッジは、今日やるべき残りのタスク数です。</li>
       <li>終わったタスクは下部の<b>「完了済み」</b>を開くと確認でき、間違えて完了にした場合は「↩ 戻す」で取り消せます。</li>
     </ul>
-    <div class="guide-tip">💡 カードの並び方（1列／2列）は設定タブの「表示」から切り替えられます。</div>
+    <div class="guide-tip"><span style="display:inline-flex;vertical-align:-3px;margin-right:4px">${IC.bulb}</span>カードの並び方（1列／2列）は設定タブの「表示」から切り替えられます。</div>
   `},
-  { id:'upcoming', icon:'🗓', bg:'#F5F3FF', title:'「予定」タブ（カレンダー）の使い方', body:`
+  { id:'upcoming', icon:`<span style="display:flex;color:var(--plan-d)">${IC.calendarLg}</span>`, bg:'#F5F3FF', title:'「予定」タブ（カレンダー）の使い方', body:`
     <p>復習・計画・ToDoをまとめてカレンダーで確認できます。上部の「月」「日」ボタンで表示を切り替えられます。</p>
     <ul>
       <li>印の色：<b>青＝復習</b>、<b>紫の丸＝計画タスク</b>、<b>オレンジのひし形＝ToDo</b></li>
       <li>日付をタップすると、その日のタスク一覧と「◯日ずらす」ボタンが表示されます。ここから復習・計画・ToDoをまとめて延期できます。</li>
-      <li>赤色は<b>期限超過</b>、⚠️マークは1日に予定が集中している「過密日」の目印です。</li>
+      <li>赤色は<b>期限超過</b>、<span style="display:inline-flex;vertical-align:-3px;margin-right:4px">${IC.alertSm}</span>マークは1日に予定が集中している「過密日」の目印です。</li>
       <li>予定のない空白日にも軽い印がつくので、余裕がある日をひと目で把握できます。</li>
     </ul>
-    <div class="guide-tip">💡 予定が1日に集中しすぎていたら、日付をタップ→ずらすボタンで前後の日に散らしてみましょう。</div>
+    <div class="guide-tip"><span style="display:inline-flex;vertical-align:-3px;margin-right:4px">${IC.bulb}</span>予定が1日に集中しすぎていたら、日付をタップ→ずらすボタンで前後の日に散らしてみましょう。</div>
   `},
-  { id:'plan', icon:'🎯', bg:'#F5F3FF', title:'「計画」タブの使い方', body:`
+  { id:'plan', icon:`<span style="display:flex;color:var(--plan-d)">${IC.target}</span>`, bg:'#F5F3FF', title:'「計画」タブの使い方', body:`
     <p>くり返しタスクを自分で作成する画面です。＋ボタンから新規追加でき、作成時に4つのタイプから選びます。</p>
     <ul>
       <li><b>毎日</b>：毎日おこなうタスク</li>
@@ -9820,18 +9841,18 @@ const GUIDE_SECTIONS = [
       <li><b>目標</b>：期限までに合計◯個をこなす目標型。進捗バーと「今日必要なペース」が自動で計算されます。</li>
     </ul>
     <p>タスクが複数ある場合は<b>「ルール」</b>機能で「同じ日に重ねない」「順番を守る」などの関係性を設定でき、無理のないスケジュールに調整できます。</p>
-    <div class="guide-tip">💡 各タスクの🌙ボタンでいつでも個別に延期できます。</div>
+    <div class="guide-tip"><span style="display:inline-flex;vertical-align:-3px;margin-right:4px">${IC.bulb}</span>各タスクの<span style="display:inline-flex;vertical-align:-3px;color:var(--lbl2)">${IC.moon}</span>ボタンでいつでも個別に延期できます。</div>
   `},
-  { id:'study', icon:'⏱', bg:'#ECFDF5', title:'「勉強時間」タブの使い方', body:`
+  { id:'study', icon:`<span style="display:flex;color:#059669">${IC.clock}</span>`, bg:'#ECFDF5', title:'「勉強時間」タブの使い方', body:`
     <p>勉強した時間を記録・振り返る画面です。</p>
     <ul>
       <li>「新しく勉強したことを記録」から、タイマーで計測するか、あとから手入力で記録できます。</li>
       <li>週間グラフとタグ別の内訳で、何にどれだけ時間を使ったか確認できます。</li>
       <li>過去の記録は一覧から見返せ、修正・削除もできます。</li>
     </ul>
-    <div class="guide-tip">💡 復習カードや計画タスクを完了するときにも、そのまま時間を記録できます。</div>
+    <div class="guide-tip"><span style="display:inline-flex;vertical-align:-3px;margin-right:4px">${IC.bulb}</span>復習カードや計画タスクを完了するときにも、そのまま時間を記録できます。</div>
   `},
-  { id:'settings', icon:'⚙️', bg:'#FFFBEB', title:'「設定」タブの使い方', body:`
+  { id:'settings', icon:`<span style="display:flex;color:#B45309">${IC.gear}</span>`, bg:'#FFFBEB', title:'「設定」タブの使い方', body:`
     <p>アプリ全体の設定をまとめた画面です。</p>
     <ul>
       <li><b>アイコン</b>：アプリのアイコン画像を変更できます。</li>
@@ -9914,12 +9935,12 @@ function updateBackupLastText(){
   const el = document.getElementById('backup-last-text');
   if(!el) return;
   if(!last){
-    el.innerHTML = '<span style="color:#B45309;font-weight:600">⚠️ まだ一度も保存していません。下のボタンから保存しましょう！</span>';
+    el.innerHTML = `<span style="color:#B45309;font-weight:600;display:inline-flex;align-items:center;gap:4px">${IC.alertSm}まだ一度も保存していません。下のボタンから保存しましょう！</span>`;
   } else {
     const d = new Date(last);
     const fmt = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
     const days = daysSinceBackup();
-    const ago = days === 0 ? '今日保存済み ✅' : `${days}日前に保存`;
+    const ago = days === 0 ? '今日保存済み' : `${days}日前に保存`;
     el.textContent = `最後に保存した日時：${fmt}（${ago}）`;
   }
 }
@@ -9952,7 +9973,7 @@ function doExport(){
       setLastBackupDate();
       updateBackupLastText();
       _backupBannerDays = null;
-      toast(IC.checkCircle, 'データを保存しました 💾');
+      toast(IC.checkCircle, 'データを保存しました');
       haptic('medium');
     };
 
@@ -10080,7 +10101,7 @@ function confirmImport(){
     renderEditTagSel();
     renderSettings();   // refresh settings tab (tag count etc.)
     if(typeof _updateNavIcon === 'function') _updateNavIcon();
-    toast(IC.checkCircle, `${U.length} 件のデータを読み込みました ✅`);
+    toast(IC.checkCircle, `${U.length} 件のデータを読み込みました`);
     haptic('heavy');
   } catch { toast(IC.alert, '読み込みに失敗しました。もう一度試してください'); }
 }
@@ -10094,13 +10115,13 @@ function renderSettings(){
     <div class="settings-section" style="margin-bottom:12px">
       <div class="settings-row" style="cursor:pointer" onclick="document.getElementById('icon-file-input').click()">
         <div class="settings-row-icon" style="overflow:hidden;padding:0">
-          ${APP_ICON ? `<img src="${APP_ICON}" style="width:36px;height:36px;object-fit:cover;border-radius:10px">` : `<span style="font-size:18px">🖼️</span>`}
+          ${APP_ICON ? `<img src="${APP_ICON}" style="width:36px;height:36px;object-fit:cover;border-radius:10px">` : `<span style="display:flex;color:var(--icon-muted)">${IC.image}</span>`}
         </div>
         <div class="settings-row-body">
           <div class="settings-row-title">アプリアイコン</div>
           <div class="settings-row-sub">画像をアップロードして設定</div>
         </div>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--lbl3)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--icon-muted)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
 
     </div>
@@ -10108,7 +10129,7 @@ function renderSettings(){
     <div class="sec">表示</div>
     <div class="settings-section" style="margin-bottom:12px">
       <div class="settings-row">
-        <div class="settings-row-icon" style="background:#EEF2FF">🗂️</div>
+        <div class="settings-row-icon" style="background:#EEF2FF;color:var(--blue-d)">${IC.spread}</div>
         <div class="settings-row-body">
           <div class="settings-row-title">今日タブのレイアウト</div>
           <div class="settings-row-sub">カードを1列 or 2列で表示します</div>
@@ -10123,7 +10144,7 @@ function renderSettings(){
         </div>
       </div>
       <div class="settings-row">
-        <div class="settings-row-icon" style="background:#F5F3FF">🏷️</div>
+        <div class="settings-row-icon" style="background:#F5F3FF;color:var(--plan-d)">${IC.tag}</div>
         <div class="settings-row-body">
           <div class="settings-row-title">今日タブのタグ絞り込み</div>
           <div class="settings-row-sub">予定タブと同じタグチップで、今日のタスクを絞り込めます</div>
@@ -10135,43 +10156,43 @@ function renderSettings(){
     <div class="sec">使い方ガイド</div>
     <div class="settings-section" style="margin-bottom:12px">
       <div class="settings-row" onclick="openGuideSheet('overview')" style="cursor:pointer">
-        <div class="settings-row-icon" style="background:#EEF2FF">📖</div>
+        <div class="settings-row-icon" style="background:#EEF2FF;color:var(--blue-d)">${IC.book}</div>
         <div class="settings-row-body">
           <div class="settings-row-title">使い方ガイド</div>
           <div class="settings-row-sub">各タブの機能をタップして解説を確認できます</div>
         </div>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--lbl3)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--icon-muted)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
     </div>
 
     <div class="sec">データ管理</div>
     <div class="settings-section">
       <div class="settings-row" onclick="openBackupSheet()" style="cursor:pointer">
-        <div class="settings-row-icon" style="background:#EFF6FF">💾</div>
+        <div class="settings-row-icon" style="background:#EFF6FF;color:var(--blue-d)">${IC.save}</div>
         <div class="settings-row-body">
           <div class="settings-row-title">データの保存・読み込み</div>
           <div class="settings-row-sub">バックアップして記録を守ろう</div>
         </div>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--lbl3)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--icon-muted)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
       <div class="settings-row" onclick="openSyncSheet()" style="cursor:pointer">
-        <div class="settings-row-icon" style="background:#F5F3FF">🔗</div>
+        <div class="settings-row-icon" style="background:#F5F3FF;color:var(--plan-d)">${IC.link}</div>
         <div class="settings-row-body">
           <div class="settings-row-title">他の端末とつなげる</div>
           <div class="settings-row-sub">PCなどと自動で同期します</div>
         </div>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--lbl3)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--icon-muted)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
       <div class="settings-row" onclick="openTagMgr()" style="cursor:pointer">
-        <div class="settings-row-icon" style="background:#F5F3FF">🏷️</div>
+        <div class="settings-row-icon" style="background:#F5F3FF;color:var(--plan-d)">${IC.tag}</div>
         <div class="settings-row-body">
           <div class="settings-row-title">タグを管理</div>
           <div class="settings-row-sub">タグの追加・編集・削除</div>
         </div>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--lbl3)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--icon-muted)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
       <div class="settings-row">
-        <div class="settings-row-icon" style="background:#FFFBEB">⏰</div>
+        <div class="settings-row-icon" style="background:#FFFBEB;color:#B45309">${IC.clock}</div>
         <div class="settings-row-body">
           <div class="settings-row-title">バックアップ通知の間隔</div>
           <div class="settings-row-sub">最後に保存してからの経過日数で知らせます</div>
@@ -10189,26 +10210,26 @@ function renderSettings(){
     <div class="sec">開発者向け</div>
     <div class="settings-section" style="margin-bottom:12px">
       <div class="settings-row" onclick="openIntervalSettings()" style="cursor:pointer">
-        <div class="settings-row-icon" style="background:#FEF3C7">🛠️</div>
+        <div class="settings-row-icon" style="background:#FEF3C7;color:#B45309">${IC.gear}</div>
         <div class="settings-row-body">
           <div class="settings-row-title">復習間隔の詳細設定</div>
           <div class="settings-row-sub">全体・タグごとに復習間隔を変更（既存の単元には影響しません）</div>
         </div>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--lbl3)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--icon-muted)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
     </div>
 
     <div class="sec">アプリについて</div>
     <div class="settings-section">
       <div class="settings-row">
-        <div class="settings-row-icon" style="background:var(--blue-bg)">📚</div>
+        <div class="settings-row-icon" style="background:var(--blue-bg);color:var(--blue-d)">${IC.book}</div>
         <div class="settings-row-body">
           <div class="settings-row-title">復習マネージャー</div>
           <div class="settings-row-sub">エビングハウス忘却曲線に基づく<br>スマート復習スケジューラー</div>
         </div>
       </div>
       <div class="settings-row">
-        <div class="settings-row-icon" style="background:#F0FDF4">🏷</div>
+        <div class="settings-row-icon" style="background:#F0FDF4;color:#15803D">${IC.info}</div>
         <div class="settings-row-body">
           <div class="settings-row-title">バージョン</div>
           <div class="settings-row-sub">${APP_VERSION} <span style="color:var(--lbl3)">（${APP_BUILD}）</span></div>
@@ -10549,7 +10570,7 @@ if('serviceWorker' in navigator){
   <div class="dense-sheet-head">
     <div class="dense-sheet-ttl" id="dense-sheet-ttl"></div>
     <div class="dense-sheet-sub" id="dense-sheet-sub"></div>
-    <div class="dense-sheet-note">⚠️ のついた移動先はその日が過密になります</div>
+    <div class="dense-sheet-note" style="display:flex;align-items:center;gap:5px">${IC.alertSm} のついた移動先はその日が過密になります</div>
   </div>
   <div class="dense-sheet-scroll" id="dense-sheet-scroll"></div>
   <button class="dense-close-btn" onclick="closeDenseSheet()">閉じる</button>
@@ -10618,13 +10639,13 @@ if('serviceWorker' in navigator){
 <div class="backup-sheet" id="backup-sheet">
   <div class="sheet-pull"></div>
   <div class="backup-body">
-    <div class="backup-ttl">📦 データの保存・読み込み</div>
+    <div class="backup-ttl" style="display:flex;align-items:center;gap:6px">${IC.save}データの保存・読み込み</div>
     <div class="backup-sub" id="backup-last-text">読み込み中…</div>
 
     <div class="backup-how-box">
-      <div class="backup-how-title">💡 バックアップとは？</div>
+      <div class="backup-how-title" style="display:flex;align-items:center;gap:5px">${IC.bulb}バックアップとは？</div>
       <div class="backup-how-text">スマホを機種変更したり、アプリのデータが消えてしまったときでも、あなたの復習記録を元に戻せるようにするための機能です。<br>定期的に保存しておくことをおすすめします。</div>
-      <div class="backup-how-text" style="margin-top:8px">📁 ファイルを増やしたくない場合は、保存時に前回と同じ場所を選んでください。ファイル名は毎回同じなので、「置き換える」を選べば上書きできます。</div>
+      <div class="backup-how-text" style="margin-top:8px;display:flex;gap:5px"><span style="flex-shrink:0">${IC.folder}</span><span>ファイルを増やしたくない場合は、保存時に前回と同じ場所を選んでください。ファイル名は毎回同じなので、「置き換える」を選べば上書きできます。</span></div>
     </div>
 
     <div class="backup-divider">データを保存する（バックアップ）</div>
@@ -10648,7 +10669,7 @@ if('serviceWorker' in navigator){
       </div>
       <div class="backup-row-body">
         <div class="backup-row-ttl">保存済みデータを読み込む</div>
-        <div class="backup-row-sub">以前に保存したバックアップファイルを選んでください。<br><span style="color:#B45309;font-weight:600">⚠️ 現在のデータは上書きされます</span></div>
+        <div class="backup-row-sub">以前に保存したバックアップファイルを選んでください。<br><span style="color:#B45309;font-weight:600;display:inline-flex;align-items:center;gap:4px">${IC.alertSm}現在のデータは上書きされます</span></div>
       </div>
       <div class="backup-row-arrow">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
@@ -10662,11 +10683,11 @@ if('serviceWorker' in navigator){
 <div class="backup-sheet" id="sync-sheet">
   <div class="sheet-pull"></div>
   <div class="backup-body">
-    <div class="backup-ttl">🔗 他の端末とつなげる</div>
+    <div class="backup-ttl" style="display:flex;align-items:center;gap:6px">${IC.link}他の端末とつなげる</div>
     <div class="backup-sub">PCなど、他の端末とデータを自動で同じにします</div>
 
     <div class="backup-how-box" style="background:#F5F3FF;border-color:rgba(124,58,237,.18)">
-      <div class="backup-how-title">💡 連携コードについて</div>
+      <div class="backup-how-title" style="display:flex;align-items:center;gap:5px">${IC.bulb}連携コードについて</div>
       <div class="backup-how-text">ログインは不要です。コードを発行し、他の端末でそのコードを入力するだけで、以後は自動的に同じデータになるよう同期されます。<br>※コードを知っている人は誰でもデータを見られる仕組みなので、他人に教えないでください。</div>
     </div>
     <div id="fsync-body"></div>
@@ -10678,7 +10699,7 @@ if('serviceWorker' in navigator){
 <div class="guide-sheet" id="guide-sheet">
   <div class="sheet-pull"></div>
   <div class="guide-body" id="guide-body">
-    <div class="guide-ttl">📖 使い方ガイド</div>
+    <div class="guide-ttl" style="display:flex;align-items:center;gap:6px">${IC.book}使い方ガイド</div>
     <div class="guide-sub">このアプリでは3種類のタスク（復習・計画・ToDo）を<br>組み合わせて管理します。タップして詳しく見てみましょう。</div>
     <div id="guide-acc-list"></div>
   </div>
@@ -11110,7 +11131,7 @@ function updateFSyncUI(){
 async function fsyncStartNew(){
   haptic();
   await FSYNC.startNew();
-  toast(IC.checkCircle, '連携コードを発行しました 🔗');
+  toast(IC.checkCircle, '連携コードを発行しました');
 }
 function fsyncCopyCode(){
   const code = FSYNC.getCode();
@@ -11138,7 +11159,7 @@ async function fsyncJoin(){
   if(!code){ if(msg) msg.textContent = 'コードを入力してください'; return; }
   if(!confirm('このコードのデータに切り替えます。今この端末にあるデータは上書きされます。よろしいですか？')) return;
   const res = await FSYNC.joinCode(code);
-  if(res.ok){ toast(IC.checkCircle, '連携しました ✅'); }
+  if(res.ok){ toast(IC.checkCircle, '連携しました'); }
   else if(msg) msg.textContent = res.msg;
 }
 
@@ -11202,11 +11223,11 @@ function openPwaSheet(){
       </div>
       <div class="pwa-head-txt">
         <div class="pwa-head-ttl">ホーム画面に追加する</div>
-        <div class="pwa-head-sub">アプリとして快適に使えます 🚀</div>
+        <div class="pwa-head-sub">アプリとして快適に使えます</div>
       </div>
     </div>
     <div style="margin-bottom:12px">
-      <div style="font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--lbl3);margin-bottom:8px">🍎 iPhone / iPad（Safari）</div>
+      <div style="font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--lbl3);margin-bottom:8px">iPhone / iPad（Safari）</div>
       <div class="pwa-steps">
         <div class="pwa-step">
           <div class="pwa-step-num">1</div>
@@ -11232,7 +11253,7 @@ function openPwaSheet(){
       </div>
     </div>
     <div style="margin-bottom:16px">
-      <div style="font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--lbl3);margin-bottom:8px">🤖 Android（Chrome）</div>
+      <div style="font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--lbl3);margin-bottom:8px">Android（Chrome）</div>
       <div class="pwa-steps">
         <div class="pwa-step">
           <div class="pwa-step-num">1</div>
@@ -11277,9 +11298,9 @@ const OB_STEPS = [
   // step 0: welcome + PWA prompt (special, full bubble, no spotlight)
   {
     type: 'welcome',
-    emoji: '🧠',
+    emoji: `${IC.brain}`,
     title: 'その「せっかく覚えたこと」、忘れさせません',
-    body: '<strong>復習マネージャー</strong>は、科学的に裏付けられた<strong>エビングハウスの忘却曲線</strong>をもとに、「これを忘れかけている頃」に自動で復習タイミングを教えてくれるアプリです。<br><br>📅 復習日は自動計算だから予定管理いらず<br>⏱️ 勉強時間もタイマーでサクッと記録<br>🏷️ タグ・カテゴリーで教科や単元を整理<br>🏆 記録が積み上がるほど実績が育つ<br><br>「あとで復習しよう」で終わらせない仕組み、30秒で体験してみましょう。',
+    body: '<strong>復習マネージャー</strong>は、科学的に裏付けられた<strong>エビングハウスの忘却曲線</strong>をもとに、「これを忘れかけている頃」に自動で復習タイミングを教えてくれるアプリです。<br><br>・復習日は自動計算だから予定管理いらず<br>・勉強時間もタイマーでサクッと記録<br>・タグ・カテゴリーで教科や単元を整理<br>・記録が積み上がるほど実績が育つ<br><br>「あとで復習しよう」で終わらせない仕組み、30秒で体験してみましょう。',
     next: '使ってみる',
     skip: 'スキップ',
   },
@@ -11288,7 +11309,7 @@ const OB_STEPS = [
     type: 'spot',
     target: '.float-fab',
     arrowDir: 'down',
-    emoji: '⏱️',
+    emoji: `${IC.clockLg}`,
     title: '勉強時間を記録する',
     body: 'このボタンをタップして、勉強した時間を記録します。<br>タイマーで計測するか、手入力でサクッと記録できます。',
     next: '次へ',
@@ -11299,7 +11320,7 @@ const OB_STEPS = [
     type: 'spot',
     target: '[data-tab="today"]',
     arrowDir: 'up',
-    emoji: '📅',
+    emoji: `${IC.calendarLg}`,
     title: '「今日」タブ',
     body: '今日復習すべき単元が表示されます。<br>カードの <strong>「完了にする」</strong> を押すと次の復習日が自動でセットされます。',
     next: '次へ',
@@ -11310,7 +11331,7 @@ const OB_STEPS = [
     type: 'spot',
     target: '[data-tab="upcoming"]',
     arrowDir: 'up',
-    emoji: '🗓️',
+    emoji: `${IC.calendarLg}`,
     title: '「予定」タブ',
     body: '今後の復習スケジュールをカレンダーで確認できます。<br>新しい単元は「新しい復習を設定する」ボタンから追加できます。',
     next: '次へ',
@@ -11319,7 +11340,7 @@ const OB_STEPS = [
   // step 4: PWA recommendation
   {
     type: 'pwa',
-    emoji: '📲',
+    emoji: `${IC.phone}`,
     title: 'ホーム画面に追加しよう',
     body: 'ブラウザのまま使うより、<strong>ホーム画面に追加</strong>するとアプリのように快適に使えます。<br>通知機能もホーム画面追加後に有効になります。',
     next: '追加方法を見る',
