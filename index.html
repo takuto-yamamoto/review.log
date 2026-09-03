@@ -9009,6 +9009,7 @@ function setFabHidden(hidden){
       document.getElementById('sheet')?.classList.contains('on') ||
       document.getElementById('tag-mgr-sheet')?.classList.contains('on') ||
       document.getElementById('backup-sheet')?.classList.contains('on') ||
+      document.getElementById('sync-sheet')?.classList.contains('on') ||
       document.getElementById('all-logs-sheet')?.classList.contains('on') ||
       document.getElementById('edit-modal')?.classList.contains('on') ||
       document.getElementById('snooze-pick')?.classList.contains('on');
@@ -9874,11 +9875,22 @@ function _renderGuideList(){
 
 function openBackupSheet(){
   updateBackupLastText();
-  if(typeof updateFSyncUI==='function') updateFSyncUI();
   document.getElementById('backup-overlay').classList.add('on');
   document.getElementById('backup-sheet').classList.add('on');
   setFabHidden(true);
   haptic();
+}
+function openSyncSheet(){
+  if(typeof updateFSyncUI==='function') updateFSyncUI();
+  document.getElementById('sync-overlay').classList.add('on');
+  document.getElementById('sync-sheet').classList.add('on');
+  setFabHidden(true);
+  haptic();
+}
+function closeSyncSheet(){
+  document.getElementById('sync-overlay').classList.remove('on');
+  document.getElementById('sync-sheet').classList.remove('on');
+  setFabHidden(false);
 }
 function closeBackupSheet(){
   document.getElementById('backup-overlay').classList.remove('on');
@@ -10113,6 +10125,14 @@ function renderSettings(){
         <div class="settings-row-body">
           <div class="settings-row-title">データの保存・読み込み</div>
           <div class="settings-row-sub">バックアップして記録を守ろう</div>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--lbl3)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+      <div class="settings-row" onclick="openSyncSheet()" style="cursor:pointer">
+        <div class="settings-row-icon" style="background:#F5F3FF">🔗</div>
+        <div class="settings-row-body">
+          <div class="settings-row-title">他の端末とつなげる</div>
+          <div class="settings-row-sub">PCなどと自動で同期します</div>
         </div>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--lbl3)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
@@ -10608,11 +10628,20 @@ if('serviceWorker' in navigator){
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
     </div>
+  </div>
+</div>
 
-    <div class="backup-divider" style="margin-top:16px">PCなど他の端末とつなげる</div>
+<!-- クラウド同期（PC/スマホなど複数端末での連携） -->
+<div class="overlay" id="sync-overlay" onclick="closeSyncSheet()" style="z-index:109"></div>
+<div class="backup-sheet" id="sync-sheet">
+  <div class="sheet-pull"></div>
+  <div class="backup-body">
+    <div class="backup-ttl">🔗 他の端末とつなげる</div>
+    <div class="backup-sub">PCなど、他の端末とデータを自動で同じにします</div>
+
     <div class="backup-how-box" style="background:#F5F3FF;border-color:rgba(124,58,237,.18)">
-      <div class="backup-how-title">🔗 連携コードについて</div>
-      <div class="backup-how-text">ログインは不要です。コードを発行し、他の端末でそのコードを入力するだけで、スマホとPCのデータが自動的に同じ内容になります。<br>※コードを知っている人は誰でもデータを見られる仕組みなので、他人に教えないでください。</div>
+      <div class="backup-how-title">💡 連携コードについて</div>
+      <div class="backup-how-text">ログインは不要です。コードを発行し、他の端末でそのコードを入力するだけで、以後は自動的に同じデータになるよう同期されます。<br>※コードを知っている人は誰でもデータを見られる仕組みなので、他人に教えないでください。</div>
     </div>
     <div id="fsync-body"></div>
   </div>
@@ -10803,6 +10832,13 @@ if('serviceWorker' in navigator){
     if(p) bindPullToClose(backupSheet, p, closeBackupSheet);
   }
 
+  // sync-sheet（他の端末とつなげる）
+  const syncSheet = document.getElementById('sync-sheet');
+  if(syncSheet){
+    const p = syncSheet.querySelector('.sheet-pull');
+    if(p) bindPullToClose(syncSheet, p, closeSyncSheet);
+  }
+
   // all-logs-sheet（すべての記録）— scrollEl を渡してスクロール中は無効化
   const allLogsSheet = document.getElementById('all-logs-sheet');
   if(allLogsSheet){
@@ -10860,6 +10896,9 @@ const FSYNC = (() => {
       categories: CATEGORIES,
       studyLogs: STUDY_LOGS,
       todos: (typeof TODOS!=='undefined') ? TODOS : [],
+      plan: (typeof PLAN!=='undefined') ? PLAN : [],
+      planRules: (typeof PLAN_RULES!=='undefined') ? PLAN_RULES : [],
+      appIcon: (typeof APP_ICON!=='undefined' && APP_ICON && APP_ICON.length < 700000) ? APP_ICON : null,
       streak: (() => { try { return JSON.parse(localStorage.getItem('fukushu-streak-v1') || 'null'); } catch { return null; } })(),
       updatedAt: Date.now(),
     };
@@ -10874,11 +10913,17 @@ const FSYNC = (() => {
       if(Array.isArray(data.categories)) { CATEGORIES = data.categories; safeSetItem(CAT_KEY, JSON.stringify(CATEGORIES)); }
       if(Array.isArray(data.studyLogs))  { STUDY_LOGS = data.studyLogs; safeSetItem(STUDY_KEY, JSON.stringify(STUDY_LOGS)); }
       if(Array.isArray(data.todos) && typeof TODOS!=='undefined') { TODOS = data.todos; safeSetItem(TODO_KEY, JSON.stringify(TODOS)); }
+      if(Array.isArray(data.plan) && typeof PLAN!=='undefined') { PLAN = data.plan; safeSetItem(PLAN_KEY, JSON.stringify(PLAN)); }
+      if(Array.isArray(data.planRules) && typeof PLAN_RULES!=='undefined') { PLAN_RULES = data.planRules; safeSetItem(PLAN_RULE_KEY, JSON.stringify(PLAN_RULES)); }
+      if(typeof data.appIcon !== 'undefined' && typeof APP_ICON!=='undefined' && typeof saveAppIcon==='function'){
+        if(data.appIcon !== APP_ICON) saveAppIcon(data.appIcon);
+      }
       if(data.streak) safeSetItem('fukushu-streak-v1', JSON.stringify(data.streak));
       if(typeof render === 'function') render();
       if(typeof renderSettings === 'function') renderSettings();
       if(typeof renderSheetTagSel === 'function') renderSheetTagSel();
       if(typeof renderEditTagSel === 'function') renderEditTagSel();
+      if(typeof _updateNavIcon === 'function') _updateNavIcon();
       updateFSyncUI();
     } finally {
       setTimeout(()=>{ applyingRemote = false; }, 400);
