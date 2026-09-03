@@ -2480,6 +2480,10 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 .acts{gap:9px}
 
 </style>
+<!-- クラウド同期（PC/スマホ間でのデータ共有）用SDK。読み込みに失敗してもアプリ本体の動作には影響しない -->
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
 <div id="app">
@@ -9870,6 +9874,7 @@ function _renderGuideList(){
 
 function openBackupSheet(){
   updateBackupLastText();
+  if(typeof updateFSyncUI==='function') updateFSyncUI();
   document.getElementById('backup-overlay').classList.add('on');
   document.getElementById('backup-sheet').classList.add('on');
   setFabHidden(true);
@@ -10603,6 +10608,13 @@ if('serviceWorker' in navigator){
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
     </div>
+
+    <div class="backup-divider" style="margin-top:16px">PCなど他の端末とつなげる</div>
+    <div class="backup-how-box" style="background:#F5F3FF;border-color:rgba(124,58,237,.18)">
+      <div class="backup-how-title">🔗 連携コードについて</div>
+      <div class="backup-how-text">ログインは不要です。コードを発行し、他の端末でそのコードを入力するだけで、スマホとPCのデータが自動的に同じ内容になります。<br>※コードを知っている人は誰でもデータを見られる仕組みなので、他人に教えないでください。</div>
+    </div>
+    <div id="fsync-body"></div>
   </div>
 </div>
 
@@ -10807,6 +10819,237 @@ if('serviceWorker' in navigator){
     if(p) bindPullToClose(guideSheet, p, closeGuideSheet, sc);
   }
 })();
+</script>
+
+<script>
+/* ════════════════════════════════════════════════════════════
+   クラウド同期（PC ⇔ スマホ など、複数端末でのデータ共有）
+   ─────────────────────────────────────────────
+   ・利用者はログイン不要（Firebase匿名認証を裏側で自動的に使用）
+   ・「連携コード」（6文字）を発行し、他の端末で同じコードを入力すると、
+     以後は自動的に同じデータになるよう同期される
+   ・FSYNC_CONFIG.apiKey が未設定の間は何もせず、既存の動作に一切影響しない
+════════════════════════════════════════════════════════════ */
+const FSYNC_CONFIG = {
+  apiKey: "AIzaSyDyPrs8FiF8Qiw3809sljmMTj_f2cAD3OA",
+  authDomain: "reviewlog-837a3.firebaseapp.com",
+  projectId: "reviewlog-837a3",
+  storageBucket: "reviewlog-837a3.firebasestorage.app",
+  messagingSenderId: "843124117951",
+  appId: "1:843124117951:web:51dec2a0a1735d80ebd10a"
+};
+const FSYNC_ENABLED = !!(FSYNC_CONFIG.apiKey && FSYNC_CONFIG.apiKey !== "YOUR_API_KEY" && typeof firebase !== 'undefined');
+
+const FSYNC = (() => {
+  const CODE_KEY = 'fukushu-sync-code';
+  let db = null, docRef = null, ready = false, applyingRemote = false, pushTimer = null;
+
+  function getCode(){ try{ return localStorage.getItem(CODE_KEY) || ''; }catch(_){ return ''; } }
+  function setCode(c){ try{ if(c) localStorage.setItem(CODE_KEY, c); else localStorage.removeItem(CODE_KEY); }catch(_){} }
+  function genCode(){
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 0/O, 1/I など紛らわしい文字は除外
+    let s=''; for(let i=0;i<6;i++) s += chars[Math.floor(Math.random()*chars.length)];
+    return s;
+  }
+
+  function buildPayload(){
+    return {
+      version: 1,
+      units: U,
+      tags: TAGS,
+      categories: CATEGORIES,
+      studyLogs: STUDY_LOGS,
+      todos: (typeof TODOS!=='undefined') ? TODOS : [],
+      streak: (() => { try { return JSON.parse(localStorage.getItem('fukushu-streak-v1') || 'null'); } catch { return null; } })(),
+      updatedAt: Date.now(),
+    };
+  }
+
+  function applyPayload(data){
+    if(!data) return;
+    applyingRemote = true;
+    try{
+      if(Array.isArray(data.units))      { U = data.units; safeSetItem(KEY, JSON.stringify(U)); }
+      if(Array.isArray(data.tags))       { TAGS = data.tags; safeSetItem(TAG_KEY, JSON.stringify(TAGS)); }
+      if(Array.isArray(data.categories)) { CATEGORIES = data.categories; safeSetItem(CAT_KEY, JSON.stringify(CATEGORIES)); }
+      if(Array.isArray(data.studyLogs))  { STUDY_LOGS = data.studyLogs; safeSetItem(STUDY_KEY, JSON.stringify(STUDY_LOGS)); }
+      if(Array.isArray(data.todos) && typeof TODOS!=='undefined') { TODOS = data.todos; safeSetItem(TODO_KEY, JSON.stringify(TODOS)); }
+      if(data.streak) safeSetItem('fukushu-streak-v1', JSON.stringify(data.streak));
+      if(typeof render === 'function') render();
+      if(typeof renderSettings === 'function') renderSettings();
+      if(typeof renderSheetTagSel === 'function') renderSheetTagSel();
+      if(typeof renderEditTagSel === 'function') renderEditTagSel();
+      updateFSyncUI();
+    } finally {
+      setTimeout(()=>{ applyingRemote = false; }, 400);
+    }
+  }
+
+  function schedulePush(){
+    if(!ready || applyingRemote || !docRef) return;
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(()=>{
+      docRef.set(buildPayload()).catch(e=>console.error('FSYNC push失敗', e));
+    }, 1500);
+  }
+
+  function connectTo(code){
+    setCode(code);
+    docRef = db.collection('fukushuSync').doc(code);
+    docRef.onSnapshot(snap=>{
+      if(snap.metadata.hasPendingWrites) return; // 自分自身の書き込みのエコーは無視
+      const data = snap.data();
+      if(data) applyPayload(data);
+    }, err=>console.error('FSYNC listen失敗', err));
+  }
+
+  async function init(){
+    if(!FSYNC_ENABLED){ ready=false; return; }
+    try{
+      if(!firebase.apps.length) firebase.initializeApp(FSYNC_CONFIG);
+      await firebase.auth().signInAnonymously();
+      db = firebase.firestore();
+      ready = true;
+      const code = getCode();
+      if(code) connectTo(code);
+      updateFSyncUI();
+    }catch(e){ console.error('FSYNC init失敗', e); ready=false; }
+  }
+
+  async function startNew(){
+    if(!ready) return;
+    connectTo(genCode());
+    await docRef.set(buildPayload());
+    updateFSyncUI();
+  }
+
+  async function joinCode(code){
+    if(!ready) return {ok:false, msg:'準備中です。少し待ってからもう一度お試しください'};
+    code = code.trim().toUpperCase();
+    if(!/^[A-Z0-9]{6}$/.test(code)) return {ok:false, msg:'コードは6文字の英数字です'};
+    try{
+      const snap = await db.collection('fukushuSync').doc(code).get();
+      if(!snap.exists) return {ok:false, msg:'そのコードのデータが見つかりません'};
+      connectTo(code);
+      applyPayload(snap.data());
+      return {ok:true};
+    }catch(e){ console.error(e); return {ok:false, msg:'接続に失敗しました。通信環境をご確認ください'}; }
+  }
+
+  function disconnect(){
+    docRef = null;
+    setCode('');
+    updateFSyncUI();
+  }
+
+  return { init, schedulePush, startNew, joinCode, disconnect, getCode, get ready(){ return ready; } };
+})();
+
+// safeSetItem をラップし、対象データが保存されるたびクラウドへも自動的に反映する
+(function(){
+  const _origSafeSetItem = safeSetItem;
+  safeSetItem = function(key, value){
+    const r = _origSafeSetItem(key, value);
+    if(r) FSYNC.schedulePush();
+    return r;
+  };
+})();
+
+function updateFSyncUI(){
+  const el = document.getElementById('fsync-body');
+  if(!el) return;
+  if(!FSYNC_ENABLED){
+    el.innerHTML = `<div class="backup-sub" style="color:var(--lbl3)">この機能は現在準備中です</div>`;
+    return;
+  }
+  const code = FSYNC.getCode();
+  let html = '';
+  if(code){
+    html += `
+      <div style="background:var(--fill);border-radius:14px;padding:16px;text-align:center;margin-bottom:10px">
+        <div style="font-size:12px;color:var(--lbl2);margin-bottom:6px">連携コード</div>
+        <div style="font-family:'Outfit',monospace;font-size:28px;font-weight:800;letter-spacing:4px;color:var(--plan-d)">${esc(code)}</div>
+      </div>
+      <div class="backup-row" onclick="fsyncCopyCode()">
+        <div class="backup-row-icon" style="background:#F5F3FF">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        </div>
+        <div class="backup-row-body">
+          <div class="backup-row-ttl">コードをコピー</div>
+          <div class="backup-row-sub">他の端末でこのコードを入力してください</div>
+        </div>
+      </div>
+      <div class="backup-row" onclick="fsyncDisconnectConfirm()">
+        <div class="backup-row-icon" style="background:#FFF1F0">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C0392B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
+        </div>
+        <div class="backup-row-body">
+          <div class="backup-row-ttl">この端末だけ連携を解除する</div>
+          <div class="backup-row-sub">データは消えません。自動同期だけをやめます</div>
+        </div>
+      </div>`;
+  } else {
+    html += `
+      <div class="backup-row" onclick="fsyncStartNew()">
+        <div class="backup-row-icon" style="background:#F5F3FF">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+        </div>
+        <div class="backup-row-body">
+          <div class="backup-row-ttl">連携コードを発行する</div>
+          <div class="backup-row-sub">この端末のデータを他の端末と共有します</div>
+        </div>
+      </div>`;
+  }
+  html += `
+    <div style="margin-top:14px">
+      <div style="font-size:13px;color:var(--lbl2);margin-bottom:8px">他の端末で発行したコードを入力してつなげる</div>
+      <div style="display:flex;gap:8px">
+        <input id="fsync-code-inp" type="text" maxlength="6" placeholder="例：A3F9K2" autocomplete="off" autocorrect="off"
+          style="flex:1;background:var(--fill);border:1.5px solid var(--sep);border-radius:12px;padding:11px 14px;font-family:'Outfit',monospace;font-size:16px;letter-spacing:2px;text-transform:uppercase;outline:none;color:var(--lbl)"
+          oninput="this.value=this.value.toUpperCase()">
+        <button onclick="fsyncJoin()" style="background:var(--plan);color:#fff;border:none;border-radius:12px;padding:0 18px;font-size:14px;font-weight:700;white-space:nowrap">つなげる</button>
+      </div>
+      <div id="fsync-join-msg" style="font-size:12px;color:#C0392B;margin-top:6px"></div>
+    </div>`;
+  el.innerHTML = html;
+}
+
+async function fsyncStartNew(){
+  haptic();
+  await FSYNC.startNew();
+  toast(IC.checkCircle, '連携コードを発行しました 🔗');
+}
+function fsyncCopyCode(){
+  const code = FSYNC.getCode();
+  if(!code) return;
+  haptic();
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(code)
+      .then(()=>toast(IC.checkCircle, 'コードをコピーしました'))
+      .catch(()=>toast(IC.alert, 'コピーできませんでした'));
+  } else {
+    toast(IC.alert, 'コピーできませんでした');
+  }
+}
+function fsyncDisconnectConfirm(){
+  if(confirm('連携を解除しますか？この端末は他の端末と自動で同期しなくなります（データ自体は消えません）')){
+    FSYNC.disconnect();
+    toast(IC.checkCircle, '連携を解除しました');
+  }
+}
+async function fsyncJoin(){
+  const inp = document.getElementById('fsync-code-inp');
+  const msg = document.getElementById('fsync-join-msg');
+  const code = (inp && inp.value || '').trim();
+  if(msg) msg.textContent = '';
+  if(!code){ if(msg) msg.textContent = 'コードを入力してください'; return; }
+  if(!confirm('このコードのデータに切り替えます。今この端末にあるデータは上書きされます。よろしいですか？')) return;
+  const res = await FSYNC.joinCode(code);
+  if(res.ok){ toast(IC.checkCircle, '連携しました ✅'); }
+  else if(msg) msg.textContent = res.msg;
+}
+
+FSYNC.init();
 </script>
 
 <!-- Import confirm dialog -->
