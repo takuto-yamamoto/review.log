@@ -2699,7 +2699,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
    B5 fix: define proper large/small variants, no string.replace() hacks
 ══════════════════════════════════════════ */
 /* ══ App version ════════════════════════ */
-const APP_VERSION = 'v2.9.4';
+const APP_VERSION = 'v2.9.5';
 const APP_BUILD   = '2026-09-03';
 
 const IC = {
@@ -9923,6 +9923,10 @@ function doExport(){
       tags: TAGS,
       categories: CATEGORIES,
       studyLogs: STUDY_LOGS,
+      todos: (typeof TODOS!=='undefined') ? TODOS : [],
+      plan: (typeof PLAN!=='undefined') ? PLAN : [],
+      planRules: (typeof PLAN_RULES!=='undefined') ? PLAN_RULES : [],
+      appIcon: (typeof APP_ICON!=='undefined') ? APP_ICON : null,
       streak: (() => { try { return JSON.parse(localStorage.getItem('fukushu-streak-v1') || 'null'); } catch { return null; } })(),
     };
     const json = JSON.stringify(payload, null, 2);
@@ -10048,12 +10052,17 @@ function confirmImport(){
     save(); saveTags(); saveCategories();
     if(pending.streak) localStorage.setItem('fukushu-streak-v1', JSON.stringify(pending.streak));
     if(Array.isArray(pending.studyLogs)){ STUDY_LOGS=pending.studyLogs; saveStudyLogs(); }
+    if(Array.isArray(pending.todos) && typeof TODOS!=='undefined'){ TODOS=pending.todos; saveTodos(); }
+    if(Array.isArray(pending.plan) && typeof PLAN!=='undefined'){ PLAN=pending.plan; savePlan(); }
+    if(Array.isArray(pending.planRules) && typeof PLAN_RULES!=='undefined'){ PLAN_RULES=pending.planRules; savePlanRules(); }
+    if(typeof pending.appIcon !== 'undefined' && typeof saveAppIcon==='function'){ saveAppIcon(pending.appIcon); }
     _importPending = null;
     document.getElementById('import-confirm').classList.remove('on');
     closeBackupSheet(); // internally calls render()
     renderSheetTagSel(); // refresh tag selectors with new TAGS
     renderEditTagSel();
     renderSettings();   // refresh settings tab (tag count etc.)
+    if(typeof _updateNavIcon === 'function') _updateNavIcon();
     toast(IC.checkCircle, `${U.length} 件のデータを読み込みました ✅`);
     haptic('heavy');
   } catch { toast(IC.alert, '読み込みに失敗しました。もう一度試してください'); }
