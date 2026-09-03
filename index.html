@@ -9095,15 +9095,29 @@ function bindPullToClose(moveEl, handle, closeFn, scrollEl){
     moveEl.style.transform  = '';
     if(dy > THRESHOLD) closeFn();
   }
+  // OSのジェスチャーへの割り込みやマルチタッチなどで touchend が発火せず
+  // touchcancel だけが飛んでくることがある。ここを拾わないと dragging が
+  // trueのまま・moveElが半端にズレた見た目のまま固まり、次回以降そのバーが
+  // 「反応しない」ように見える不具合の原因になっていたため、touchendと
+  // 同様に状態を必ずリセットする（閉じる判定はせず、元の位置に戻すだけ）。
+  function onCancel(){
+    if(!dragging) return;
+    dragging = false;
+    moveEl.style.transition = '';
+    moveEl.style.transform  = '';
+  }
 
   // Remove any previous listeners attached by a prior call on the same element
-  if(moveEl._pullMoveHandler) document.removeEventListener('touchmove', moveEl._pullMoveHandler);
-  if(moveEl._pullEndHandler)  document.removeEventListener('touchend',  moveEl._pullEndHandler);
-  moveEl._pullMoveHandler = onMove;
-  moveEl._pullEndHandler  = onEnd;
+  if(moveEl._pullMoveHandler)   document.removeEventListener('touchmove',  moveEl._pullMoveHandler);
+  if(moveEl._pullEndHandler)    document.removeEventListener('touchend',   moveEl._pullEndHandler);
+  if(moveEl._pullCancelHandler) document.removeEventListener('touchcancel',moveEl._pullCancelHandler);
+  moveEl._pullMoveHandler   = onMove;
+  moveEl._pullEndHandler    = onEnd;
+  moveEl._pullCancelHandler = onCancel;
 
-  document.addEventListener('touchmove', onMove, {passive:true});
-  document.addEventListener('touchend',  onEnd,  {passive:true});
+  document.addEventListener('touchmove',   onMove,   {passive:true});
+  document.addEventListener('touchend',    onEnd,    {passive:true});
+  document.addEventListener('touchcancel', onCancel, {passive:true});
 }
 
 // — sheet（単元を追加する）
