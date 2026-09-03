@@ -2699,7 +2699,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
    B5 fix: define proper large/small variants, no string.replace() hacks
 ══════════════════════════════════════════ */
 /* ══ App version ════════════════════════ */
-const APP_VERSION = 'v2.9.5';
+const APP_VERSION = 'v2.9.6';
 const APP_BUILD   = '2026-09-03';
 
 const IC = {
@@ -2756,7 +2756,7 @@ let DEV_SETTINGS = (() => {
   } catch(_){}
   return { global: null, byTag: {} };
 })();
-function saveDevSettings(){ try{ localStorage.setItem(DEV_SETTINGS_KEY, JSON.stringify(DEV_SETTINGS)); }catch(_){} }
+function saveDevSettings(){ safeSetItem(DEV_SETTINGS_KEY, JSON.stringify(DEV_SETTINGS)); }
 // 単元作成時点のタグから有効な復習間隔を解決する（タグ指定 > 全体指定 > デフォルト）
 function resolveIntervals(tagIds){
   if(Array.isArray(tagIds)){
@@ -5139,7 +5139,16 @@ function savePlanTask(){
 
 /* アイコン（base64 or null） */
 let APP_ICON = (() => { try { return localStorage.getItem(ICON_KEY) || null; } catch { return null; } })();
-function saveAppIcon(b64){ APP_ICON=b64; if(b64){ safeSetItem(ICON_KEY,b64); } else { try{ localStorage.removeItem(ICON_KEY); }catch(_){} } _updateNavIcon(); }
+function saveAppIcon(b64){
+  APP_ICON=b64;
+  if(b64){ safeSetItem(ICON_KEY,b64); }
+  else {
+    try{ localStorage.removeItem(ICON_KEY); }catch(_){}
+    // removeItemはsafeSetItemを経由しないため、クラウド同期を明示的にトリガーする
+    if(typeof FSYNC!=='undefined' && FSYNC && typeof FSYNC.schedulePush==='function') FSYNC.schedulePush();
+  }
+  _updateNavIcon();
+}
 function _updateNavIcon(){
   const el=document.getElementById('nav-icon'); if(!el) return;
   if(APP_ICON){
@@ -9927,6 +9936,7 @@ function doExport(){
       plan: (typeof PLAN!=='undefined') ? PLAN : [],
       planRules: (typeof PLAN_RULES!=='undefined') ? PLAN_RULES : [],
       appIcon: (typeof APP_ICON!=='undefined') ? APP_ICON : null,
+      devSettings: (typeof DEV_SETTINGS!=='undefined') ? DEV_SETTINGS : null,
       streak: (() => { try { return JSON.parse(localStorage.getItem('fukushu-streak-v1') || 'null'); } catch { return null; } })(),
     };
     const json = JSON.stringify(payload, null, 2);
@@ -10026,8 +10036,9 @@ function handleImportFile(e){
         data.categories = [];
       }
       _importPending = data;
+      const planCount = Array.isArray(data.plan) ? data.plan.length : 0;
       const sub = document.getElementById('import-confirm-sub');
-      if(sub) sub.textContent = `${data.units.length} 件の単元・${data.tags.length} 件のタグ・${(data.studyLogs||[]).length} 件の勉強記録が見つかりました。読み込むと今のデータはすべて上書きされます。よろしいですか？`;
+      if(sub) sub.textContent = `${data.units.length} 件の単元・${data.tags.length} 件のタグ・${(data.studyLogs||[]).length} 件の勉強記録・${planCount} 件の計画タスクが見つかりました。読み込むと今のデータはすべて上書きされます。よろしいですか？`;
       document.getElementById('import-confirm').classList.add('on');
       haptic();
     } catch(err) { toast(IC.alert, 'このファイルは読み込めません。バックアップファイルを選んでください'); }
@@ -10056,6 +10067,11 @@ function confirmImport(){
     if(Array.isArray(pending.plan) && typeof PLAN!=='undefined'){ PLAN=pending.plan; savePlan(); }
     if(Array.isArray(pending.planRules) && typeof PLAN_RULES!=='undefined'){ PLAN_RULES=pending.planRules; savePlanRules(); }
     if(typeof pending.appIcon !== 'undefined' && typeof saveAppIcon==='function'){ saveAppIcon(pending.appIcon); }
+    if(pending.devSettings && typeof pending.devSettings==='object' && typeof DEV_SETTINGS!=='undefined'){
+      DEV_SETTINGS = { global: Array.isArray(pending.devSettings.global) && pending.devSettings.global.length===MAX_STEP ? pending.devSettings.global : null,
+                        byTag: (pending.devSettings.byTag && typeof pending.devSettings.byTag==='object') ? pending.devSettings.byTag : {} };
+      saveDevSettings();
+    }
     _importPending = null;
     document.getElementById('import-confirm').classList.remove('on');
     closeBackupSheet(); // internally calls render()
@@ -10912,6 +10928,7 @@ const FSYNC = (() => {
       planRules: (typeof PLAN_RULES!=='undefined') ? PLAN_RULES : [],
       appIcon: (typeof APP_ICON!=='undefined' && APP_ICON && APP_ICON.length < 700000) ? APP_ICON : null,
       appIconSkipped: !!(typeof APP_ICON!=='undefined' && APP_ICON && APP_ICON.length >= 700000), // trueの間は他端末のアイコンを消さない
+      devSettings: (typeof DEV_SETTINGS!=='undefined') ? DEV_SETTINGS : null,
       streak: (() => { try { return JSON.parse(localStorage.getItem('fukushu-streak-v1') || 'null'); } catch { return null; } })(),
       updatedAt: Date.now(),
     };
@@ -10933,6 +10950,11 @@ const FSYNC = (() => {
       if(Array.isArray(data.planRules) && typeof PLAN_RULES!=='undefined') { PLAN_RULES = data.planRules; safeSetItem(PLAN_RULE_KEY, JSON.stringify(PLAN_RULES)); }
       if(!data.appIconSkipped && typeof data.appIcon !== 'undefined' && typeof APP_ICON!=='undefined' && typeof saveAppIcon==='function'){
         if(data.appIcon !== APP_ICON) saveAppIcon(data.appIcon);
+      }
+      if(data.devSettings && typeof data.devSettings==='object' && typeof DEV_SETTINGS!=='undefined'){
+        DEV_SETTINGS = { global: Array.isArray(data.devSettings.global) && data.devSettings.global.length===MAX_STEP ? data.devSettings.global : null,
+                          byTag: (data.devSettings.byTag && typeof data.devSettings.byTag==='object') ? data.devSettings.byTag : {} };
+        saveDevSettings();
       }
       if(data.streak) safeSetItem('fukushu-streak-v1', JSON.stringify(data.streak));
       if(typeof render === 'function') render();
