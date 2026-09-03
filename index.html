@@ -461,7 +461,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
   transition:opacity .12s,background .12s;font-family:inherit;flex-shrink:0
 }
 .btn-snooze:active{opacity:.6;background:var(--sep)}
-.cal-spread-row{padding:10px 16px 2px}
+.cal-spread-row{padding:12px 16px 16px;margin-top:2px;border-top:1px solid var(--sep)}
 .cal-spread-btn{
   width:100%;display:flex;align-items:center;gap:12px;text-align:left;
   background:var(--orange-bg);border:1.5px solid var(--orange-bd);border-radius:14px;
@@ -8054,11 +8054,17 @@ function _planOccursOn(p, dateStr){
 }
 
 /* 日付ごとのタスク情報を返す純粋関数 */
-function _calEventMap(){
+function _calEventMap(opts){
   // { 'YYYY-MM-DD': { count: number, overdue: bool, colors: string[], planColors: string[], todoColors: string[] } }
   // 期限超過（過去日）のタスクは、実際の期日ではなく「今日」の分としてまとめて表示する。
   // 「今日タブ」ではもともと期限超過のタスクも今日の一覧に合流して表示されるため、
   // カレンダーだけが昨日・一昨日の日付に取り残されたように見えるのは実態と合っていなかった。
+  // includeTodos:false のときはToDo（長期タスク含む）をcountから除外する。
+  // スマート分散は復習カード・計画タスクしか動かさないため、混雑度の判定・しきい値の
+  // 算出もこの2種類だけで行うべきで、ToDoの件数に引きずられてはいけない
+  // （ToDoが多いだけの日を「混んでいる」と誤判定して復習カードを逃がしてしまう、
+  // 　あるいは逆に空いている移動先として見誤ってしまう、といったズレを防ぐ）。
+  const includeTodos = !opts || opts.includeTodos !== false;
   const map = {};
   const today = td();
   function ensure(d){
@@ -8103,13 +8109,14 @@ function _calEventMap(){
     });
   });
   // ToDo: 日付が設定されている未完了のToDoをカレンダーに表示
+  // （includeTodos:false のときはcountに加算しない＝スマート分散の混雑度計算から除外）
   TODOS.filter(x=>!x.done).forEach(x=>{
     let d = x.date;
     if(!d) return;
     const isOverdueItem = d < today;
     if(isOverdueItem) d = today;
     const cell = ensure(d);
-    cell.count++;
+    if(includeTodos) cell.count++;
     if(isOverdueItem) cell.overdue = true;
     if(!cell.todoColors.includes('#F59E0B')) cell.todoColors.push('#F59E0B');
   });
@@ -8480,7 +8487,9 @@ function openSmartSpread(){
 
 function runSmartSpread(units){
   const t = td();
-  const evMap = _calEventMap();
+  // 混雑度の判定・しきい値は復習カード＋計画タスクのみで行う（ToDo・長期タスクは除外）。
+  // 動かす対象自体が復習カードだけなので、判定に使う件数もそれと揃える。
+  const evMap = _calEventMap({includeTodos:false});
   const threshold = _calDenseThreshold(evMap);
   const horizonDays = 7; // 今日から7日間でならす（今日の分も含める）
   const horizonDates = [];
@@ -9612,7 +9621,7 @@ function todoCardHtml(x, compact){
   if(x.longterm){
     const remain = diff(x.deadline||t);
     const dLabel = fmtShortText(x.deadline||t);
-    const remainTxt = remain>0 ? `あと${remain}日（${dLabel}まで）` : remain===0 ? '今日が目安の期限' : `${dLabel}が目安でした`;
+    const remainTxt = remain>0 ? `${dLabel}まで` : remain===0 ? '今日が目安の期限' : `${dLabel}が目安でした`;
     whenChip = `<div class="card-when-chip due">${IC.calendar} ${remainTxt}</div>`;
   } else {
     whenChip = over
@@ -9647,6 +9656,8 @@ function todoCardHtml(x, compact){
 // 復習カード（cHtml）・計画カード（planCardHtml）と同じ .cw/.card 構造で、
 // ToDo1件につき1枚のカードを独立して出力する（まとめず並列に並ぶ）。
 // 完了済みのToDoはここには含めず、他のカードと同様に「完了済み」アコーディオンへ移す。
+// 長期タスクと同様、見出し付きで独立したセクションとして表示する（復習カード等と混ざらないように）。
+// ToDo群は今日タブのグリッドで常に先頭に来るため、見出しは常にsec-first扱い。
 function renderTodoSectionHtml(compact, tagId){
   const t = td();
   // 長期タスクはここでは出さず、今日タブの一番後ろにまとめて表示する
@@ -9654,7 +9665,8 @@ function renderTodoSectionHtml(compact, tagId){
   let list = TODOS.filter(x=>x.date && x.date<=t && !x.done && !x.longterm).sort((a,b)=>(a.date||'').localeCompare(b.date||'')||(a.createdAt||0)-(b.createdAt||0));
   if(tagId) list = list.filter(x=>(x.tags||[]).includes(tagId));
   if(!list.length) return '';
-  return list.map(x=>todoCardHtml(x, compact)).join('');
+  const header = `<div class="sec sec-first">📝 ToDo · ${list.length}件</div>`;
+  return header + list.map(x=>todoCardHtml(x, compact)).join('');
 }
 
 // 長期タスク（〜日までにやりたい、日々の進み方は気分次第の緩やかなタスク）専用の表示。
