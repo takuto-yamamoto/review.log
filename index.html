@@ -32,6 +32,8 @@
   --red:#FF3B30;
   --plan:#7C3AED;--plan-d:#6D28D9;--plan-bg:#F5F3FF;--plan-bd:rgba(124,58,237,.18);
   --orange:#F97316;--orange-d:#EA580C;--orange-bg:#FFF4E9;--orange-bd:rgba(249,115,22,.2);
+  --amber:#F59E0B;--amber-d:#B45309;
+  --teal-d:#0D9488;
   --lbl:#0F0F14;--lbl2:rgba(60,60,67,.52);--lbl3:rgba(60,60,67,.26);--icon-muted:rgba(60,60,67,.62);
   --sep:rgba(60,60,67,.09);--fill:rgba(120,120,128,.09);
   /* 影は「近い・柔らかい」層と「遠い・広い」層を重ねることで、フラットな1枚影より
@@ -118,7 +120,8 @@ body.pwa .navbar{
   font-family:'M PLUS Rounded 1c','Outfit',sans-serif;font-size:20px;font-weight:900;
   color:var(--blue);letter-spacing:-.4px;line-height:1
 }
-.nav-date{font-size:13px;color:var(--lbl2);font-variant-numeric:tabular-nums;letter-spacing:.2px}
+.nav-date{font-size:13px;color:var(--lbl2);font-variant-numeric:tabular-nums;letter-spacing:.2px;transition:opacity .12s}
+.nav-date:active{opacity:.5}
 .stat-row{display:none}
 .chip{
   background:var(--blue-bg);border:1px solid var(--blue-bd);border-radius:100px;
@@ -2506,7 +2509,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
           <button onclick="openTodoAddSheet()" aria-label="ToDoを追加" style="background:var(--blue-bg);border:1px solid var(--blue-bd);cursor:pointer;padding:5px 10px 5px 8px;color:var(--blue-d);display:flex;align-items:center;gap:4px;border-radius:100px;font-size:12.5px;font-weight:700;transition:opacity .12s" id="todo-add-btn">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>ToDo
           </button>
-          <div class="nav-date" id="nav-date"></div>
+          <div class="nav-date" id="nav-date" onclick="openCalendarFromNav()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" role="button" tabindex="0" aria-label="カレンダーを開く" style="cursor:pointer"></div>
         </div>
       </div>
     </div>
@@ -6628,7 +6631,7 @@ function rToday(list, hasActive, allDone){
     gridHtml+=filteredOverdue.map(u=>cHtml(u, compact)).join('');
   }
   if(filteredDueToday.length){
-    gridHtml+=`<div class="sec${filteredOverdue.length?'':' sec-first'}">今日が期限 · ${filteredDueToday.length}件</div>`;
+    gridHtml+=`<div class="sec${filteredOverdue.length?'':' sec-first'}" style="color:var(--blue-d)">${IC.book}今日が期限 · ${filteredDueToday.length}件</div>`;
     gridHtml+=filteredDueToday.map(u=>cHtml(u, compact)).join('');
   }
   gridHtml += duePlanSecHtml() + forwardPushSecHtml() + longtermTodoCardsHtml;
@@ -7991,6 +7994,19 @@ function calToggle(){
   haptic();
 }
 
+// ナビバー右上の日付をタップした時：「予定」タブに切り替え、カレンダーを開いた状態で表示する
+function openCalendarFromNav(){
+  _calInit();
+  _calOpen = true;
+  _calViewMode = 'month';
+  const now = new Date();
+  _calYear  = now.getFullYear();
+  _calMonth = now.getMonth();
+  const upcomingBtn = document.querySelector('[data-tab="upcoming"]');
+  if(upcomingBtn) switchTab(upcomingBtn); // render()内でcal-wrapが開いた状態のHTMLが組み立てられる
+  haptic();
+}
+
 function calNav(delta){
   _calInit();
   // スワイプ操作はボタンのdisabled属性を無視して呼ばれるため、
@@ -9084,6 +9100,8 @@ function openSheet(){
   haptic();
 }
 
+let _lastKbH = -1; // 直前に適用したキーボード高さ（closeSheet/visualViewport間で共有）
+
 function closeSheet(){
   const sh=document.getElementById('sheet');
   document.getElementById('overlay').classList.remove('on');
@@ -9092,6 +9110,7 @@ function closeSheet(){
   sh.style.bottom     = '';
   sh.style.maxHeight  = '';
   sh.style.transition = '';
+  _lastKbH = -1;
   document.getElementById('inp').blur();
   document.getElementById('inp').classList.remove('shake');
   _sheetDateMode='today';
@@ -9166,6 +9185,13 @@ function bindPullToClose(moveEl, handle, closeFn, scrollEl){
 if(window.visualViewport){
   let _vpRaf = null;
 
+  function _resetSheetKeyboardStyle(sh){
+    sh.style.transition = '';
+    sh.style.bottom     = '';
+    sh.style.maxHeight  = '';
+    _lastKbH = -1;
+  }
+
   function _syncSheetToKeyboard(){
     if(_vpRaf) cancelAnimationFrame(_vpRaf);
     _vpRaf = requestAnimationFrame(()=>{
@@ -9177,11 +9203,18 @@ if(window.visualViewport){
       const winH = window.innerHeight;
       const kbH  = Math.max(0, winH - vpH - vpT);
 
+      // キーボードのアニメーション中は resize/scroll が細かく連続発火するため、
+      // 前回とほぼ同じ高さなら書き込みを省略して無駄な再レイアウト（カクつき）を防ぐ
+      if(Math.abs(kbH - _lastKbH) < 2) return;
+
       if(kbH > 80){
-        // キーボードが表示中：シートをキーボード上端に合わせ高さを制限
-        sh.style.transition = 'none';
+        // キーボードが表示中：シートをキーボード上端に合わせ高さを制限。
+        // transitionを短時間だけ有効にして、細かい高さの再計算が起きても
+        // 段差ではなく滑らかに追従するようにする（'none'固定だとカクつく原因になる）
+        sh.style.transition = 'bottom .12s ease-out, max-height .12s ease-out';
         sh.style.bottom     = kbH + 'px';
         sh.style.maxHeight  = (vpH - 24) + 'px';
+        _lastKbH = kbH;
         // 入力欄が隠れていたらスクロールして見えるようにする
         // シートがまだ開いているときのみ実行（閉鎖後のfireを防ぐ）
         setTimeout(()=>{
@@ -9192,16 +9225,30 @@ if(window.visualViewport){
         }, 60);
       } else {
         // キーボードが閉じた：元の状態に戻す
-        sh.style.transition = '';
-        sh.style.bottom     = '';
-        sh.style.maxHeight  = '';
+        _resetSheetKeyboardStyle(sh);
       }
     });
   }
 
   window.visualViewport.addEventListener('resize', _syncSheetToKeyboard);
   window.visualViewport.addEventListener('scroll', _syncSheetToKeyboard);
+
+  // Safety net: 一部のAndroid端末ではキーボードを閉じた直後に
+  // visualViewportの最終イベントが遅延・欠落し、シートがキーボード分
+  // 持ち上がった位置に「残ってしまう」ことがあるため、入力欄のフォーカスが
+  // 外れたタイミングでも念のため元の位置に戻す。
+  document.addEventListener('focusout', e=>{
+    if(e.target && e.target.id === 'inp'){
+      setTimeout(()=>{
+        const sh = document.getElementById('sheet');
+        if(!sh || !sh.classList.contains('on')) return;
+        if(document.activeElement && document.activeElement.id === 'inp') return; // 再フォーカス済みなら何もしない
+        _resetSheetKeyboardStyle(sh);
+      }, 250);
+    }
+  });
 }
+
 
 /* ══ Toast ═════════════════════════════ */
 let _tt;
@@ -9715,7 +9762,7 @@ function renderTodoSectionHtml(compact, tagId){
   let list = TODOS.filter(x=>x.date && x.date<=t && !x.done && !x.longterm).sort((a,b)=>(a.date||'').localeCompare(b.date||'')||(a.createdAt||0)-(b.createdAt||0));
   if(tagId) list = list.filter(x=>(x.tags||[]).includes(tagId));
   if(!list.length) return '';
-  const header = `<div class="sec sec-first" style="color:var(--blue-d)">${IC.listCheck}ToDo · ${list.length}件</div>`;
+  const header = `<div class="sec sec-first" style="color:var(--amber-d)">${IC.listCheck}ToDo · ${list.length}件</div>`;
   return header + list.map(x=>todoCardHtml(x, compact)).join('');
 }
 
@@ -9728,7 +9775,7 @@ function renderLongtermTodoSectionHtml(compact, tagId){
     .sort((a,b)=>(a.deadline||'').localeCompare(b.deadline||'')||(a.createdAt||0)-(b.createdAt||0));
   if(tagId) list = list.filter(x=>(x.tags||[]).includes(tagId));
   if(!list.length) return '';
-  const header = `<div class="sec" style="color:#DB2777">${IC.target}長期タスク · ${list.length}件</div>`;
+  const header = `<div class="sec" style="color:var(--teal-d)">${IC.target}長期タスク · ${list.length}件</div>`;
   return header + list.map(x=>todoCardHtml(x, compact)).join('');
 }
 
@@ -11300,7 +11347,7 @@ const OB_STEPS = [
     type: 'welcome',
     emoji: `${IC.brain}`,
     title: 'その「せっかく覚えたこと」、忘れさせません',
-    body: '<strong>復習マネージャー</strong>は、科学的に裏付けられた<strong>エビングハウスの忘却曲線</strong>をもとに、「これを忘れかけている頃」に自動で復習タイミングを教えてくれるアプリです。<br><br>・復習日は自動計算だから予定管理いらず<br>・勉強時間もタイマーでサクッと記録<br>・タグ・カテゴリーで教科や単元を整理<br>・記録が積み上がるほど実績が育つ<br><br>「あとで復習しよう」で終わらせない仕組み、30秒で体験してみましょう。',
+    body: '<strong>復習マネージャー</strong>は、勉強した内容を<strong>「そろそろ忘れそうな頃」に自動で教えてくれる</strong>アプリです。人の記憶に関する研究（エビングハウスの忘却曲線）をもとに、復習のベストタイミングを計算します。<br><br>・復習日は自動で決まる、自分で考えなくてOK<br>・勉強時間はタイマーでワンタップ記録<br>・タグやカテゴリーで教科ごとにすっきり整理<br>・続けるほど、頑張った記録が積み上がる<br><br>まずは30秒、実際に触って感覚をつかんでみましょう。',
     next: '使ってみる',
     skip: 'スキップ',
   },
