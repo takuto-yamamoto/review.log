@@ -7371,6 +7371,14 @@ function _restoreTimerState(){
 // 開き直し、経過時間を引き継いだ状態を復元する。
 function _reopenActiveStudySheet(){
   if(!(_timerStart || _timerElapsed>0)) return;
+  // #study-sheet はHTML内でこの<script>より後ろに書かれているため、
+  // 起動直後（DOMのパースが最後まで終わっていないタイミング）に呼ばれると
+  // まだ要素が存在せず、オーバーレイだけ暗く表示されて処理が例外で止まって
+  // しまう不具合があった。要素が無ければDOMのパース完了を待って再試行する。
+  if(!document.getElementById('study-sheet')){
+    document.addEventListener('DOMContentLoaded', _reopenActiveStudySheet, {once:true});
+    return;
+  }
   let tags=[];
   if(_timerUnitId){
     const u=U.find(x=>x.id===_timerUnitId);
@@ -7392,8 +7400,9 @@ function _reopenActiveStudySheet(){
   _resetStudyLockUI();
   _renderStudySheet();
   _restoreTimerUI();
-  document.getElementById('overlay').classList.add('on');
-  document.getElementById('study-sheet').classList.add('on');
+  const ov=document.getElementById('overlay'), sh2=document.getElementById('study-sheet');
+  if(ov) ov.classList.add('on');
+  if(sh2) sh2.classList.add('on');
   setFabHidden(true);
 }
 let _studySheetMode='review'; // 'review' or 'new'
