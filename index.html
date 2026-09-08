@@ -467,6 +467,17 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 }
 .btn-snooze:active{opacity:.6;background:var(--sep)}
 .cal-spread-row{padding:12px 16px 16px;margin-top:2px;border-top:1px solid var(--sep)}
+.spread-intensity-row{
+  display:flex;background:var(--fill);border-radius:9px;padding:2px;margin-bottom:8px;
+}
+.spread-intensity-btn{
+  flex:1;border:none;background:transparent;font-family:inherit;
+  font-size:11.5px;font-weight:700;color:var(--lbl2);
+  padding:6px 4px;border-radius:7px;cursor:pointer;
+  transition:background .15s,color .15s;-webkit-tap-highlight-color:transparent;
+  white-space:nowrap;
+}
+.spread-intensity-btn.active{background:var(--card);color:var(--orange-d);box-shadow:var(--shadow-sm)}
 .cal-spread-btn{
   width:100%;display:flex;align-items:center;gap:12px;text-align:left;
   background:var(--orange-bg);border:1.5px solid var(--orange-bd);border-radius:14px;
@@ -1658,6 +1669,13 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
   display:grid;grid-template-columns:repeat(7,1fr);
   padding:0 10px 14px;gap:2px;
 }
+/* 横スワイプ中：#cal-grid自体は3面分の帯（前・現在・次）を横に並べる「窓」になり、
+   各面（.cal-drag-pane）が本来の.cal-gridと同じクラスを持って中に7列グリッドを描画する。
+   ドラッグ中は指の動きに1:1で追従させ、指を離した瞬間に初めてイージング遷移をかける
+   ことで、パッと切り替わる違和感をなくす。 */
+.cal-drag-track{display:flex;will-change:transform}
+.cal-drag-pane{flex-shrink:0;min-width:0}
+
 .cal-dow{
   text-align:center;font-size:10px;font-weight:700;
   color:var(--lbl3);padding:0 0 6px;letter-spacing:.5px;
@@ -6651,6 +6669,7 @@ function rUpcoming(list){
   const isPrevDisabled = _calPrevDisabled();
   const _spreadCand = _calOpen ? _smartSpreadCandidates() : null;
   const spreadCount = _spreadCand ? _spreadCand.units.length : 0;
+  const spreadIntensity = getSpreadTodayIntensity();
   const calHtml = `
   <button class="cal-toggle" onclick="calToggle()" aria-label="カレンダービューを切り替え">
     <div class="cal-toggle-left">
@@ -6680,11 +6699,16 @@ function rUpcoming(list){
     <div id="cal-grid" class="cal-grid${_calViewMode==='day'?' cal-grid-day':''}">${_calOpen ? (_calViewMode==='day' ? _buildCalDayGridHtml(_calDayDate, _calEvMapForTpl) : _buildCalMonthGridHtml(_calYear, _calMonth, _calEvMapForTpl)) : ''}</div>
     <div id="cal-legend" class="cal-legend">${_calOpen ? _calLegendHtml() : ''}</div>
     <div id="cal-spread-row" class="cal-spread-row" style="display:${spreadCount>0 ? 'block':'none'}">
+      <div class="spread-intensity-row" role="group" aria-label="今日に割り振る量">
+        <button class="spread-intensity-btn${spreadIntensity==='less'?' active':''}" data-value="less" onclick="setSpreadTodayIntensity('less')">今日少なめ</button>
+        <button class="spread-intensity-btn${spreadIntensity==='normal'?' active':''}" data-value="normal" onclick="setSpreadTodayIntensity('normal')">標準</button>
+        <button class="spread-intensity-btn${spreadIntensity==='more'?' active':''}" data-value="more" onclick="setSpreadTodayIntensity('more')">今日多め</button>
+      </div>
       <button class="cal-spread-btn" onclick="openSmartSpread()">
         <span class="cal-spread-icon">${IC.spread}</span>
         <span class="cal-spread-body">
           <span class="cal-spread-title">スマート分散でならす</span>
-          <span class="cal-spread-sub">${spreadCount}件を今日から7日間で均等に振り分けます</span>
+          <span class="cal-spread-sub">${spreadCount}件を今日から7日間で振り分けます</span>
         </span>
         <span class="cal-spread-chev"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
       </button>
@@ -8227,7 +8251,7 @@ function _renderCalGrid(){
     const spreadCount = spreadCand.units.length;
     spreadRowEl.style.display = spreadCount > 0 ? 'block' : 'none';
     const spreadSubEl = spreadRowEl.querySelector('.cal-spread-sub');
-    if(spreadSubEl) spreadSubEl.textContent = `${spreadCount}件を今日から7日間で均等に振り分けます`;
+    if(spreadSubEl) spreadSubEl.textContent = `${spreadCount}件を今日から7日間で振り分けます`;
   }
 
   _calAttachSwipe();
@@ -8282,24 +8306,137 @@ function _calLegendHtml(){
   return tagChips + planChip + todoChip;
 }
 
+/* ドラッグプレビュー用に、現在の表示から delta 分だけ先／前のカレンダーHTMLを、
+   状態を変えずに構築する（_buildCalMonthGridHtml等は純粋関数なのでそのまま使い回せる） */
+function _calAdjacentGridHtml(delta){
+  const evMap = _calEventMap();
+  if(_calViewMode === 'day'){
+    const d = addD(_calDayDate, delta);
+    return _buildCalDayGridHtml(d, evMap);
+  }
+  let y = _calYear, m = _calMonth + delta;
+  if(m < 0){ m = 11; y--; }
+  if(m > 11){ m = 0; y++; }
+  return _buildCalMonthGridHtml(y, m, evMap);
+}
+
+/* 横ドラッグ開始：#cal-gridの中身を「前面・現在面・次面」の3枚を並べた帯に差し替える。
+   各面には#cal-gridと同じクラス（cal-grid / cal-grid-day）を与えることで、
+   本来のグリッドCSS（7列など）はそのまま各面の内部に適用させ、#cal-gridそのものは
+   一時的に「3枚を横に並べて覗き見せるための窓」として振る舞わせる。 */
+function _calBuildDragTrack(gridEl){
+  if(gridEl._dragTrack) return;
+  const w = gridEl.clientWidth;
+  if(!w) return;
+  const paneClass = gridEl.className; // 現在の "cal-grid" または "cal-grid cal-grid-day" を各面に引き継ぐ
+  const curHtml  = gridEl.innerHTML;
+  const prevHtml = _calAdjacentGridHtml(-1);
+  const nextHtml = _calAdjacentGridHtml(1);
+
+  const track = document.createElement('div');
+  track.className = 'cal-drag-track';
+  track.style.transform = `translate3d(${-w}px,0,0)`;
+
+  [prevHtml, curHtml, nextHtml].forEach(html=>{
+    const pane = document.createElement('div');
+    pane.className = 'cal-drag-pane ' + paneClass;
+    pane.style.width = w + 'px';
+    pane.innerHTML = html;
+    track.appendChild(pane);
+  });
+
+  gridEl.style.display = 'flex';
+  gridEl.style.overflow = 'hidden';
+  gridEl.style.padding = '0';
+  gridEl.innerHTML = '';
+  gridEl.appendChild(track);
+  gridEl._dragTrack = track;
+  gridEl._dragW = w;
+}
+
+/* ドラッグ中：指の移動量そのままに帯を動かす（イージングなし＝1:1追従）。
+   これ以上前へ進めない場合は、引っ張り抵抗（ゴムのような手応え）を掛けて視覚的に伝える。 */
+function _calUpdateDragTrack(gridEl, dx){
+  const track = gridEl._dragTrack;
+  if(!track) return;
+  const w = gridEl._dragW;
+  let d = dx;
+  if(d > 0 && _calPrevDisabled()) d *= 0.28;
+  d = Math.max(-w * 0.98, Math.min(w * 0.98, d));
+  track.style.transition = 'none';
+  track.style.transform = `translate3d(${-w + d}px,0,0)`;
+}
+
+/* 指を離した時：閾値を超えていればそのまま前後の面まで滑らせて確定、
+   超えていなければ現在の面までゆっくり戻す。どちらもイージング付きの
+   アニメーションを経てから実データを反映する（切り替わりの瞬間を作らない）。 */
+function _calFinishDragTrack(gridEl, dx){
+  const track = gridEl._dragTrack;
+  if(!track) return;
+  const w = gridEl._dragW;
+  const threshold = Math.min(90, w * 0.24);
+  let delta = 0;
+  if(dx <= -threshold) delta = 1;
+  else if(dx >= threshold && !_calPrevDisabled()) delta = -1;
+
+  const target = delta === 1 ? -2*w : delta === -1 ? 0 : -w;
+  track.style.transition = 'transform .3s var(--ease-out)';
+  requestAnimationFrame(()=>{ track.style.transform = `translate3d(${target}px,0,0)`; });
+
+  const cleanup = () => {
+    track.removeEventListener('transitionend', cleanup);
+    gridEl.style.display = '';
+    gridEl.style.overflow = '';
+    gridEl.style.padding = '';
+    gridEl._dragTrack = null;
+    if(delta !== 0){
+      calNav(delta); // 実データを確定し、_renderCalGridがgridElの中身を通常状態で描き直す
+    } else {
+      _renderCalGrid(); // 状態は変えず、通常の描画に戻すだけ（ドラッグ前の見た目に復元）
+    }
+  };
+  track.addEventListener('transitionend', cleanup, {once:true});
+}
+
 /* スワイプで前後の月／週に移動（#cal-gridに一度だけバインド） */
 function _calAttachSwipe(){
   const gridEl = document.getElementById('cal-grid');
   if(!gridEl || gridEl._swipeBound) return;
   gridEl._swipeBound = true;
-  let sx = null, sy = null;
+  let sx = null, sy = null, axisLocked = null, dx = 0;
+
   gridEl.addEventListener('touchstart', e => {
     if(!e.touches || e.touches.length !== 1) return;
     sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+    axisLocked = null; dx = 0;
   }, {passive:true});
-  gridEl.addEventListener('touchend', e => {
-    if(sx === null) return;
-    const t = e.changedTouches[0];
-    const dx = t.clientX - sx, dy = t.clientY - sy;
-    sx = null; sy = null;
-    if(Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5){
-      if(dx < 0) calNav(1); else calNav(-1);
+
+  gridEl.addEventListener('touchmove', e => {
+    if(sx === null || !e.touches || e.touches.length !== 1) return;
+    const t = e.touches[0];
+    const curDx = t.clientX - sx, curDy = t.clientY - sy;
+    if(axisLocked === null){
+      if(Math.abs(curDx) < 8 && Math.abs(curDy) < 8) return; // 判定保留（誤反応防止）
+      axisLocked = Math.abs(curDx) > Math.abs(curDy) * 1.3 ? 'x' : 'y';
+      if(axisLocked === 'x') _calBuildDragTrack(gridEl);
     }
+    if(axisLocked !== 'x') return; // 縦方向と判定した場合は通常のスクロールに委ねる
+    e.preventDefault(); // 横ドラッグ中はページの縦スクロールを止め、指の動きだけに追従させる
+    dx = curDx;
+    _calUpdateDragTrack(gridEl, dx);
+  }, {passive:false});
+
+  gridEl.addEventListener('touchend', () => {
+    if(sx === null) return;
+    sx = null; sy = null;
+    if(axisLocked === 'x') _calFinishDragTrack(gridEl, dx);
+    axisLocked = null; dx = 0;
+  }, {passive:true});
+
+  gridEl.addEventListener('touchcancel', () => {
+    sx = null; sy = null;
+    if(axisLocked === 'x') _calFinishDragTrack(gridEl, 0);
+    axisLocked = null; dx = 0;
   }, {passive:true});
 }
 
@@ -8518,6 +8655,31 @@ function _buildCalDayGridHtml(dayDate, evMap){
 /* ══ Dense-day manual spread sheet ════════════════ */
 let _denseDate = null; // 現在シートで表示中の日付
 
+/* ══ スマート分散：今日への割り振り量の好み ══
+   'less'=今日は少なめに留めて明日以降に多く送る／'normal'=通常のしきい値通り／
+   'more'=今日にやや多めに詰め込んで早めに追いつく。好みは端末に保存し、次回以降も引き継ぐ。 */
+const SPREAD_TODAY_INTENSITY_KEY = 'fukushu-spread-today-intensity-v1';
+function getSpreadTodayIntensity(){
+  try {
+    const v = localStorage.getItem(SPREAD_TODAY_INTENSITY_KEY);
+    return (v==='less' || v==='more') ? v : 'normal';
+  } catch { return 'normal'; }
+}
+function setSpreadTodayIntensity(v){
+  if(v!=='less' && v!=='normal' && v!=='more') return;
+  if(getSpreadTodayIntensity() === v) return;
+  try { localStorage.setItem(SPREAD_TODAY_INTENSITY_KEY, v); } catch {}
+  haptic('light');
+  // カレンダーの開閉状態やスクロール位置を保ったまま、ボタンのハイライトだけ切り替える
+  document.querySelectorAll('.spread-intensity-btn').forEach(btn=>{
+    btn.classList.toggle('active', btn.dataset.value === v);
+  });
+}
+// 好みの度合いを、しきい値に対する倍率に変換する（today専用のcap算出に使う）
+function _spreadIntensityMult(intensity){
+  return { less: 0.55, normal: 1, more: 1.8 }[intensity] || 1;
+}
+
 /* ══ スマート分散：風邪などでこなせなかった日の積み残しを、今後の空いている日に均等に振り分ける ══
    復習の1回目・2回目はタイミングが記憶定着に直結するため対象外（ほぼ動かさない）。
    計画タスクも決まったルールで運用されているため対象外。ToDoは「その日までにやる」という
@@ -8559,12 +8721,25 @@ function runSmartSpread(units){
     horizonDates.push(d);
     load[d] = evMap[d] ? evMap[d].count : 0;
   }
+  // これから振り分ける対象（積み残し）は、実行前は全員「今日」にバケットされて
+  // load[t] に含まれてしまっている。これをそのままにすると「今日はもう満杯」と
+  // 判定され続け、対象タスクが一件も今日に残せなくなる（＝今日から消化を始め
+  // たいのに今日が空になる）。動かす対象自身の見かけ上の件数はここで一旦差し
+  // 引き、1・2回目の復習や計画タスクなど「動かさないもの」だけを今日の本来の
+  // 背景負荷として扱う。こうすることで、今日がまだ空いていれば今日から埋まり、
+  // しきい値を超えた分だけ自然と翌日以降にあふれていくようになる。
+  load[t] = Math.max(0, load[t] - units.length);
+  // 「今日少なめ／標準／多め」の好みに応じて、今日だけ他の日と異なる上限（cap）を使う。
+  // 他の日は従来通り相対しきい値をそのまま使う。今日がどんな設定でも0件にはならない
+  // よう、候補が1件以上ある前提では最低1件は今日に残せるようにしておく。
+  const todayCap = Math.max(1, Math.round(threshold * _spreadIntensityMult(getSpreadTodayIntensity())));
+  function capFor(d){ return d===t ? todayCap : threshold; }
   // exclude と異なる日の中で、過密しきい値未満の最も近い日を優先。全て埋まっていたら
   // exclude以外で最も空いている日を返す（load自体は更新しない＝呼び出し側で反映する）
   function bestDest(exclude){
     for(const d of horizonDates){
       if(d===exclude) continue;
-      if(load[d] < threshold) return d;
+      if(load[d] < capFor(d)) return d;
     }
     const cands = horizonDates.filter(d=>d!==exclude);
     return cands.reduce((a,b) => load[b] < load[a] ? b : a, cands[0]);
@@ -8598,7 +8773,7 @@ function runSmartSpread(units){
   let leveledCount = 0;
   horizonDates.forEach(d=>{
     let guard = 0;
-    while(load[d] > threshold && guard < 30){
+    while(load[d] > capFor(d) && guard < 30){
       guard++;
       const movU = U.find(u=>!u.done && u.step>=2 && u.nextDate===d);
       if(!movU) break;
