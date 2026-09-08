@@ -90,6 +90,7 @@ body{
 }
 
 
+
 /* ══ App shell ═════════════════════════ */
 #app{
   position:fixed;
@@ -97,6 +98,28 @@ body{
   display:flex;flex-direction:column;overflow:hidden;
   -webkit-transform:translateZ(0);
   transform:translateZ(0);
+}
+/* navbar+panelsをまとめる列。スマホ縦画面ではこれが#appの唯一の可変領域になり、
+   従来通り「navbar（固定高）+ panels（残り全部）」の縦積みを再現するだけの役割。
+   PC幅・スマホ横画面では、サイドバー（.tab-bar）と横に並ぶ側になる。 */
+.main-col{
+  display:flex;flex-direction:column;flex:1;min-width:0;min-height:0;overflow:hidden;
+}
+/* サイドバー上部のアプリ名表示。スマホ縦画面／横画面の細いレールでは出番がないため
+   初期状態は非表示にしておき、PC幅のサイドバーモードでのみ表示する。 */
+.sidebar-brand{
+  display:none;align-items:center;gap:10px;
+  padding:2px 10px 20px;margin-bottom:8px;
+  border-bottom:1px solid var(--sep);
+}
+.sidebar-brand-icon{
+  width:34px;height:34px;border-radius:50%;flex-shrink:0;
+  background:var(--blue-bg);border:2px solid var(--blue-bd);color:var(--blue-d);
+  display:flex;align-items:center;justify-content:center;
+}
+.sidebar-brand-name{
+  font-family:'M PLUS Rounded 1c','Outfit',sans-serif;font-size:15px;font-weight:900;
+  color:var(--blue);letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 /* PWA: do NOT extend #app below safe-bottom — tab bar handles its own inset */
 
@@ -2504,6 +2527,84 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 /* ── Acts row: bigger gap for fat fingers ── */
 .acts{gap:9px}
 
+/* ══════════════════════════════════════════════════════════════
+   PC・デスクトップブラウザ幅（900px以上）
+   下タブバー(.tab-bar)を左サイドバーに転用し、余白を活かした本格レイアウトにする。
+   HTML構造・JSのタブ切り替えロジックは一切変えず、CSSの出し分けだけで実現している。
+   （スタイルシートの一番最後に置くことで、上のあらゆる個別調整より確実に優先させる）
+   ══════════════════════════════════════════════════════════════ */
+@media (min-width:900px){
+  /* --app-w と --tab-h を上書きするだけで、これらの変数を参照している
+     トースト・シート・FABなどの位置計算（bottom:calc(var(--tab-h)...)）も
+     個別に直さず自動的に「下タブバーが無い前提」の配置に揃う */
+  :root{ --app-w:1120px; --tab-h:0px; }
+  html{ background:#E4E7EE; }
+  body{
+    box-shadow:0 1px 0 rgba(0,0,0,.04),0 30px 70px -30px rgba(15,15,20,.35),0 0 0 1px rgba(0,0,0,.07);
+  }
+
+  #app{ flex-direction:row; }
+
+  /* .tab-bar（本来は下タブバー）を左サイドバーとして振る舞わせる */
+  .tab-bar{
+    order:-1; /* main-colより先＝左側に配置 */
+    flex-direction:column;align-items:stretch;justify-content:flex-start;
+    width:240px;height:auto;align-self:stretch;
+    padding:22px 14px calc(20px + var(--safe-bottom));
+    gap:3px;
+    border-top:none;border-right:.5px solid var(--sep);
+  }
+  .sidebar-brand{ display:flex; }
+  .tab-btn{
+    flex:0 0 auto;flex-direction:row;justify-content:flex-start;gap:13px;
+    padding:11px 14px;border-radius:12px;min-height:46px;
+    transition:background .12s,color .15s;
+  }
+  .tab-btn:not(.on):hover{ background:var(--fill); }
+  .tab-btn::before{ left:0;top:0;width:100%;height:100%;border-radius:12px;transform:scale(1); }
+  .tab-btn.on::before{ transform:scale(1); }
+  .tab-btn svg{ width:21px;height:21px;flex-shrink:0; }
+  .tab-btn.on svg{ transform:none; }
+  .tab-lbl{ font-size:13.5px;font-weight:700; }
+  .tbadge{ position:static;margin-left:auto; }
+
+  /* コンテンツ側：下タブバー分の余白がもう要らないので通常の余白に戻し、
+     読みやすい幅に制限して中央寄せする（サイドバーの分、素の全幅だと間延びするため） */
+  .nav-inner{ padding:16px 28px;max-width:760px;margin:0 auto; }
+  .panels{ max-width:760px;margin:0 auto;width:100%; }
+  .panel{ padding-bottom:calc(32px + var(--safe-bottom)); }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   スマホの横画面（幅900px未満・高さの低いランドスケープ）
+   縦の高さが厳しいので、下タブバーをアイコンのみの細い左レールに変え、
+   タブバー分の高さをまるごとコンテンツに還元する。ナビバーも少し薄くする。
+   ══════════════════════════════════════════════════════════════ */
+@media (orientation:landscape) and (max-width:899px) and (max-height:520px){
+  :root{ --app-w:min(100vw,780px); --tab-h:0px; }
+
+  #app{ flex-direction:row; }
+
+  .tab-bar{
+    order:-1;
+    flex-direction:column;align-items:center;justify-content:flex-start;
+    width:60px;height:auto;align-self:stretch;
+    padding:calc(10px + var(--safe-top)) 4px calc(10px + var(--safe-bottom)) calc(4px + var(--safe-left));
+    gap:2px;
+    border-top:none;border-right:.5px solid var(--sep);
+  }
+  .tab-lbl{ display:none; } /* 横幅が無いのでアイコンのみにする */
+  .tab-btn{ flex:0 0 auto;min-height:40px;padding:8px 0; }
+  .tab-btn::before{ width:34px;height:30px; }
+  .tbadge{ top:0;left:calc(50% + 9px); }
+
+  /* ナビバーの上下の余白を削り、縦のスペースをコンテンツに回す */
+  .nav-inner{ padding:6px 20px;max-width:680px;margin:0 auto; }
+  .nav-title{ font-size:17px; }
+  .panels{ max-width:680px;margin:0 auto;width:100%; }
+  .panel{ padding-top:8px;padding-bottom:calc(20px + var(--safe-bottom)); }
+}
+
 </style>
 <!-- クラウド同期（PC/スマホ間でのデータ共有）用SDK。読み込みに失敗してもアプリ本体の動作には影響しない -->
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -2513,6 +2614,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 <body>
 <div id="app">
 
+  <div class="main-col">
   <!-- Navbar -->
   <div class="navbar">
     <div class="nav-inner">
@@ -2541,9 +2643,14 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
     <div class="panel" id="p-study" role="tabpanel" aria-labelledby="tab-study"></div>
     <div class="panel" id="p-settings" role="tabpanel" aria-labelledby="tab-settings"></div>
   </div>
+  </div>
 
-  <!-- Tab bar -->
+  <!-- Tab bar（PC幅では左サイドバー、スマホ横画面ではアイコンのみの細いレールに変わる） -->
   <div class="tab-bar" role="tablist" aria-label="メインナビゲーション">
+    <div class="sidebar-brand" aria-hidden="true">
+      <div class="sidebar-brand-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
+      <span class="sidebar-brand-name">復習マネージャー</span>
+    </div>
     <button class="tab-btn on" data-tab="today" data-idx="0" onclick="switchTab(this)" role="tab" aria-selected="true" aria-controls="p-today" id="tab-today">
       <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
       <span class="tab-lbl">今日</span>
@@ -5759,7 +5866,11 @@ const addD  = (s,n) => { const d=new Date(s+'T00:00:00'); d.setDate(d.getDate()+
       u.nextDate=addD(u.addedDate,1); fixed=true;
     }
   });
-  if(fixed) localStorage.setItem(KEY,JSON.stringify(U));
+  // 修正前はここが素のlocalStorage.setItemで、プライベートブラウジングや
+  // 容量超過などで例外が飛ぶと、この行より後ろで定義されるはずの関数・変数が
+  // 一切定義されずアプリの初期化全体が止まってしまっていた（起動不能バグ）。
+  // safeSetItemに差し替えて、失敗してもアプリの起動自体は継続できるようにする。
+  if(fixed) safeSetItem(KEY,JSON.stringify(U));
 })();
 const diff  = s => Math.round((new Date(s+'T00:00:00')-new Date(td()+'T00:00:00'))/86400000);
 const daysBetween = (a,b) => Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000);
@@ -8383,8 +8494,12 @@ function _calFinishDragTrack(gridEl, dx){
   track.style.transition = 'transform .3s var(--ease-out)';
   requestAnimationFrame(()=>{ track.style.transform = `translate3d(${target}px,0,0)`; });
 
+  let cleaned = false;
   const cleanup = () => {
+    if(cleaned) return; // transitionendとフォールバックタイマーの両方から呼ばれても一度だけ実行する
+    cleaned = true;
     track.removeEventListener('transitionend', cleanup);
+    clearTimeout(fallbackTimer);
     gridEl.style.display = '';
     gridEl.style.overflow = '';
     gridEl.style.padding = '';
@@ -8396,48 +8511,95 @@ function _calFinishDragTrack(gridEl, dx){
     }
   };
   track.addEventListener('transitionend', cleanup, {once:true});
+  // タブがバックグラウンドに回るなどしてtransitionendが発火しないケースへの保険。
+  // これが無いと#cal-gridがドラッグ用の帯のまま操作不能に固まってしまう。
+  const fallbackTimer = setTimeout(cleanup, 450);
 }
 
-/* スワイプで前後の月／週に移動（#cal-gridに一度だけバインド） */
+/* スワイプ／ドラッグで前後の月・週に移動。タッチ（スマホ・iPad）とマウス（PC）の
+   両方で、同じ「指／カーソルに追従する」体験になるよう共通のジェスチャー状態を使う。
+   #cal-gridはタブ切り替えのたびに新しい要素として作り直されるため、要素自体に
+   バインドする（gridEl._swipeBound）のはタッチ・mousedownのみにとどめ、documentに
+   バインドするmousemove/mouseupはアプリ全体でただ一度だけ登録する。ここを毎回
+   バインドし直すと、切り替えるたびにdocumentへ古い要素を参照したリスナーが
+   蓄積し続けてしまう（実害は薄いが、あらゆるmousemoveで空振りし続ける定常的な
+   リークになる）。 */
+const _calDrag = { gridEl:null, sx:null, sy:null, axisLocked:null, dx:0, mouseDragging:false };
+let _calMouseDragBound = false;
+
+function _calDragStart(x, y){
+  const gridEl = _calDrag.gridEl;
+  if(!gridEl) return false;
+  // 前の「確定 / 元に戻す」アニメーションがまだ終わっていない場合、ここで
+  // 新しいドラッグを始めてしまうと、アニメーション中の帯を直接掴んで
+  // transition:noneで止めてしまい、そのtransitionendが二度と発火しなくなる
+  // （＝カレンダーがドラッグ用の帯のまま操作不能に固まる）。連続操作を安全に
+  // するため、前のアニメーションが片付くまで新しいドラッグは無視する。
+  if(gridEl._dragTrack) return false;
+  _calDrag.sx = x; _calDrag.sy = y; _calDrag.axisLocked = null; _calDrag.dx = 0;
+  return true;
+}
+function _calDragMove(x, y, preventDefault){
+  const gridEl = _calDrag.gridEl;
+  if(!gridEl || _calDrag.sx === null) return;
+  const curDx = x - _calDrag.sx, curDy = y - _calDrag.sy;
+  if(_calDrag.axisLocked === null){
+    if(Math.abs(curDx) < 8 && Math.abs(curDy) < 8) return; // 判定保留（誤反応防止）
+    _calDrag.axisLocked = Math.abs(curDx) > Math.abs(curDy) * 1.3 ? 'x' : 'y';
+    if(_calDrag.axisLocked === 'x') _calBuildDragTrack(gridEl);
+  }
+  if(_calDrag.axisLocked !== 'x') return; // 縦方向と判定した場合は通常のスクロールに委ねる
+  if(preventDefault) preventDefault();
+  _calDrag.dx = curDx;
+  _calUpdateDragTrack(gridEl, _calDrag.dx);
+}
+function _calDragEnd(cancelled){
+  const gridEl = _calDrag.gridEl;
+  if(!gridEl || _calDrag.sx === null) return;
+  _calDrag.sx = null; _calDrag.sy = null;
+  if(_calDrag.axisLocked === 'x') _calFinishDragTrack(gridEl, cancelled ? 0 : _calDrag.dx);
+  _calDrag.axisLocked = null; _calDrag.dx = 0;
+}
+
 function _calAttachSwipe(){
   const gridEl = document.getElementById('cal-grid');
-  if(!gridEl || gridEl._swipeBound) return;
-  gridEl._swipeBound = true;
-  let sx = null, sy = null, axisLocked = null, dx = 0;
+  if(!gridEl) return;
+  _calDrag.gridEl = gridEl; // 常に「今表示されている#cal-grid」を指すよう更新する
 
-  gridEl.addEventListener('touchstart', e => {
-    if(!e.touches || e.touches.length !== 1) return;
-    sx = e.touches[0].clientX; sy = e.touches[0].clientY;
-    axisLocked = null; dx = 0;
-  }, {passive:true});
+  if(!gridEl._swipeBound){
+    gridEl._swipeBound = true;
+    // ── タッチ（スマホ・iPad） ──
+    gridEl.addEventListener('touchstart', e => {
+      if(!e.touches || e.touches.length !== 1) return;
+      _calDragStart(e.touches[0].clientX, e.touches[0].clientY);
+    }, {passive:true});
+    gridEl.addEventListener('touchmove', e => {
+      if(!e.touches || e.touches.length !== 1) return;
+      _calDragMove(e.touches[0].clientX, e.touches[0].clientY, () => e.preventDefault());
+    }, {passive:false});
+    gridEl.addEventListener('touchend', () => _calDragEnd(false), {passive:true});
+    gridEl.addEventListener('touchcancel', () => _calDragEnd(true), {passive:true});
 
-  gridEl.addEventListener('touchmove', e => {
-    if(sx === null || !e.touches || e.touches.length !== 1) return;
-    const t = e.touches[0];
-    const curDx = t.clientX - sx, curDy = t.clientY - sy;
-    if(axisLocked === null){
-      if(Math.abs(curDx) < 8 && Math.abs(curDy) < 8) return; // 判定保留（誤反応防止）
-      axisLocked = Math.abs(curDx) > Math.abs(curDy) * 1.3 ? 'x' : 'y';
-      if(axisLocked === 'x') _calBuildDragTrack(gridEl);
-    }
-    if(axisLocked !== 'x') return; // 縦方向と判定した場合は通常のスクロールに委ねる
-    e.preventDefault(); // 横ドラッグ中はページの縦スクロールを止め、指の動きだけに追従させる
-    dx = curDx;
-    _calUpdateDragTrack(gridEl, dx);
-  }, {passive:false});
+    // ── マウス（PC）：クリック＆ドラッグでも同じ体験にする ──
+    gridEl.addEventListener('mousedown', e => {
+      if(e.button !== 0) return; // 左クリックのみ
+      if(_calDragStart(e.clientX, e.clientY)) _calDrag.mouseDragging = true;
+    });
+  }
 
-  gridEl.addEventListener('touchend', () => {
-    if(sx === null) return;
-    sx = null; sy = null;
-    if(axisLocked === 'x') _calFinishDragTrack(gridEl, dx);
-    axisLocked = null; dx = 0;
-  }, {passive:true});
-
-  gridEl.addEventListener('touchcancel', () => {
-    sx = null; sy = null;
-    if(axisLocked === 'x') _calFinishDragTrack(gridEl, 0);
-    axisLocked = null; dx = 0;
-  }, {passive:true});
+  // documentへのmousemove/mouseupは、要素が作り直されても増殖しないようアプリ全体で一度だけ
+  if(!_calMouseDragBound){
+    _calMouseDragBound = true;
+    document.addEventListener('mousemove', e => {
+      if(!_calDrag.mouseDragging) return;
+      _calDragMove(e.clientX, e.clientY, () => e.preventDefault());
+    });
+    document.addEventListener('mouseup', () => {
+      if(!_calDrag.mouseDragging) return;
+      _calDrag.mouseDragging = false;
+      _calDragEnd(false);
+    });
+  }
 }
 
 /* 1セル分のHTMLを生成する純粋関数（月表示・週表示で共通） */
