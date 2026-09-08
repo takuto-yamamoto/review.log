@@ -2605,6 +2605,65 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
   .panel{ padding-top:8px;padding-bottom:calc(20px + var(--safe-bottom)); }
 }
 
+/* ══════════════════════════════════════════════════════════════
+   上の2つの@mediaと全く同じ内容を、クラスセレクタでも当てられるようにした
+   複製版。実機やブラウザによっては@mediaの判定タイミングが期待通りに
+   効かないことがあるための保険で、JS側(applyResponsiveLayoutClass)が
+   実測したwindow.innerWidth/innerHeightをもとにhtmlへ
+   .is-desktop-layout / .is-landscape-phone-layout を付け外しする。
+   @media側が正しく効いている環境では、こちらは同じ値を上書きするだけで
+   実害はない。
+   ══════════════════════════════════════════════════════════════ */
+html.is-desktop-layout{ --app-w:1120px; --tab-h:0px; }
+html.is-desktop-layout{ background:#E4E7EE; }
+html.is-desktop-layout body{
+  box-shadow:0 1px 0 rgba(0,0,0,.04),0 30px 70px -30px rgba(15,15,20,.35),0 0 0 1px rgba(0,0,0,.07);
+}
+html.is-desktop-layout #app{ flex-direction:row; }
+html.is-desktop-layout .tab-bar{
+  order:-1;
+  flex-direction:column;align-items:stretch;justify-content:flex-start;
+  width:240px;height:auto;align-self:stretch;
+  padding:22px 14px calc(20px + var(--safe-bottom));
+  gap:3px;
+  border-top:none;border-right:.5px solid var(--sep);
+}
+html.is-desktop-layout .sidebar-brand{ display:flex; }
+html.is-desktop-layout .tab-btn{
+  flex:0 0 auto;flex-direction:row;justify-content:flex-start;gap:13px;
+  padding:11px 14px;border-radius:12px;min-height:46px;
+  transition:background .12s,color .15s;
+}
+html.is-desktop-layout .tab-btn:not(.on):hover{ background:var(--fill); }
+html.is-desktop-layout .tab-btn::before{ left:0;top:0;width:100%;height:100%;border-radius:12px;transform:scale(1); }
+html.is-desktop-layout .tab-btn.on::before{ transform:scale(1); }
+html.is-desktop-layout .tab-btn svg{ width:21px;height:21px;flex-shrink:0; }
+html.is-desktop-layout .tab-btn.on svg{ transform:none; }
+html.is-desktop-layout .tab-lbl{ font-size:13.5px;font-weight:700; }
+html.is-desktop-layout .tbadge{ position:static;margin-left:auto; }
+html.is-desktop-layout .nav-inner{ padding:16px 28px;max-width:760px;margin:0 auto; }
+html.is-desktop-layout .panels{ max-width:760px;margin:0 auto;width:100%; }
+html.is-desktop-layout .panel{ padding-bottom:calc(32px + var(--safe-bottom)); }
+
+html.is-landscape-phone-layout{ --app-w:min(100vw,780px); --tab-h:0px; }
+html.is-landscape-phone-layout #app{ flex-direction:row; }
+html.is-landscape-phone-layout .tab-bar{
+  order:-1;
+  flex-direction:column;align-items:center;justify-content:flex-start;
+  width:60px;height:auto;align-self:stretch;
+  padding:calc(10px + var(--safe-top)) 4px calc(10px + var(--safe-bottom)) calc(4px + var(--safe-left));
+  gap:2px;
+  border-top:none;border-right:.5px solid var(--sep);
+}
+html.is-landscape-phone-layout .tab-lbl{ display:none; }
+html.is-landscape-phone-layout .tab-btn{ flex:0 0 auto;min-height:40px;padding:8px 0; }
+html.is-landscape-phone-layout .tab-btn::before{ width:34px;height:30px; }
+html.is-landscape-phone-layout .tbadge{ top:0;left:calc(50% + 9px); }
+html.is-landscape-phone-layout .nav-inner{ padding:6px 20px;max-width:680px;margin:0 auto; }
+html.is-landscape-phone-layout .nav-title{ font-size:17px; }
+html.is-landscape-phone-layout .panels{ max-width:680px;margin:0 auto;width:100%; }
+html.is-landscape-phone-layout .panel{ padding-top:8px;padding-bottom:calc(20px + var(--safe-bottom)); }
+
 </style>
 <!-- クラウド同期（PC/スマホ間でのデータ共有）用SDK。読み込みに失敗してもアプリ本体の動作には影響しない -->
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -10863,6 +10922,26 @@ async function requestPersistentStorage(){
   }
 }
 requestPersistentStorage();
+
+/* ══ レスポンシブレイアウトの実測フォールバック ══════════════════
+   PC幅・スマホ横画面向けのレイアウトは基本的にCSSの@media側で判定しているが、
+   端末やブラウザ・キャッシュされた古い表示状態などで@mediaの判定が期待通りに
+   効かないケースへの保険として、JSでも実際のwindow.innerWidth/innerHeightを
+   測ってhtmlにクラスを付け、CSS側でも「@mediaかこのクラスのどちらかが真」で
+   同じスタイルが当たるようにしておく（applyResponsiveLayoutClass関数内、
+   .is-desktop-layout / .is-landscape-phone-layout を参照）。 */
+function applyResponsiveLayoutClass(){
+  const w = window.innerWidth, h = window.innerHeight;
+  const isDesktop = w >= 900;
+  const isLandscapePhone = !isDesktop && w > h && w <= 899 && h <= 520;
+  document.documentElement.classList.toggle('is-desktop-layout', isDesktop);
+  document.documentElement.classList.toggle('is-landscape-phone-layout', isLandscapePhone);
+}
+applyResponsiveLayoutClass();
+window.addEventListener('resize', applyResponsiveLayoutClass);
+window.addEventListener('orientationchange', applyResponsiveLayoutClass);
+// bfcache（戻る/進む操作でのページ復元）でリサイズイベントが飛ばないことがあるため
+window.addEventListener('pageshow', applyResponsiveLayoutClass);
 
 /* ══ Init ══════════════════════════════ */
 (function init(){
