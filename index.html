@@ -3033,6 +3033,54 @@ const saveCategories = () => safeSetItem(CAT_KEY, JSON.stringify(CATEGORIES));
 let STUDY_LOGS = (() => { try { return JSON.parse(localStorage.getItem(STUDY_KEY)) || []; } catch { return []; } })();
 const saveStudyLogs = () => safeSetItem(STUDY_KEY, JSON.stringify(STUDY_LOGS));
 
+/* ══ 勉強記録の削除マーカー（tombstone） ══════════════
+   クラウド同期は「後から書いた端末の全データで上書き」する方式のため、
+   端末Aで記録した勉強時間を、まだそれを受信していない端末Bのpushが
+   丸ごと消してしまう事故が起きていた（＝勉強時間が消えるバグ）。
+   これを防ぐため applyPayload では勉強記録を id 単位で「合算（union）」する
+   ように変更する。ただし単純な合算だと削除が他端末に伝わらず、消したはずの
+   記録が復活してしまう。そこで「削除した id と削除時刻」を tombstone として
+   保持・同期し、合算後に削除時刻が記録の版より新しいものだけを取り除く。 */
+const STUDY_TOMB_KEY = 'fukushu-studylog-tomb-v1';
+let STUDY_TOMBSTONES = (() => { try { return JSON.parse(localStorage.getItem(STUDY_TOMB_KEY)) || {}; } catch { return {}; } })();
+const saveStudyTombstones = () => safeSetItem(STUDY_TOMB_KEY, JSON.stringify(STUDY_TOMBSTONES));
+
+// 勉強記録1件の「版（新しさ）」。編集時に updatedAt を打つのでそれを最優先し、
+// 無ければ作成時刻 createdAt、それも無い旧データは 0 とみなす。
+function _studyLogVersion(l){ return (l && (l.updatedAt || l.createdAt)) || 0; }
+
+// ローカルとリモートの勉強記録を非破壊的にマージする。
+// - id が片方にしか無ければ必ず残す（＝記録が消えない）
+// - 両方にあれば版が新しい方を採用（＝編集が反映される）
+// - tombstone（削除時刻）が記録の版以上なら取り除く（＝削除が伝わる）
+function _mergeStudyLogs(localArr, remoteArr, localTomb, remoteTomb){
+  const tomb = Object.assign({}, localTomb || {});
+  const rt = remoteTomb || {};
+  for(const id in rt){ if(!tomb[id] || rt[id] > tomb[id]) tomb[id] = rt[id]; }
+
+  const byId = new Map();
+  const consider = (l) => {
+    if(!l || typeof l !== 'object' || l.id == null) return;
+    const prev = byId.get(l.id);
+    if(!prev || _studyLogVersion(l) > _studyLogVersion(prev)) byId.set(l.id, l);
+  };
+  (localArr || []).forEach(consider);
+  (remoteArr || []).forEach(consider);
+
+  const out = [];
+  byId.forEach((l) => {
+    const del = tomb[l.id];
+    if(del && del >= _studyLogVersion(l)) return; // 削除が版より新しければ消す
+    out.push(l);
+  });
+  out.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+  // 生き残っている記録に対する tombstone は不要になるので掃除しておく
+  for(const id in tomb){ if(byId.has(id) && !(tomb[id] >= _studyLogVersion(byId.get(id)))) { /* keep: 記録が版で勝っている場合、将来の再削除に備え残す */ } }
+
+  return { logs: out, tomb };
+}
+
 /* ══ ToDo data ═══════════════════════════
    Todo entry: { id, text, date(YYYY-MM-DD), done, createdAt }
    「今日」または「明日」の日付が付き、その日の今日タブにのみ表示される
@@ -5410,14 +5458,20 @@ function _updateWebAppManifest(){
 let _studyLogIdSeq = 0;
 function addStudyLog(entry){
   const id = Date.now().toString(36) + '_' + (++_studyLogIdSeq).toString(36);
-  const log = {id, ...entry};
+  // createdAt はマージ時の「版」に使うため必ず持たせる（呼び出し側の指定を尊重しつつ既定を補う）
+  const log = {id, createdAt: Date.now(), ...entry};
+  // 新規idに万一同じidのtombstoneが残っていたら解除（id衝突時の誤消去を防ぐ）
+  if(STUDY_TOMBSTONES[id]){ delete STUDY_TOMBSTONES[id]; saveStudyTombstones(); }
   STUDY_LOGS.unshift(log);
   saveStudyLogs();
   return log;
 }
 function delStudyLog(id){
   STUDY_LOGS = STUDY_LOGS.filter(l=>l.id!==id);
+  // 削除を他端末へ伝えるため tombstone を残す
+  STUDY_TOMBSTONES[id] = Date.now();
   saveStudyLogs();
+  saveStudyTombstones();
 }
 function todayStudyMinutes(){
   const t=td();
@@ -7340,6 +7394,7 @@ function saveEditStudyLog(){
   l.title = title || null;
   l.note = document.getElementById('edit-log-note').value.trim().slice(0,60);
   l.tagIds = [..._editLogTags];
+  l.updatedAt = Date.now(); // マージ時に編集内容が優先されるよう版を更新
   saveStudyLogs();
   closeEditStudyLog();
   rStudy();
@@ -7356,6 +7411,10 @@ function delStudyLogAndRefresh(id){
   _refreshAllLogsSheetIfOpen();
   haptic();
   showUndo('記録を削除しました', ()=>{
+    // 削除を取り消すので tombstone を解除し、版を更新して他端末の削除マーカーにも勝てるようにする
+    delete STUDY_TOMBSTONES[log.id];
+    log.updatedAt = Date.now();
+    saveStudyTombstones();
     STUDY_LOGS.splice(Math.min(idx, STUDY_LOGS.length), 0, log);
     saveStudyLogs();
     rStudy();
@@ -7558,13 +7617,29 @@ function _saveTimerState(){
     try{ localStorage.removeItem(TIMER_KEY); }catch(_){}
   }
 }
+let _pendingTimerClampNote=false; // 復元時に暴走タイマーをクランプしたら、シート再表示時に一度だけ知らせる
+const _TIMER_RUN_CAP_SEC = 6*3600; // 計測中セグメントの上限（6時間）
 function _restoreTimerState(){
   try{
     const s=localStorage.getItem(TIMER_KEY);
     if(!s) return;
     const {start, elapsed, unitId, planId, planItemIdx, todoId}=JSON.parse(s);
     _timerElapsed=elapsed||0;
-    if(start){ _timerStart=start; }
+    if(start){
+      // アプリがバックグラウンドで終了させられ、計測中のまま数時間後に開き直した場合、
+      // (Date.now()-start) が実際には勉強していない待機時間まで含んでしまい、
+      // 巨大な誤った勉強時間が記録される原因になっていた。上限を超えたセグメントは
+      // 上限までにクランプしたうえで一時停止扱いに切り替え、ユーザーに確認を促す。
+      const runSeg=Math.floor((Date.now()-start)/1000);
+      if(runSeg > _TIMER_RUN_CAP_SEC){
+        _timerElapsed += _TIMER_RUN_CAP_SEC;
+        _timerStart=null; // 一時停止として復元（誤った継続加算を止める）
+        _pendingTimerClampNote=true;
+        _saveTimerState();
+      } else {
+        _timerStart=start;
+      }
+    }
     _timerUnitId=unitId||null;
     _timerPlanId=planId||null;
     _timerPlanItemIdx=(planItemIdx!=null?planItemIdx:null);
@@ -7611,6 +7686,10 @@ function _reopenActiveStudySheet(){
   if(ov) ov.classList.add('on');
   if(sh2) sh2.classList.add('on');
   setFabHidden(true);
+  if(_pendingTimerClampNote){
+    _pendingTimerClampNote=false;
+    setTimeout(()=>toast(IC.alert, '計測が長時間続いていたため一時停止しました。記録前に時間をご確認ください'), 400);
+  }
 }
 let _studySheetMode='review'; // 'review' or 'new'
 let _studySheetTags=[];
@@ -10419,6 +10498,7 @@ function doExport(){
       tags: TAGS,
       categories: CATEGORIES,
       studyLogs: STUDY_LOGS,
+      studyTombstones: (typeof STUDY_TOMBSTONES!=='undefined') ? STUDY_TOMBSTONES : {},
       todos: (typeof TODOS!=='undefined') ? TODOS : [],
       plan: (typeof PLAN!=='undefined') ? PLAN : [],
       planRules: (typeof PLAN_RULES!=='undefined') ? PLAN_RULES : [],
@@ -10549,7 +10629,13 @@ function confirmImport(){
     CATEGORIES = pending.categories || [];
     save(); saveTags(); saveCategories();
     if(pending.streak) localStorage.setItem('fukushu-streak-v1', JSON.stringify(pending.streak));
-    if(Array.isArray(pending.studyLogs)){ STUDY_LOGS=pending.studyLogs; saveStudyLogs(); }
+    if(Array.isArray(pending.studyLogs)){
+      STUDY_LOGS=pending.studyLogs; saveStudyLogs();
+      // インポートは明示的な「上書き」操作。バックアップに墓標があればそれを採用し、
+      // 無ければ空にする（古いローカル墓標がインポートした記録を消さないようにする）。
+      STUDY_TOMBSTONES = (pending.studyTombstones && typeof pending.studyTombstones==='object') ? pending.studyTombstones : {};
+      saveStudyTombstones();
+    }
     if(Array.isArray(pending.todos) && typeof TODOS!=='undefined'){ TODOS=pending.todos; saveTodos(); }
     if(Array.isArray(pending.plan) && typeof PLAN!=='undefined'){ PLAN=pending.plan; savePlan(); }
     if(Array.isArray(pending.planRules) && typeof PLAN_RULES!=='undefined'){ PLAN_RULES=pending.planRules; savePlanRules(); }
@@ -11430,6 +11516,7 @@ const FSYNC = (() => {
       tags: TAGS,
       categories: CATEGORIES,
       studyLogs: STUDY_LOGS,
+      studyTombstones: (typeof STUDY_TOMBSTONES!=='undefined') ? STUDY_TOMBSTONES : {},
       todos: (typeof TODOS!=='undefined') ? TODOS : [],
       plan: (typeof PLAN!=='undefined') ? PLAN : [],
       planRules: (typeof PLAN_RULES!=='undefined') ? PLAN_RULES : [],
@@ -11447,11 +11534,28 @@ const FSYNC = (() => {
   function applyPayload(data){
     if(!data) return;
     applyingRemote = true;
+    let _studyMergeChanged = false;
     try{
       if(Array.isArray(data.units))      { U = data.units; safeSetItem(KEY, JSON.stringify(U)); }
       if(Array.isArray(data.tags))       { TAGS = data.tags; safeSetItem(TAG_KEY, JSON.stringify(TAGS)); }
       if(Array.isArray(data.categories)) { CATEGORIES = data.categories; safeSetItem(CAT_KEY, JSON.stringify(CATEGORIES)); }
-      if(Array.isArray(data.studyLogs))  { STUDY_LOGS = data.studyLogs; safeSetItem(STUDY_KEY, JSON.stringify(STUDY_LOGS)); }
+      if(Array.isArray(data.studyLogs)){
+        // ★勉強時間が消えるバグの修正：リモートで丸ごと上書きせず、id単位で合算する。
+        //   これにより、リモートがまだ受信していないローカルの記録が消えなくなる。
+        //   削除は tombstone 経由で伝播させる。
+        const beforeIds = STUDY_LOGS.map(l=>l.id).join('|');
+        const merged = _mergeStudyLogs(STUDY_LOGS, data.studyLogs,
+                                       STUDY_TOMBSTONES, data.studyTombstones || {});
+        STUDY_LOGS = merged.logs;
+        STUDY_TOMBSTONES = merged.tomb;
+        safeSetItem(STUDY_KEY, JSON.stringify(STUDY_LOGS));
+        saveStudyTombstones();
+        // マージ結果がリモートのそのままの姿と違う（ローカル固有の記録や削除がある）場合は、
+        // 収束のためこちらから改めて全体をpushし直す必要がある。
+        const remoteIds = data.studyLogs.map(l=>l&&l.id).join('|');
+        const afterIds = STUDY_LOGS.map(l=>l.id).join('|');
+        if(afterIds !== remoteIds || afterIds !== beforeIds) _studyMergeChanged = true;
+      }
       if(Array.isArray(data.todos) && typeof TODOS!=='undefined') { TODOS = data.todos; safeSetItem(TODO_KEY, JSON.stringify(TODOS)); }
       if(Array.isArray(data.plan) && typeof PLAN!=='undefined') { PLAN = data.plan; safeSetItem(PLAN_KEY, JSON.stringify(PLAN)); }
       if(Array.isArray(data.planRules) && typeof PLAN_RULES!=='undefined') { PLAN_RULES = data.planRules; safeSetItem(PLAN_RULE_KEY, JSON.stringify(PLAN_RULES)); }
@@ -11471,7 +11575,13 @@ const FSYNC = (() => {
       if(typeof _updateNavIcon === 'function') _updateNavIcon();
       updateFSyncUI();
     } finally {
-      setTimeout(()=>{ applyingRemote = false; }, 400);
+      setTimeout(()=>{
+        applyingRemote = false;
+        // 勉強記録のマージでローカル固有の差分（追加・削除）が残っていた場合は、
+        // 全端末を同じ集合へ収束させるためにこちらの結果を1回だけ送り返す。
+        // 収束後はマージ差分が消える(_studyMergeChanged=false)ためpushループにはならない。
+        if(_studyMergeChanged) schedulePush();
+      }, 400);
     }
   }
 
