@@ -3391,7 +3391,12 @@ function _planGoalTodayStatus(p){
   if(remain<=0) return {todayCount, target:0};
 
   const start = p.startDate || p.createdDate || td();
-  const totalDurationDays = Math.max(1, daysBetween(start, p.deadline)); // 開始日〜締切日の総日数
+  // Bug fix: 締切が未設定・不正な値だと daysBetween が NaN を返し、
+  // 以下のペース計算がすべて NaN になって「今日の目安」が壊れていた。
+  // その場合はペース配分をあきらめ、残り全部を今日の目安として扱う。
+  const rawDuration = daysBetween(start, p.deadline);
+  if(!Number.isFinite(rawDuration)) return {todayCount, target: remain};
+  const totalDurationDays = Math.max(1, rawDuration); // 開始日〜締切日の総日数
   const overdue = diff(p.deadline) < 0;
   // 経過日数（開始日を1日目として数える。例: 開始日当日なら1）
   const elapsedDays = Math.min(totalDurationDays, Math.max(0, daysBetween(start, td())) + 1);
@@ -3785,6 +3790,7 @@ function planComplete(id, qty){
     p.lastDoneDate=t;
     delete p.origDueDate;
     if(p.doneCount>=p.totalCount){ p.done=true; p.completedAt=Date.now(); }
+    bumpStreak(); // Bug fix: 計画タスクの completion も「今日の活動」として連続日数に数える
     savePlan(); haptic('medium');
     const msg = esc(doneLabel)+(p.done?'の目標を達成しました！':n>1?`を${n}件記録しました`:'を1件記録しました');
     // 目標を達成した／今日分の目安に到達した場合のみ今日タブから消えるので、そのときだけ演出を出す
@@ -3806,6 +3812,7 @@ function planComplete(id, qty){
     const next=planScheduleCurrentItem(p);
     if(next && !next.done){ p.nextDate=next.date; p.lastDoneDate=t; }
     else { p.done=true; p.completedAt=Date.now(); p.nextDate=item.date; p.lastDoneDate=t; }
+    bumpStreak(); // Bug fix: 計画タスクの completion も「今日の活動」として連続日数に数える
     savePlan(); haptic('medium');
     flashThenShrink('c-'+id, 'w-'+id, ()=>render());
     toast(IC.check, esc(doneLabel)+'を完了しました！');
@@ -3817,6 +3824,7 @@ function planComplete(id, qty){
   delete p.origDueDate;
   if(p.type==='weekday'){ p.nextDate=planNextWeekday(t,p.weekdays); }
   else if(p.type==='interval'){ p.nextDate=addD(t,p.intervalDays); }
+  bumpStreak(); // Bug fix: 計画タスクの completion も「今日の活動」として連続日数に数える
   savePlan(); haptic('medium');
   flashThenShrink('c-'+id, 'w-'+id, ()=>render());
   toast(IC.check, esc(doneLabel)+'を完了しました！');
@@ -5388,7 +5396,10 @@ function savePlanTask(){
     task.nextDate=base;
   } else if(d.type==='goal'){
     task.totalCount=Math.max(1,parseInt(d.totalCount,10)||1);
-    task.deadline=d.deadline||d.deadline;
+    // Bug fix: 以前は `d.deadline||d.deadline` という書き間違いで、締切が未入力でも
+    // 空のまま保存されていた。空の締切はペース計算(daysBetween)をNaNにしてしまい、
+    // 「1日あたりの目安」が壊れる原因になる。未入力なら安全な既定値を入れる。
+    task.deadline=d.deadline||addD(base,30);
     task.doneCount=0;
     task.nextDate=task.deadline;
   }
@@ -5464,6 +5475,9 @@ function addStudyLog(entry){
   if(STUDY_TOMBSTONES[id]){ delete STUDY_TOMBSTONES[id]; saveStudyTombstones(); }
   STUDY_LOGS.unshift(log);
   saveStudyLogs();
+  // Bug fix: 勉強時間の記録も「今日の活動」として連続日数に数える。
+  // ただし昨日以前の分を後から入力した場合まで今日扱いにはしない。
+  if(log.date===td() && typeof bumpStreak==='function') bumpStreak();
   return log;
 }
 function delStudyLog(id){
@@ -5879,10 +5893,23 @@ function deleteTag(id){
   const idx=TAGS.findIndex(t=>t.id===id); if(idx<0) return;
   const tag=TAGS[idx];
   const affectedUnitIds=U.filter(u=>u.tags && u.tags.includes(id)).map(u=>u.id);
+  // Bug fix: 以前は単元(U)からしかタグを取り除いておらず、計画タスク(PLAN)と
+  // ToDo(TODOS)には削除済みタグのIDが残り続けていた。残ったIDは表示にも絞り込みにも
+  // 使えない「幽霊タグ」となり、タグ別集計の合計が合わなくなる原因になっていた。
+  const affectedPlanIds=(typeof PLAN!=='undefined') ? PLAN.filter(p=>p.tags && p.tags.includes(id)).map(p=>p.id) : [];
+  const affectedTodoIds=(typeof TODOS!=='undefined') ? TODOS.filter(x=>x.tags && x.tags.includes(id)).map(x=>x.id) : [];
   TAGS=TAGS.filter(t=>t.id!==id);
   // Remove tag from all units
   U.forEach(u=>{ if(u.tags) u.tags=u.tags.filter(tid=>tid!==id); });
+  if(typeof PLAN!=='undefined') PLAN.forEach(p=>{ if(p.tags) p.tags=p.tags.filter(tid=>tid!==id); });
+  if(typeof TODOS!=='undefined') TODOS.forEach(x=>{ if(x.tags) x.tags=x.tags.filter(tid=>tid!==id); });
+  // 削除したタグで絞り込み中だと、一覧が空のまま戻せなくなるので解除する
+  if(filterTagId===id) filterTagId=null;
+  if(filterTagIdToday===id) filterTagIdToday=null;
+  if(filterPlanTagId===id) filterPlanTagId=null;
   save(); saveTags(); _tagsMutated=true;
+  if(affectedPlanIds.length && typeof savePlan==='function') savePlan();
+  if(affectedTodoIds.length && typeof saveTodos==='function') saveTodos();
   renderTagMgr();
   renderSheetTagSel();
   renderEditTagSel();
@@ -5893,8 +5920,19 @@ function deleteTag(id){
       const u=U.find(x=>x.id===uid);
       if(u){ u.tags=u.tags||[]; if(!u.tags.includes(id)) u.tags.push(id); }
     });
+    affectedPlanIds.forEach(pid=>{
+      const p=(typeof PLAN!=='undefined') ? PLAN.find(x=>x.id===pid) : null;
+      if(p){ p.tags=p.tags||[]; if(!p.tags.includes(id)) p.tags.push(id); }
+    });
+    affectedTodoIds.forEach(tid2=>{
+      const x=(typeof TODOS!=='undefined') ? TODOS.find(y=>y.id===tid2) : null;
+      if(x){ x.tags=x.tags||[]; if(!x.tags.includes(id)) x.tags.push(id); }
+    });
     save(); saveTags(); _tagsMutated=true;
+    if(affectedPlanIds.length && typeof savePlan==='function') savePlan();
+    if(affectedTodoIds.length && typeof saveTodos==='function') saveTodos();
     renderTagMgr(); renderSheetTagSel(); renderEditTagSel();
+    if(typeof render==='function') render();
   });
 }
 function addTag(){
@@ -6066,6 +6104,12 @@ function bumpStreak(){
     s.count++; // extended
   } else if(s.lastDate < yesterday || !s.lastDate){
     s.count = 1; // broken or fresh
+  } else {
+    // Bug fix: lastDate が未来日（端末の時計を進めて戻した場合など）だと、
+    // 以前はどの条件にも当てはまらず lastDate が未来のまま固定され、
+    // 連続日数が更新されない／0のまま復帰できない状態が続いてしまっていた。
+    // 未来日は不正な値とみなし、今日から数え直す。
+    s.count = 1;
   }
   s.lastDate = t;
   saveStreak(s);
@@ -7481,11 +7525,16 @@ function _studyTagBreakdownHtml(){
   if(!allLogs.length) return '';
 
   // Sum minutes per tag
+  // Bug fix: 既に削除されたタグのIDが記録に残っていると、以前はそのタグの分が
+  // 集計側で黙って捨てられ、「タグ別合計の合計 ≠ その日の合計」というズレが出ていた。
+  // （同期や古いバックアップの読み込みでも幽霊IDは発生しうる）
+  // 実在しないタグの時間は「タグなし」として必ず計上し、時間が消えないようにする。
   const tagMins={};
   let noTagMins=0;
   allLogs.forEach(l=>{
-    if(l.tagIds&&l.tagIds.length){
-      l.tagIds.forEach(id=>{ tagMins[id]=(tagMins[id]||0)+l.minutes; });
+    const validIds=(l.tagIds||[]).filter(id=>!!getTag(id));
+    if(validIds.length){
+      validIds.forEach(id=>{ tagMins[id]=(tagMins[id]||0)+l.minutes; });
     } else {
       noTagMins+=l.minutes;
     }
@@ -10188,6 +10237,7 @@ function toggleTodo(id){
     item.completedAt=Date.now();
     delete item.origDueDate;
     if(item.timerStart){ item.elapsedMs=(item.elapsedMs||0)+(Date.now()-item.timerStart); item.timerStart=null; }
+    bumpStreak(); // Bug fix: ToDoの完了も「今日の活動」として連続日数に数える
   } else {
     delete item.completedAt;
   }
