@@ -3727,8 +3727,13 @@ function planComplete(id, qty){
   if(p.type==='goal'){
     const n=Math.max(1, parseInt(qty,10)||1);
     if(p.todayDate!==t){ p.todayDate=t; p.todayCount=0; }
+    const beforeDone=p.doneCount||0;
     p.todayCount=(p.todayCount||0)+n;
-    p.doneCount=Math.min((p.doneCount||0)+n,p.totalCount);
+    p.doneCount=Math.min(beforeDone+n,p.totalCount);
+    // Bug fix: 「戻す」で今日の記録が全部消えてしまわないよう、直近1回分の記録量を
+    // 個別に覚えておく（totalCountで頭打ちになった場合の実際の増分も別途記録）。
+    p._lastQty = n;
+    p._lastDoneDelta = p.doneCount - beforeDone;
     p.lastDoneDate=t;
     delete p.origDueDate;
     if(p.doneCount>=p.totalCount){ p.done=true; p.completedAt=Date.now(); }
@@ -6463,11 +6468,16 @@ function undoPlanCompleteFromDone(id){
   if(!p) return;
   const doneLabel = (p.type==='schedule' && itemIdx!=null) ? planDisplayName(p, (p.schedule||[])[itemIdx]) : planDisplayName(p, planCompletedOccurrenceIdx(p));
   if(p.type==='goal'){
-    // 今日分の記録をすべて取り消す
-    const todayCount = p.todayCount||0;
-    p.doneCount = Math.max(0, (p.doneCount||0) - todayCount);
-    p.todayCount = 0;
-    delete p.todayDate;
+    // Bug fix: 以前は今日分の記録を全部まとめて取り消していたため、
+    // 1回押しただけで今日の記録が全て消える「戻りすぎる」不具合があった。
+    // 直近1回分の記録（_lastQty / _lastDoneDelta）だけを取り消すようにする。
+    const lastQty = (p._lastQty!=null) ? p._lastQty : (p.todayCount||0);
+    const lastDelta = (p._lastDoneDelta!=null) ? p._lastDoneDelta : lastQty;
+    p.doneCount = Math.max(0, (p.doneCount||0) - lastDelta);
+    p.todayCount = Math.max(0, (p.todayCount||0) - lastQty);
+    if(p.todayCount<=0){ delete p.todayCount; delete p.todayDate; }
+    delete p._lastQty;
+    delete p._lastDoneDelta;
     if(p.done){ p.done = false; delete p.completedAt; }
   } else if(p.type==='schedule'){
     const items=p.schedule||[];
@@ -6487,8 +6497,11 @@ function undoPlanCompleteFromDone(id){
     if(p.done){ p.done=false; delete p.completedAt; }
   } else {
     delete p.lastDoneDate;
+    // Bug fix: 「毎日」タイプも他タイプ同様、完了のたびに occurrenceCount を+1しているため
+    // （3768行目）、戻す際にも同じく-1する必要があった。以前は weekday/interval のみが
+    // 対象になっており、daily タイプだけ回数が戻らず増え続けるバグがあった。
+    p.occurrenceCount = Math.max(0, (p.occurrenceCount||0) - 1);
     if(p.type==='weekday' || p.type==='interval'){
-      p.occurrenceCount = Math.max(0, (p.occurrenceCount||0) - 1);
       p.nextDate = td();
     }
   }
