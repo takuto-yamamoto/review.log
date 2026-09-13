@@ -2205,10 +2205,25 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 }
 .all-logs-sheet.on{transform:translateY(0)}
 .all-logs-header{
-  display:flex;align-items:center;justify-content:center;
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
   padding:2px 16px 10px;flex-shrink:0;border-bottom:1px solid var(--sep)
 }
 .all-logs-ttl{font-size:17px;font-weight:700;color:var(--lbl)}
+/* ヘッダー両端のボタン。左右同じ幅を確保してタイトルを中央に保つ */
+.all-logs-hbtn{
+  width:34px;height:34px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;
+  border:none;background:transparent;border-radius:10px;cursor:pointer;color:var(--blue);
+  -webkit-tap-highlight-color:transparent;
+}
+.all-logs-hbtn:active{background:var(--fill)}
+.all-logs-hbtn.ghost{pointer-events:none;opacity:0}
+/* タグ絞り込みバー */
+.all-logs-filter{padding:10px 14px 0;flex-shrink:0}
+.all-logs-filter-sum{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  margin-top:8px;font-size:12px;color:var(--lbl2);
+}
+.all-logs-filter-sum b{font-family:'Outfit',sans-serif;font-weight:800;color:#7C3AED}
 .all-logs-body{padding:12px 14px 20px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;flex:1;min-height:0}
 .backup-ttl{font-size:17px;font-weight:700;text-align:center;margin-bottom:6px}
 .backup-sub{font-size:13px;color:var(--lbl2);text-align:center;margin-bottom:20px;line-height:1.6}
@@ -3222,6 +3237,22 @@ const PLAN_RULE_TYPES = {
   },
 };
 const PLAN_TYPE_LABEL = { daily:'毎日', weekday:'曜日指定', interval:'間隔', goal:'目標', schedule:'日程指定' };
+
+/* ══ 目標タスクの「進め方」(paceMode) ══════════════
+   'auto' … 均等ペース。締切までの残り日数から「今日やるべき目安の個数」を自動で逆算し、
+            ペースに余裕がある日は今日タブに出さない（従来からの挙動＝既定値）。
+   'self' … 自分のペース。毎日かならず今日タブに出すが、1日あたりの目安は出さない。
+            締切は「目安」として扱い、過ぎても遅延・期限超過の警告を出さない。
+            ToDoの長期タスクと同じ、緩やかに進めたい人向けのモード。
+   paceMode を持たない既存データは 'auto' として扱う（後方互換）。 */
+const PLAN_PACE_LABEL = { auto:'均等ペース', self:'自分のペース' };
+function planGoalPaceMode(p){ return (p && p.paceMode==='self') ? 'self' : 'auto'; }
+// 自分のペースでは締切はあくまで目安なので、期限超過の警告表示を抑制する
+function planGoalIsOverdue(p){
+  if(!p || p.type!=='goal' || p.done) return false;
+  if(planGoalPaceMode(p)==='self') return false;
+  return diff(p.deadline) < 0;
+}
 const WD_LABELS = ['日','月','火','水','木','金','土'];
 // ルール作成シートの種類選択カードで使う、種類ごとの小アイコン
 const RULE_TYPE_ICON = {
@@ -3308,6 +3339,9 @@ function planInPeriod(p){
 function planIsOverdue(p){
   if(!planInPeriod(p)) return false;
   if(p.type==='daily') return false;
+  // 「自分のペース」の目標は締切が目安なので、どこでも超過扱いしない
+  // （カレンダーの混雑度やジャンプ候補の集計もこの判定を使っているため、ここで揃える）
+  if(p.type==='goal' && planGoalPaceMode(p)==='self') return false;
   return p.nextDate < td();
 }
 function planIsDueToday(p){
@@ -3389,6 +3423,10 @@ function _planGoalTodayStatus(p){
   const totalCount = p.totalCount||0;
   const remain = Math.max(0, totalCount - doneBeforeToday);
   if(remain<=0) return {todayCount, target:0};
+
+  // 「自分のペース」は1日あたりの目安を設けない。残り全部を対象にすることで、
+  // その日に何個やっても（全部終わらない限り）今日タブに出したままにする。
+  if(planGoalPaceMode(p)==='self') return {todayCount, target: remain};
 
   const start = p.startDate || p.createdDate || td();
   // Bug fix: 締切が未設定・不正な値だと daysBetween が NaN を返し、
@@ -3832,8 +3870,24 @@ function planComplete(id, qty){
 // 個別日程（schedule型）の詳細シートから、特定の1件だけを完了⇔未完了に切り替える。
 // planComplete（「次の1件」を進める用）とは別に、過去分の実施記録や取り消しに対応するため
 // 任意の項目を直接タップで切り替えられるようにしている。
-function planScheduleToggleItem(id, idx){
-  const p=PLAN.find(x=>x.id===id); if(!p) return;
+// 目標タスクの「進め方」を後から切り替える。詳細シートのセグメントから呼ばれる。
+// 進捗（doneCount）や期限には手を触れず、表示・出し分けの方針だけを変える。
+function setPlanPaceMode(id, mode){
+  const p=PLAN.find(x=>x.id===id); if(!p || p.type!=='goal') return;
+  const next = (mode==='self') ? 'self' : 'auto';
+  if(planGoalPaceMode(p)===next) return;
+  p.paceMode = next;
+  // 均等ペースに戻したとき、「今日は消す」の指定が残っていると
+  // 本来出るはずの日に出てこないので解除しておく
+  if(next==='auto' && p.hiddenTodayDate===td()) delete p.hiddenTodayDate;
+  savePlan();
+  _renderPlanDetailSheet();
+  render();
+  haptic('medium');
+  toast(IC.check, `進め方を「${PLAN_PACE_LABEL[next]}」に変更しました`);
+}
+
+function planScheduleToggleItem(id, idx){  const p=PLAN.find(x=>x.id===id); if(!p) return;
   const items=p.schedule||[];
   const item=items[idx]; if(!item) return;
   item.done=!item.done;
@@ -3901,9 +3955,12 @@ function planCardHtml(p, opts){
   const cardId = (p.__scheduleItemIdx!=null) ? `${p.id}::${p.__scheduleItemIdx}` : p.id;
   if(p.type==='goal'){
     const pace=planPace(p);
+    const isSelfPace = planGoalPaceMode(p)==='self';
     const pct=Math.min(100,Math.round(((p.doneCount||0)/p.totalCount)*100));
-    const over=!p.done && diff(p.deadline)<0;
+    const over=planGoalIsOverdue(p);
+    // 自分のペースでは「1日◯個必要」の催促を出さず、残り個数だけを淡々と伝える
     const paceLbl = p.done ? '達成しました！'
+      : isSelfPace ? (pace.remain>0 ? `自分のペース · 残り${pace.remain}個` : '')
       : over ? `${IC.alertSm} 期限を過ぎています`
       : pace.remain<=0 ? ''
       : pace.daysPerOne>0 ? ''
@@ -3911,7 +3968,7 @@ function planCardHtml(p, opts){
     // 今日タブの正方形コンパクトカードは表示できる行数が限られているため、
     // 「達成しました」「期限超過」以外の補足ペース情報（1日◯個必要）は省略し、
     // ボタンなどが枠からはみ出さないようにする。詳細は計画タブ・詳細シートで確認できる。
-    const showPace = paceLbl && (!compact || p.done || over);
+    const showPace = paceLbl && (!compact || p.done || over || isSelfPace);
     const okLabel = compact ? '1個完了' : (opts.todayMode?'時間を記録して1個完了':'1個完了にする');
     const snoozeBtn = opts.hideSnooze?'':(compact
       ? `<button class="btn-snooze" onclick="openPlanSnooze('${p.id}')" aria-label="延期">${IC.moon}</button>`
@@ -3927,7 +3984,7 @@ function planCardHtml(p, opts){
         </div>
         <div class="card-meta-row">
           ${(p.tags&&p.tags.length)?`<div class="card-tags-row">${p.tags.map(tid=>tagHtml(tid)).join('')}</div>`:''}
-          <div class="plan-type-badge">${IC.calendar} 目標 · ${fmtShort(p.deadline)}まで</div>
+          <div class="plan-type-badge">${IC.calendar} 目標 · ${fmtShort(p.deadline)}${isSelfPace?'目安':'まで'}</div>
         </div>
         <div class="plan-progress-lbl"><span>${p.doneCount||0} / ${p.totalCount}</span><span>${pct}%</span></div>
         ${compact ? '' : `<div class="plan-progress-track"><div class="plan-progress-fill" style="width:${pct}%"></div></div>`}
@@ -4045,8 +4102,9 @@ function planOverviewRowHtml(p){
   if(p.type==='goal'){
     const pace=planPace(p);
     const pct=Math.min(100,Math.round(((p.doneCount||0)/p.totalCount)*100));
-    const over=!p.done && diff(p.deadline)<0;
+    const over=planGoalIsOverdue(p);
     const metaText = p.done ? '達成しました！'
+      : planGoalPaceMode(p)==='self' ? `自分のペース · 残り${pace.remain}個（${fmtShort(p.deadline)}目安）`
       : over ? `期限切れ（${fmtShort(p.deadline)}まで）`
       : pace.remain<=0 ? `${fmtShort(p.deadline)}まで`
       : pace.daysPerOne>0 ? `${pace.daysPerOne}日に1個のペース · ${fmtShort(p.deadline)}まで`
@@ -4127,24 +4185,39 @@ function _renderPlanDetailSheet(){
 
   if(p.type==='goal'){
     const pace=planPace(p);
+    const isSelfPace = planGoalPaceMode(p)==='self';
     const pct=Math.min(100,Math.round(((p.doneCount||0)/p.totalCount)*100));
-    const over=!p.done && diff(p.deadline)<0;
+    const over=planGoalIsOverdue(p);
     const daysLeft=Math.max(diff(p.deadline),0);
     const paceText = p.done ? '目標を達成しました'
+      : isSelfPace ? `自分のペースで進行中（残り${pace.remain}個）`
       : over ? '期限を過ぎています'
       : pace.remain<=0 ? '達成済みです'
       : pace.daysPerOne>0 ? `${pace.daysPerOne}日に1個のペース`
       : `1日${pace.perDay}個 必要`;
-    document.getElementById('plan-detail-sheet-sub').innerHTML = `目標 · ${fmtShort(p.deadline)}まで`;
+    document.getElementById('plan-detail-sheet-sub').innerHTML = `目標 · ${fmtShort(p.deadline)}${isSelfPace?'目安':'まで'}`;
+    // 進め方はいつでも切り替えられるようにする（忙しくなったら「自分のペース」へ、など）
+    const paceSwitchHtml = p.done ? '' : `
+      <div class="plan-detail-row" style="align-items:flex-start;flex-direction:column;gap:8px">
+        <span class="plan-detail-label">進め方</span>
+        <div class="seg" id="plan-detail-pace-seg" style="width:100%">
+          <button class="seg-btn${isSelfPace?'':' on'}" onclick="setPlanPaceMode('${p.id}','auto')">均等ペース</button>
+          <button class="seg-btn${isSelfPace?' on':''}" onclick="setPlanPaceMode('${p.id}','self')">自分のペース</button>
+        </div>
+        <div class="plan-sec-sub" style="margin:0">${isSelfPace
+          ? '毎日「今日」タブに表示されます。1日あたりの目安は出さず、期限を過ぎても遅延とは表示されません。'
+          : '期限から逆算した目安の個数を割り出し、ペースに余裕がある日は「今日」タブに表示しません。'}</div>
+      </div>`;
     bodyHtml=`
       <div class="plan-detail-progress">
         <div class="plan-progress-lbl"><span>${p.doneCount||0} / ${p.totalCount}</span><span>${pct}%</span></div>
         <div class="plan-progress-track"><div class="plan-progress-fill" style="width:${pct}%"></div></div>
       </div>
       <div class="plan-detail-row"><span class="plan-detail-label">状況</span><span class="plan-detail-value${over?' over':''}">${esc(paceText)}</span></div>
-      <div class="plan-detail-row"><span class="plan-detail-label">期限</span><span class="plan-detail-value">${fmtShort(p.deadline)}${p.done?'':`（残り${daysLeft}日）`}</span></div>
+      <div class="plan-detail-row"><span class="plan-detail-label">${isSelfPace?'期限（目安）':'期限'}</span><span class="plan-detail-value">${fmtShort(p.deadline)}${p.done?'':`（残り${daysLeft}日）`}</span></div>
       <div class="plan-detail-row"><span class="plan-detail-label">開始日</span><span class="plan-detail-value">${fmtShort(p.startDate||p.createdDate||p.deadline)}</span></div>
       <div class="plan-detail-row"><span class="plan-detail-label">前回の記録</span><span class="plan-detail-value">${p.lastDoneDate?fmtShort(p.lastDoneDate):'まだありません'}</span></div>
+      ${paceSwitchHtml}
       ${tagsHtml}
     `;
   } else if(p.type==='schedule'){
@@ -4590,6 +4663,7 @@ const PLAN_WIZARD_STEPS=['name','tags','period','repeat','nameMode','confirm'];
 let _planStep=0;
 function _planDefaultDraft(){
   return {name:'', type:'daily', tags:[], weekdays:[], intervalDays:3, totalCount:10, doneCount:0, deadline:addD(td(),14),
+    paceMode:'auto',
     nameMode:'fixed', seqStart:1, seqUnit:'', customLabels:[''],
     startDate:td(), endDate:'', noEnd:true, schedule:[{date:td(), label:''}]};
 }
@@ -4601,6 +4675,7 @@ function openPlanSheet(editId){
     _planDraft={name:p.name, type:p.type, tags:[...(p.tags||[])],
       weekdays:[...(p.weekdays||[])], intervalDays:p.intervalDays||3,
       totalCount:p.totalCount||10, doneCount:p.doneCount||0,
+      paceMode:planGoalPaceMode(p),
       // p.deadline はゴール型専用、p.endDate は毎日/曜日指定/間隔型の実施期間の終了日。
       // 従来は常に p.deadline を見ていたため、期間終了日を設定した毎日/曜日指定タスクを
       // 編集で開くと入力欄に無関係な初期値が表示され、そのまま保存すると終了日が
@@ -4955,7 +5030,7 @@ function _planRepeatSummaryText(d){
 }
 function _planPeriodSummaryText(d){
   const isGoal = d.type==='goal';
-  if(isGoal) return `${fmtShort(d.startDate||td())} 〜 ${d.deadline?fmtShort(d.deadline):'未設定'}まで ・ 全${d.totalCount}個`;
+  if(isGoal) return `${fmtShort(d.startDate||td())} 〜 ${d.deadline?fmtShort(d.deadline):'未設定'}${d.paceMode==='self'?'目安':'まで'} ・ 全${d.totalCount}個 ・ ${PLAN_PACE_LABEL[d.paceMode==='self'?'self':'auto']}`;
   if(d.type==='schedule'){
     const rows=(d.schedule||[]).filter(r=>r.date);
     return rows.length ? `全${rows.length}件` : '未入力';
@@ -5011,6 +5086,7 @@ function _planStepPeriodHtml(d){
         <label for="plan-total-inp">個数${isGoal?'':'（任意・ペース計算用）'}</label>
         <input type="number" id="plan-total-inp" inputmode="numeric" min="1" max="9999" value="${d.totalCount}" oninput="onPlanTotalInput()">
       </div>
+      ${isGoal?_planPaceModeHtml(d):''}
       ${_planPaceHintHtml(paceDeadline, d.totalCount)}
       <div id="plan-pace-apply-wrap">${_planPaceApplyBtnHtml(paceDeadline, d.totalCount)}</div>
       ${(_planEditId && isGoal)?`<div class="plan-goal-done-row">
@@ -5025,6 +5101,33 @@ function _planStepPeriodHtml(d){
 // 個別日程（schedule型）: 日付と内容の行をいくつでも追加できる入力UI。
 // 「過去問」のような1つの計画の中に、9/3=2024年国語、9/14=2020年数学…と
 // バラバラな日付のToDoをまとめて登録できるようにする。
+// 目標タスクの「進め方」選択。均等ペース（自動逆算）か、自分のペース（毎日表示・目安なし）か。
+function _planPaceModeHtml(d){
+  const isSelf = d.paceMode==='self';
+  return `
+    <div class="plan-goal-field" style="margin-top:10px">
+      <label>進め方</label>
+      <div class="seg" id="plan-pace-seg" style="width:100%;margin-top:2px">
+        <button type="button" class="seg-btn${isSelf?'':' on'}" data-val="auto" onclick="selectPlanPaceMode(this)">均等ペース</button>
+        <button type="button" class="seg-btn${isSelf?' on':''}" data-val="self" onclick="selectPlanPaceMode(this)">自分のペース</button>
+      </div>
+      <div class="plan-sec-sub" id="plan-pace-mode-note" style="margin:6px 0 0">${_planPaceModeNote(isSelf?'self':'auto')}</div>
+    </div>`;
+}
+function _planPaceModeNote(mode){
+  return mode==='self'
+    ? '毎日「今日」タブに表示します。1日あたりの目安は出さず、期限を過ぎても遅延とは表示しません。自分の裁量で進めたいとき向けです。'
+    : '期限から逆算して「今日やる目安の個数」を自動で割り出します。ペースに余裕がある日は「今日」タブに表示しません。';
+}
+function selectPlanPaceMode(btn){
+  if(!_planDraft) return;
+  document.querySelectorAll('#plan-pace-seg .seg-btn').forEach(b=>b.classList.toggle('on', b===btn));
+  _planDraft.paceMode = btn.dataset.val==='self' ? 'self' : 'auto';
+  const note=document.getElementById('plan-pace-mode-note');
+  if(note) note.textContent=_planPaceModeNote(_planDraft.paceMode);
+  haptic();
+}
+
 function _planStepScheduleHtml(d){
   const rows=(d.schedule&&d.schedule.length)?d.schedule:[{date:td(),label:''}];
   return `
@@ -5370,6 +5473,7 @@ function savePlanTask(){
       p.totalCount=Math.max(1,parseInt(d.totalCount,10)||1);
       p.deadline=d.deadline||p.deadline;
       p.nextDate=p.deadline;
+      p.paceMode=(d.paceMode==='self')?'self':'auto';
       p.doneCount=Math.min(p.totalCount,Math.max(0,parseInt(d.doneCount,10)||0));
       p.done = p.doneCount>=p.totalCount;
     }
@@ -5400,6 +5504,7 @@ function savePlanTask(){
     // 空のまま保存されていた。空の締切はペース計算(daysBetween)をNaNにしてしまい、
     // 「1日あたりの目安」が壊れる原因になる。未入力なら安全な既定値を入れる。
     task.deadline=d.deadline||addD(base,30);
+    task.paceMode=(d.paceMode==='self')?'self':'auto';
     task.doneCount=0;
     task.nextDate=task.deadline;
   }
@@ -7340,8 +7445,83 @@ let _editLogId = null;
    初期表示件数を制限し「もっと見る」で段階的にDOMへ追加する（簡易ページング） ── */
 const ALL_LOGS_PAGE_SIZE = 200;
 let _allLogsRenderLimit = ALL_LOGS_PAGE_SIZE;
+
+/* ══ すべての記録：タグ絞り込み ══════════════
+   複数タグを選ぶと「いずれかを含む記録」(OR条件)で絞り込む。
+   「タグなし」も明示的に選べるようにして、未分類の記録だけを取り出せるようにする。
+   ここで絞り込んだ結果がそのままCSV書き出しの対象になる。 */
+const ALL_LOGS_NOTAG_ID = '__notag__';
+let _allLogsFilterTags = [];
+
+function _allLogsFilteredSorted(){
+  let logs = STUDY_LOGS.slice();
+  if(_allLogsFilterTags.length){
+    const wantNoTag = _allLogsFilterTags.includes(ALL_LOGS_NOTAG_ID);
+    const wantIds = _allLogsFilterTags.filter(id=>id!==ALL_LOGS_NOTAG_ID);
+    logs = logs.filter(l=>{
+      // 実在するタグだけを対象にする（削除済みタグのIDが残っていても「タグなし」として扱う）
+      const ids = (l.tagIds||[]).filter(id=>!!getTag(id));
+      if(!ids.length) return wantNoTag;
+      return wantIds.some(w=>ids.includes(w));
+    });
+  }
+  return logs.sort((a,b)=>{
+    if(b.date !== a.date) return b.date.localeCompare(a.date);
+    return String(b.id).localeCompare(String(a.id));
+  });
+}
+
+function toggleAllLogsTagFilter(tagId){
+  _allLogsFilterTags = _allLogsFilterTags.includes(tagId)
+    ? _allLogsFilterTags.filter(x=>x!==tagId)
+    : [..._allLogsFilterTags, tagId];
+  _allLogsRenderLimit = ALL_LOGS_PAGE_SIZE; // 絞り込みが変わったら先頭から見せ直す
+  renderAllLogsSheet();
+  haptic();
+}
+function clearAllLogsTagFilter(){
+  _allLogsFilterTags = [];
+  _allLogsRenderLimit = ALL_LOGS_PAGE_SIZE;
+  renderAllLogsSheet();
+  haptic();
+}
+
+function _renderAllLogsFilterBar(filtered){
+  const el = document.getElementById('all-logs-filter'); if(!el) return;
+  // 記録に実際に使われているタグだけを出す（使っていないタグで埋まらないように）
+  const usedIds = new Set();
+  let hasNoTag = false;
+  STUDY_LOGS.forEach(l=>{
+    const ids=(l.tagIds||[]).filter(id=>!!getTag(id));
+    if(ids.length) ids.forEach(id=>usedIds.add(id)); else hasNoTag = true;
+  });
+  const usableTags = TAGS.filter(t=>usedIds.has(t.id));
+  if(!usableTags.length && !hasNoTag){ el.innerHTML=''; return; }
+
+  const none = _allLogsFilterTags.length===0;
+  let chips = `<button class="tagf-chip all${none?' active':''}" onclick="clearAllLogsTagFilter()">すべて</button>`;
+  chips += usableTags.map(t=>{
+    const on=_allLogsFilterTags.includes(t.id);
+    return `<button class="tagf-chip${on?' active':''}" style="${on?`background:${t.color};border-color:${t.color};color:#fff`:''}" onclick="toggleAllLogsTagFilter('${t.id}')">
+      <span class="tag-dot" style="background:${on?'#fff':t.color}"></span>${esc(t.name)}
+    </button>`;
+  }).join('');
+  if(hasNoTag){
+    const on=_allLogsFilterTags.includes(ALL_LOGS_NOTAG_ID);
+    chips += `<button class="tagf-chip${on?' active':''}" style="${on?'background:var(--lbl2);border-color:var(--lbl2);color:#fff':''}" onclick="toggleAllLogsTagFilter('${ALL_LOGS_NOTAG_ID}')">タグなし</button>`;
+  }
+
+  const mins = filtered.reduce((s,l)=>s+(l.minutes||0),0);
+  el.innerHTML = `<div class="tagf-scroll">${chips}</div>
+    <div class="all-logs-filter-sum">
+      <span>${filtered.length}件 / 合計 <b>${fmtMinutes(mins)}</b></span>
+      <span style="color:var(--lbl3)">${none?'すべての記録':'絞り込み中'}</span>
+    </div>`;
+}
+
 function openAllLogsSheet(){
   _allLogsRenderLimit = ALL_LOGS_PAGE_SIZE;
+  _allLogsFilterTags = []; // 開くたびに絞り込みはリセット
   renderAllLogsSheet();
   document.getElementById('all-logs-overlay').classList.add('on');
   document.getElementById('all-logs-sheet').classList.add('on');
@@ -7360,13 +7540,16 @@ function loadMoreAllLogs(){
 function renderAllLogsSheet(){
   const body = document.getElementById('all-logs-body'); if(!body) return;
   if(!STUDY_LOGS.length){
+    const f=document.getElementById('all-logs-filter'); if(f) f.innerHTML='';
     body.innerHTML = `<div class="empty"><div class="empty-icon" style="background:var(--blue-bg)">${IC.clockLg}</div><h3>まだ記録がありません</h3></div>`;
     return;
   }
-  const allLogs = STUDY_LOGS.slice().sort((a,b)=>{
-    if(b.date !== a.date) return b.date.localeCompare(a.date);
-    return b.id.localeCompare(a.id);
-  });
+  const allLogs = _allLogsFilteredSorted();
+  _renderAllLogsFilterBar(allLogs);
+  if(!allLogs.length){
+    body.innerHTML = `<div class="empty"><div class="empty-icon" style="background:var(--blue-bg)">${IC.clockLg}</div><h3>該当する記録がありません</h3><p>タグの絞り込みを変えてみてください</p></div>`;
+    return;
+  }
   const visibleLogs = allLogs.slice(0, _allLogsRenderLimit);
   const hasMore = allLogs.length > visibleLogs.length;
   let html = _studyLogsGroupedHtml(visibleLogs, td());
@@ -7378,6 +7561,87 @@ function renderAllLogsSheet(){
 function _refreshAllLogsSheetIfOpen(){
   const sheet = document.getElementById('all-logs-sheet');
   if(sheet && sheet.classList.contains('on')) renderAllLogsSheet();
+}
+
+/* ══ 勉強記録のCSV書き出し ══════════════════
+   いま絞り込んでいる範囲をそのままCSVにする。
+   ChatGPT/Claudeなどに読ませて分析してもらう用途を想定しているため、
+   1行1記録・列は固定で、日付やタグは機械的に扱いやすい形にしている。
+   ・Excelで開いても文字化けしないよう先頭にBOMを付ける
+   ・改行やカンマ、引用符を含むメモでも壊れないよう厳密にクォートする */
+function _csvCell(v){
+  const s = (v==null) ? '' : String(v);
+  // 数式として解釈される先頭文字（= + - @）はCSVインジェクション対策で無害化する
+  const safe = /^[=+\-@]/.test(s) ? "'"+s : s;
+  return '"' + safe.replace(/"/g, '""') + '"';
+}
+function _studyLogsToCsv(logs){
+  const DOW_JA = ['日','月','火','水','木','金','土'];
+  const header = ['日付','曜日','内容','分','タグ','メモ'];
+  const rows = logs.map(l=>{
+    let dow = '';
+    try{ const d=new Date(l.date+'T00:00:00'); if(!isNaN(d)) dow = DOW_JA[d.getDay()]; }catch(_){}
+    const tagNames = (l.tagIds||[])
+      .map(id=>{ const t=getTag(id); return t ? t.name : null; })
+      .filter(Boolean)
+      .join(' / ');
+    return [l.date||'', dow, l.title||'', l.minutes||0, tagNames, l.note||''];
+  });
+  // CRLF区切り：Excel・Numbers・各種ツールで最も互換性が高い
+  return [header, ...rows].map(r=>r.map(_csvCell).join(',')).join('\r\n');
+}
+function exportStudyLogsCsv(){
+  try{
+    const logs = _allLogsFilteredSorted();
+    if(!logs.length){
+      toast(IC.alert, '書き出す記録がありません');
+      haptic('medium'); return;
+    }
+    // 古い順の方が時系列で読みやすいので、書き出し時だけ昇順に並べ替える
+    const ordered = logs.slice().reverse();
+    const csv = '\uFEFF' + _studyLogsToCsv(ordered);
+
+    // 絞り込み中はファイル名にタグ名を入れて、何のデータか後から分かるようにする
+    const tagPart = (()=>{
+      if(!_allLogsFilterTags.length) return '';
+      const names = _allLogsFilterTags.map(id=>{
+        if(id===ALL_LOGS_NOTAG_ID) return 'タグなし';
+        const t=getTag(id); return t ? t.name : null;
+      }).filter(Boolean);
+      if(!names.length) return '';
+      // ファイル名に使えない文字を除去
+      return '-' + names.join('_').replace(/[\\\/:*?"<>|\s]/g, '');
+    })();
+    const filename = `study-log${tagPart}-${td()}.csv`;
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+
+    const mins = ordered.reduce((s,l)=>s+(l.minutes||0),0);
+    const onSuccess = ()=>{
+      toast(IC.checkCircle, `${ordered.length}件（${fmtMinutes(mins)}）を書き出しました`);
+      haptic('medium');
+    };
+
+    // iOS PWAでは <a download> が無視されるため、共有シートを優先して使う
+    if(navigator.share && navigator.canShare){
+      const file = new File([blob], filename, {type:'text/csv'});
+      if(navigator.canShare({files:[file]})){
+        navigator.share({files:[file], title:'勉強記録'})
+          .then(onSuccess)
+          .catch(err=>{ if(err.name!=='AbortError') toast(IC.alert, '書き出しに失敗しました'); });
+        return;
+      }
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 500);
+    onSuccess();
+  } catch(e){
+    console.error('CSV書き出しに失敗:', e);
+    toast(IC.alert, '書き出しに失敗しました');
+  }
 }
 
 let _editLogTags = []; // 勉強ログ編集シートで選択中のタグid
@@ -7661,7 +7925,7 @@ let _manualInpEdited=false; // 手動入力欄をユーザーが自分で編集�
 const TIMER_KEY='fukushu_timer_v1';
 function _saveTimerState(){
   if(_timerStart || _timerElapsed>0){
-    try{ localStorage.setItem(TIMER_KEY, JSON.stringify({start:_timerStart, elapsed:_timerElapsed, unitId:_timerUnitId, planId:_timerPlanId, planItemIdx:_timerPlanItemIdx, todoId:_timerTodoId})); }catch(_){}
+    try{ localStorage.setItem(TIMER_KEY, JSON.stringify({start:_timerStart, elapsed:_timerElapsed, unitId:_timerUnitId, planId:_timerPlanId, planItemIdx:_timerPlanItemIdx, todoId:_timerTodoId, note:_studySheetNote||''})); }catch(_){}
   } else {
     try{ localStorage.removeItem(TIMER_KEY); }catch(_){}
   }
@@ -7672,8 +7936,11 @@ function _restoreTimerState(){
   try{
     const s=localStorage.getItem(TIMER_KEY);
     if(!s) return;
-    const {start, elapsed, unitId, planId, planItemIdx, todoId}=JSON.parse(s);
+    const {start, elapsed, unitId, planId, planItemIdx, todoId, note}=JSON.parse(s);
     _timerElapsed=elapsed||0;
+    // アプリがバックグラウンドで終了・再読み込みされても、計測中に書きかけていたメモが
+    // 消えてしまわないよう、経過時間と同じくlocalStorageに保存して復元する
+    _studySheetNote = note||'';
     if(start){
       // アプリがバックグラウンドで終了させられ、計測中のまま数時間後に開き直した場合、
       // (Date.now()-start) が実際には勉強していない待機時間まで含んでしまい、
@@ -7745,6 +8012,7 @@ let _studySheetTags=[];
 let _studySheetDate=null; // null = today
 let _studySheetLocked=false; // 計測中の誤タップ防止ロック
 let _studySheetQty=1; // 目標型の計画タスク：この記録でまとめて完了にする件数
+let _studySheetNote=''; // この記録に添えるメモ（勉強内容の詳細・つまずいた点など）
 
 function toggleStudyLock(){
   _studySheetLocked=!_studySheetLocked;
@@ -7780,6 +8048,7 @@ function _startOrResumeStudyTimer(matches){
     _manualInpEdited=false;
   } else {
     _startFreshStudyTimer();
+    _studySheetNote=''; // 新しい対象の計測を始めるので、前の対象のメモを引き継がない
   }
 }
 
@@ -7877,6 +8146,7 @@ function closeStudySheet(){
   _timerStart=null;
   _timerElapsed=0;
   _studySheetQty=1;
+  _studySheetNote='';
   _saveTimerState(); // タイマー動作中にキャンセルしてもlocalStorageをクリア
   _resetStudyLockUI();
   document.getElementById('overlay').classList.remove('on');
@@ -7950,6 +8220,10 @@ function _renderStudySheet(){
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
       <input type="number" id="study-manual-inp" min="1" max="600" placeholder="例：30" oninput="_manualInpEdited=true" style="flex:1;background:var(--fill);border:none;border-radius:12px;padding:13px 14px;font-family:'Outfit',inherit;font-size:18px;font-weight:700;color:var(--lbl);outline:none;text-align:center">
       <span style="color:var(--lbl2);font-size:14px;font-weight:600;flex-shrink:0">分</span>
+    </div>
+    <div style="margin-bottom:16px">
+      <div style="font-size:13px;font-weight:600;color:var(--lbl2);margin-bottom:8px">メモ（任意）</div>
+      <textarea id="study-note-inp" maxlength="300" rows="2" placeholder="やった内容・つまずいた点など" oninput="_studySheetNote=this.value" style="width:100%;background:var(--fill);border:none;border-radius:12px;padding:12px 14px;font-family:inherit;font-size:14px;color:var(--lbl);outline:none;resize:vertical;line-height:1.5;box-sizing:border-box">${esc(_studySheetNote||'')}</textarea>
     </div>
     ${td_?'':`<div style="margin-bottom:16px">
       <div style="font-size:13px;font-weight:600;color:var(--lbl2);margin-bottom:8px;display:flex;align-items:center;gap:5px">${IC.calendar}記録する日付</div>
@@ -8174,6 +8448,9 @@ function saveStudyRecord(){
   const _savedUnitId=_timerUnitId;
   const _savedPlanId=_timerPlanId;
   const _savedPlanItemIdx=_timerPlanItemIdx;
+  // 保存前にDOMの最新値を確実に反映する（oninputの取りこぼしに備えた保険）
+  const noteInp=document.getElementById('study-note-inp');
+  const noteVal=(noteInp?noteInp.value:_studySheetNote||'').trim().slice(0,300);
   addStudyLog({
     date:resolvedDate,
     unitId:_savedUnitId||null,
@@ -8181,7 +8458,7 @@ function saveStudyRecord(){
     title:title||null,
     tagIds:[..._studySheetTags],
     minutes,
-    note:null,
+    note:noteVal||null,
     createdAt:Date.now()
   });
   closeStudySheet();
@@ -8230,6 +8507,8 @@ function saveStudyRecordForTodo(isComplete){
     haptic('medium'); return;
   }
   if(minutes>0){
+    const noteInp=document.getElementById('study-note-inp');
+    const noteVal=(noteInp?noteInp.value:_studySheetNote||'').trim().slice(0,300);
     addStudyLog({
       date:resolvedDate,
       unitId:_savedUnitId||null,
@@ -8237,7 +8516,7 @@ function saveStudyRecordForTodo(isComplete){
       title:title||null,
       tagIds:[..._studySheetTags],
       minutes,
-      note:null,
+      note:noteVal||null,
       createdAt:Date.now()
     });
   }
@@ -11401,8 +11680,13 @@ if('serviceWorker' in navigator){
 <div class="all-logs-sheet" id="all-logs-sheet">
   <div class="sheet-pull"></div>
   <div class="all-logs-header">
+    <span class="all-logs-hbtn ghost" aria-hidden="true"></span>
     <div class="all-logs-ttl">すべての記録</div>
+    <button class="all-logs-hbtn" id="all-logs-export-btn" onclick="exportStudyLogsCsv()" aria-label="CSVで書き出す" title="CSVで書き出す">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    </button>
   </div>
+  <div class="all-logs-filter" id="all-logs-filter"></div>
   <div class="all-logs-body" id="all-logs-body"></div>
 </div>
 
