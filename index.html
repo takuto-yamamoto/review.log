@@ -7700,7 +7700,7 @@ function saveEditStudyLog(){
   l.minutes = minutes;
   const title = document.getElementById('edit-log-title').value.trim().slice(0,40);
   l.title = title || null;
-  l.note = document.getElementById('edit-log-note').value.trim().slice(0,60);
+  l.note = document.getElementById('edit-log-note').value.trim().slice(0,300);
   l.tagIds = [..._editLogTags];
   l.updatedAt = Date.now(); // マージ時に編集内容が優先されるよう版を更新
   saveStudyLogs();
@@ -8013,6 +8013,18 @@ let _studySheetDate=null; // null = today
 let _studySheetLocked=false; // 計測中の誤タップ防止ロック
 let _studySheetQty=1; // 目標型の計画タスク：この記録でまとめて完了にする件数
 let _studySheetNote=''; // この記録に添えるメモ（勉強内容の詳細・つまずいた点など）
+let _studyNoteSaveTimer=null;
+// Bug fix: メモの oninput で _studySheetNote（JS変数）を更新するだけでは、
+// アプリがバックグラウンドで終了・再読み込みされた際に保存されず消えてしまっていた
+// （_saveTimerState はタイマーの開始／一時停止時にしか呼ばれないため）。
+// 経過時間と同様、メモも打鍵のたびlocalStorageへ反映する（連打による書き込み過多は
+// 300msデバウンスで抑える）。計測が始まっていない状態（新規メモ入力のみ）では
+// そもそも_saveTimerStateが何も保存しない（既存の手動分数入力欄と同じ扱い）。
+function _onStudyNoteInput(val){
+  _studySheetNote = val;
+  clearTimeout(_studyNoteSaveTimer);
+  _studyNoteSaveTimer = setTimeout(_saveTimerState, 300);
+}
 
 function toggleStudyLock(){
   _studySheetLocked=!_studySheetLocked;
@@ -8143,6 +8155,7 @@ function _resetStudyLockUI(){
 
 function closeStudySheet(){
   if(_timerInterval){ clearInterval(_timerInterval); _timerInterval=null; }
+  clearTimeout(_studyNoteSaveTimer);
   _timerStart=null;
   _timerElapsed=0;
   _studySheetQty=1;
@@ -8223,7 +8236,7 @@ function _renderStudySheet(){
     </div>
     <div style="margin-bottom:16px">
       <div style="font-size:13px;font-weight:600;color:var(--lbl2);margin-bottom:8px">メモ（任意）</div>
-      <textarea id="study-note-inp" maxlength="300" rows="2" placeholder="やった内容・つまずいた点など" oninput="_studySheetNote=this.value" style="width:100%;background:var(--fill);border:none;border-radius:12px;padding:12px 14px;font-family:inherit;font-size:14px;color:var(--lbl);outline:none;resize:vertical;line-height:1.5;box-sizing:border-box">${esc(_studySheetNote||'')}</textarea>
+      <textarea id="study-note-inp" maxlength="300" rows="2" placeholder="やった内容・つまずいた点など" oninput="_onStudyNoteInput(this.value)" style="width:100%;background:var(--fill);border:none;border-radius:12px;padding:12px 14px;font-family:inherit;font-size:14px;color:var(--lbl);outline:none;resize:vertical;line-height:1.5;box-sizing:border-box">${esc(_studySheetNote||'')}</textarea>
     </div>
     ${td_?'':`<div style="margin-bottom:16px">
       <div style="font-size:13px;font-weight:600;color:var(--lbl2);margin-bottom:8px;display:flex;align-items:center;gap:5px">${IC.calendar}記録する日付</div>
@@ -11701,7 +11714,7 @@ if('serviceWorker' in navigator){
     <div class="date-label" style="margin-top:2px">勉強時間（分）</div>
     <input class="sheet-inp" id="edit-log-minutes" type="number" inputmode="numeric" min="1" max="999" placeholder="例：30">
     <div class="date-label" style="margin-top:2px">メモ</div>
-    <input class="sheet-inp" id="edit-log-note" type="text" placeholder="メモ（任意）" maxlength="60" autocomplete="off" autocorrect="off">
+    <textarea class="sheet-inp" id="edit-log-note" maxlength="300" rows="2" placeholder="メモ（任意）" autocomplete="off" autocorrect="off" style="resize:vertical;line-height:1.5"></textarea>
     <div class="tag-sel-wrap" id="edit-log-tag-sel-wrap"></div>
     <button class="sheet-ok" onclick="saveEditStudyLog()">保存する</button>
   </div>
