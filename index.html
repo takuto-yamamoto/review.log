@@ -3024,6 +3024,93 @@ function safeSetItem(key, value){
   }
 }
 
+/* ══ 同期用: ID単位の版管理ヘルパー（クラウド同期の「丸ごと上書き」対策）══════════
+   以前は、クラウド同期で受信したデータで units/todos/plan の配列を「まるごと
+   置き換え」ていたため、次のような事故が起きていた。
+     ・別端末で完了させたはずのタスクが、こちらの古いデータで上書きされて「復活」する
+     ・オフライン中に作成したタスクが、同期のタイミング次第で消える
+   これを、勉強記録（studyLogs）で先に採用していた「ID単位マージ＋tombstone」方式に
+   units/todos/plan もそろえることで解消する。
+   ─────────────────────────────────────────────
+   ・各要素に updatedAt（最終更新時刻）を持たせる。個々のミューテーション箇所
+     すべてに書き込むのは漏れの元になるため、save()/saveTodos()/savePlan() という
+     「保存の一本道」の直前で自動検出して付与する（createSyncTracker.beforeSave）。
+   ・配列から消えたIDは削除とみなし、削除時刻を tombstone として記録・同期する。
+   ・受信時は、ローカルとリモートを id 単位で「版（updatedAt）が新しい方を採用」しつつ、
+     tombstone が版より新しいものだけ除外する（_mergeArrayById）。
+     → 片方の配列をまるごと採用することが無いので、どちらの変更も基本的に失われない。
+   ・注意（既存データの移行期間について）：この修正を導入した直後は、まだ一度も
+     編集していない古いデータには updatedAt が無く、version は両者とも 0 として
+     扱われる。その場合は便宜上ローカル側を残す（安全側＝データを消さない方に倒す）。
+     以後、何かを編集するたびに正しく版管理されるようになる。
+════════════════════════════════════════════════════════════════════ */
+function _stableStringifyForSync(obj){
+  if(!obj || typeof obj !== 'object') return JSON.stringify(obj);
+  const { updatedAt, ...rest } = obj;
+  return JSON.stringify(rest);
+}
+function _snapshotByIdForSync(arr){
+  const m = new Map();
+  (arr || []).forEach(o => { if(o && o.id != null) m.set(o.id, _stableStringifyForSync(o)); });
+  return m;
+}
+// id付きオブジェクト配列の変更を検知し、updatedAt自動付与 + tombstone管理を行う
+function createSyncTracker(tombKey){
+  let tomb;
+  try { tomb = JSON.parse(localStorage.getItem(tombKey)) || {}; } catch(_) { tomb = {}; }
+  let prevMap = null;
+  function persistTomb(){ safeSetItem(tombKey, JSON.stringify(tomb)); }
+  return {
+    getTomb(){ return tomb; },
+    // 同期でリモートのtombstoneを受信した時に、こちらのtombstoneとマージして採用する
+    mergeTomb(remoteTomb){
+      const rt = remoteTomb || {};
+      for(const id in rt){ if(!tomb[id] || rt[id] > tomb[id]) tomb[id] = rt[id]; }
+      persistTomb();
+    },
+    // 明示的なインポート等、tombstoneをまるごと置き換えたい場合に使う
+    setTomb(newTomb){ tomb = (newTomb && typeof newTomb === 'object') ? newTomb : {}; persistTomb(); },
+    // 現在の配列を「基準」として記録する（初期化時、および同期でリモートを取り込んだ直後に呼ぶ）
+    resyncPrev(arr){ prevMap = _snapshotByIdForSync(arr); },
+    // 保存の直前に呼ぶ: 変更/新規追加されたIDに updatedAt を付与し、消えたIDを tombstone 化する
+    beforeSave(arr){
+      if(prevMap === null){ prevMap = _snapshotByIdForSync(arr); return; } // 初回は基準を作るだけ
+      const now = Date.now();
+      const curIds = new Set();
+      (arr || []).forEach(o => {
+        if(!o || o.id == null) return;
+        curIds.add(o.id);
+        const prevJson = prevMap.get(o.id);
+        const curJson = _stableStringifyForSync(o);
+        if(prevJson === undefined || prevJson !== curJson) o.updatedAt = now;
+        if(tomb[o.id] !== undefined) delete tomb[o.id]; // 生存しているのでtombstoneは不要
+      });
+      prevMap.forEach((_, id) => { if(!curIds.has(id)) tomb[id] = now; }); // 消えたID = 削除
+      prevMap = _snapshotByIdForSync(arr);
+      persistTomb();
+    }
+  };
+}
+// ローカル配列とリモート配列を id 単位でマージする（version = updatedAt || createdAt || 0）
+function _mergeArrayById(localArr, remoteArr, tomb){
+  const version = (o) => (o && (o.updatedAt || o.createdAt)) || 0;
+  const byId = new Map();
+  const consider = (o) => {
+    if(!o || typeof o !== 'object' || o.id == null) return;
+    const prev = byId.get(o.id);
+    if(!prev || version(o) > version(prev)) byId.set(o.id, o);
+  };
+  (localArr || []).forEach(consider);
+  (remoteArr || []).forEach(consider);
+  const out = [];
+  byId.forEach(o => {
+    const del = tomb ? tomb[o.id] : undefined;
+    if(del && del >= version(o)) return;
+    out.push(o);
+  });
+  return out;
+}
+
 /* ══ Tag data ══════════════════════════ */
 const TAG_KEY = 'fukushu-tags-v1';
 const TAG_COLORS = [
@@ -3031,7 +3118,10 @@ const TAG_COLORS = [
   '#3B82F6','#8B5CF6','#EC4899','#6B7280','#0EA5E9'
 ];
 let TAGS = (() => { try { return JSON.parse(localStorage.getItem(TAG_KEY)) || []; } catch { return []; } })();
-const saveTags = () => safeSetItem(TAG_KEY, JSON.stringify(TAGS));
+const TAG_TOMB_KEY = 'fukushu-tag-tomb-v1';
+const _tagSync = createSyncTracker(TAG_TOMB_KEY);
+_tagSync.resyncPrev(TAGS);
+const saveTags = () => { _tagSync.beforeSave(TAGS); return safeSetItem(TAG_KEY, JSON.stringify(TAGS)); };
 
 /* ══ Category data ══════════════════════
    Category: { id, name, color }
@@ -3039,7 +3129,10 @@ const saveTags = () => safeSetItem(TAG_KEY, JSON.stringify(TAGS));
 ══════════════════════════════════════════ */
 const CAT_KEY = 'fukushu-categories-v1';
 let CATEGORIES = (() => { try { return JSON.parse(localStorage.getItem(CAT_KEY)) || []; } catch { return []; } })();
-const saveCategories = () => safeSetItem(CAT_KEY, JSON.stringify(CATEGORIES));
+const CAT_TOMB_KEY = 'fukushu-category-tomb-v1';
+const _catSync = createSyncTracker(CAT_TOMB_KEY);
+_catSync.resyncPrev(CATEGORIES);
+const saveCategories = () => { _catSync.beforeSave(CATEGORIES); return safeSetItem(CAT_KEY, JSON.stringify(CATEGORIES)); };
 
 
 /* ══ Study log data ═════════════════════
@@ -3101,9 +3194,12 @@ function _mergeStudyLogs(localArr, remoteArr, localTomb, remoteTomb){
    「今日」または「明日」の日付が付き、その日の今日タブにのみ表示される
 ══════════════════════════════════════════ */
 const TODO_KEY = 'fukushu-todos-v1';
+const TODO_TOMB_KEY = 'fukushu-todo-tomb-v1';
 let TODOS = (() => { try { return JSON.parse(localStorage.getItem(TODO_KEY)) || []; } catch { return []; } })();
 TODOS.forEach(x=>{ if(x.half===undefined) x.half=false; if(x.elapsedMs===undefined) x.elapsedMs=0; if(x.timerStart===undefined) x.timerStart=null; if(x.tags===undefined) x.tags=[]; });
-const saveTodos = () => safeSetItem(TODO_KEY, JSON.stringify(TODOS));
+const _todoSync = createSyncTracker(TODO_TOMB_KEY);
+_todoSync.resyncPrev(TODOS);
+const saveTodos = () => { _todoSync.beforeSave(TODOS); return safeSetItem(TODO_KEY, JSON.stringify(TODOS)); };
 
 /* ══════════════════════════════════════════════════════════════
    計画（Plan）機能 まとめ
@@ -3132,8 +3228,11 @@ const saveTodos = () => safeSetItem(TODO_KEY, JSON.stringify(TODOS));
    }
 ══════════════════════════════════════════ */
 const PLAN_KEY = 'fukushu-plan-v1';
+const PLAN_TOMB_KEY = 'fukushu-plan-tomb-v1';
 let PLAN = (() => { try { return JSON.parse(localStorage.getItem(PLAN_KEY)) || []; } catch { return []; } })();
-const savePlan = () => safeSetItem(PLAN_KEY, JSON.stringify(PLAN));
+const _planSync = createSyncTracker(PLAN_TOMB_KEY);
+_planSync.resyncPrev(PLAN);
+const savePlan = () => { _planSync.beforeSave(PLAN); return safeSetItem(PLAN_KEY, JSON.stringify(PLAN)); };
 
 /* ══ Plan（計画）タスク間の「ルール」 ═══════════
    計画タブ内のタスク群が同じ日に重ならないようにするための設定。
@@ -3166,7 +3265,10 @@ let PLAN_RULES = (() => { try { return JSON.parse(localStorage.getItem(PLAN_RULE
   }).filter(r=>Array.isArray(r.taskIds) && r.taskIds.length>=2);
   if(changed) safeSetItem(PLAN_RULE_KEY, JSON.stringify(PLAN_RULES));
 })();
-const savePlanRules = () => safeSetItem(PLAN_RULE_KEY, JSON.stringify(PLAN_RULES));
+const PLAN_RULE_TOMB_KEY = 'fukushu-planrule-tomb-v1';
+const _planRuleSync = createSyncTracker(PLAN_RULE_TOMB_KEY);
+_planRuleSync.resyncPrev(PLAN_RULES);
+const savePlanRules = () => { _planRuleSync.beforeSave(PLAN_RULES); return safeSetItem(PLAN_RULE_KEY, JSON.stringify(PLAN_RULES)); };
 const PLAN_RULE_FILTER_ID = '__planrule__';
 // ルールの種類ごとの定義。label=選択ボタンの表示名、desc=種類選択時の説明、
 // needsParam=数値パラメータ(param)を使うか、listSub=一覧行のサブテキスト、
@@ -6115,8 +6217,11 @@ function toggleEditTag(id){
 } catch(_){} })();
 
 let U = (() => { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch { return []; } })();
+const UNIT_TOMB_KEY = 'fukushu-unit-tomb-v1';
+const _unitSync = createSyncTracker(UNIT_TOMB_KEY);
+_unitSync.resyncPrev(U);
 
-const save  = () => safeSetItem(KEY, JSON.stringify(U));
+const save  = () => { _unitSync.beforeSave(U); return safeSetItem(KEY, JSON.stringify(U)); };
 // ローカル日時を使う（UTC基準だとJSTでは日付がズレる）
 const td    = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
 const addD  = (s,n) => { const d=new Date(s+'T00:00:00'); d.setDate(d.getDate()+n); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
@@ -10839,13 +10944,19 @@ function doExport(){
       version: 1,
       exportedAt: new Date().toISOString(),
       units: U,
+      unitTombstones: (typeof _unitSync!=='undefined') ? _unitSync.getTomb() : {},
       tags: TAGS,
+      tagTombstones: (typeof _tagSync!=='undefined') ? _tagSync.getTomb() : {},
       categories: CATEGORIES,
+      categoryTombstones: (typeof _catSync!=='undefined') ? _catSync.getTomb() : {},
       studyLogs: STUDY_LOGS,
       studyTombstones: (typeof STUDY_TOMBSTONES!=='undefined') ? STUDY_TOMBSTONES : {},
       todos: (typeof TODOS!=='undefined') ? TODOS : [],
+      todoTombstones: (typeof _todoSync!=='undefined') ? _todoSync.getTomb() : {},
       plan: (typeof PLAN!=='undefined') ? PLAN : [],
+      planTombstones: (typeof _planSync!=='undefined') ? _planSync.getTomb() : {},
       planRules: (typeof PLAN_RULES!=='undefined') ? PLAN_RULES : [],
+      planRuleTombstones: (typeof _planRuleSync!=='undefined') ? _planRuleSync.getTomb() : {},
       appIcon: (typeof APP_ICON!=='undefined') ? APP_ICON : null,
       devSettings: (typeof DEV_SETTINGS!=='undefined') ? DEV_SETTINGS : null,
       streak: (() => { try { return JSON.parse(localStorage.getItem('fukushu-streak-v1') || 'null'); } catch { return null; } })(),
@@ -10972,6 +11083,14 @@ function confirmImport(){
     TAGS = pending.tags || [];
     CATEGORIES = pending.categories || [];
     save(); saveTags(); saveCategories();
+    // インポートは明示的な「上書き」操作。バックアップに墓標があればそれを採用し、
+    // 無ければ空にする（古いローカル墓標がインポートしたデータを消さないようにする）。
+    _unitSync.setTomb(pending.unitTombstones);
+    _unitSync.resyncPrev(U); // インポート後の状態を新しい基準にする
+    _tagSync.setTomb(pending.tagTombstones);
+    _tagSync.resyncPrev(TAGS);
+    _catSync.setTomb(pending.categoryTombstones);
+    _catSync.resyncPrev(CATEGORIES);
     if(pending.streak) localStorage.setItem('fukushu-streak-v1', JSON.stringify(pending.streak));
     if(Array.isArray(pending.studyLogs)){
       STUDY_LOGS=pending.studyLogs; saveStudyLogs();
@@ -10980,9 +11099,21 @@ function confirmImport(){
       STUDY_TOMBSTONES = (pending.studyTombstones && typeof pending.studyTombstones==='object') ? pending.studyTombstones : {};
       saveStudyTombstones();
     }
-    if(Array.isArray(pending.todos) && typeof TODOS!=='undefined'){ TODOS=pending.todos; saveTodos(); }
-    if(Array.isArray(pending.plan) && typeof PLAN!=='undefined'){ PLAN=pending.plan; savePlan(); }
-    if(Array.isArray(pending.planRules) && typeof PLAN_RULES!=='undefined'){ PLAN_RULES=pending.planRules; savePlanRules(); }
+    if(Array.isArray(pending.todos) && typeof TODOS!=='undefined'){
+      TODOS=pending.todos; saveTodos();
+      _todoSync.setTomb(pending.todoTombstones);
+      _todoSync.resyncPrev(TODOS);
+    }
+    if(Array.isArray(pending.plan) && typeof PLAN!=='undefined'){
+      PLAN=pending.plan; savePlan();
+      _planSync.setTomb(pending.planTombstones);
+      _planSync.resyncPrev(PLAN);
+    }
+    if(Array.isArray(pending.planRules) && typeof PLAN_RULES!=='undefined'){
+      PLAN_RULES=pending.planRules; savePlanRules();
+      _planRuleSync.setTomb(pending.planRuleTombstones);
+      _planRuleSync.resyncPrev(PLAN_RULES);
+    }
     if(typeof pending.appIcon !== 'undefined' && typeof saveAppIcon==='function'){ saveAppIcon(pending.appIcon); }
     if(pending.devSettings && typeof pending.devSettings==='object' && typeof DEV_SETTINGS!=='undefined'){
       DEV_SETTINGS = { global: Array.isArray(pending.devSettings.global) && pending.devSettings.global.length===MAX_STEP ? pending.devSettings.global : null,
@@ -11862,13 +11993,19 @@ const FSYNC = (() => {
     const raw = {
       version: 1,
       units: U,
+      unitTombstones: (typeof _unitSync!=='undefined') ? _unitSync.getTomb() : {},
       tags: TAGS,
+      tagTombstones: (typeof _tagSync!=='undefined') ? _tagSync.getTomb() : {},
       categories: CATEGORIES,
+      categoryTombstones: (typeof _catSync!=='undefined') ? _catSync.getTomb() : {},
       studyLogs: STUDY_LOGS,
       studyTombstones: (typeof STUDY_TOMBSTONES!=='undefined') ? STUDY_TOMBSTONES : {},
       todos: (typeof TODOS!=='undefined') ? TODOS : [],
+      todoTombstones: (typeof _todoSync!=='undefined') ? _todoSync.getTomb() : {},
       plan: (typeof PLAN!=='undefined') ? PLAN : [],
+      planTombstones: (typeof _planSync!=='undefined') ? _planSync.getTomb() : {},
       planRules: (typeof PLAN_RULES!=='undefined') ? PLAN_RULES : [],
+      planRuleTombstones: (typeof _planRuleSync!=='undefined') ? _planRuleSync.getTomb() : {},
       appIcon: (typeof APP_ICON!=='undefined' && APP_ICON && APP_ICON.length < 700000) ? APP_ICON : null,
       appIconSkipped: !!(typeof APP_ICON!=='undefined' && APP_ICON && APP_ICON.length >= 700000), // trueの間は他端末のアイコンを消さない
       devSettings: (typeof DEV_SETTINGS!=='undefined') ? DEV_SETTINGS : null,
@@ -11883,11 +12020,36 @@ const FSYNC = (() => {
   function applyPayload(data){
     if(!data) return;
     applyingRemote = true;
-    let _studyMergeChanged = false;
+    let _needsReconverge = false;
     try{
-      if(Array.isArray(data.units))      { U = data.units; safeSetItem(KEY, JSON.stringify(U)); }
-      if(Array.isArray(data.tags))       { TAGS = data.tags; safeSetItem(TAG_KEY, JSON.stringify(TAGS)); }
-      if(Array.isArray(data.categories)) { CATEGORIES = data.categories; safeSetItem(CAT_KEY, JSON.stringify(CATEGORIES)); }
+      if(Array.isArray(data.units)){
+        // ★本修正の核心：完了タスクが復活する/計画タスクが消えるバグの原因だった
+        //   「丸ごと上書き」をやめ、勉強記録と同じ id単位マージ＋tombstone方式にする。
+        //   これにより、リモートがまだ受信していないローカルの完了状態や新規タスクが
+        //   相手の古いデータで消されなくなる。削除は tombstone 経由で伝播させる。
+        _unitSync.mergeTomb(data.unitTombstones || {});
+        const beforeIds = U.map(u=>u.id).join('|');
+        U = _mergeArrayById(U, data.units, _unitSync.getTomb());
+        _unitSync.resyncPrev(U); // マージ結果を新しい基準にする（受信自体を「変更」として二重カウントしない）
+        safeSetItem(KEY, JSON.stringify(U));
+        const remoteIds = data.units.map(u=>u&&u.id).join('|');
+        const afterIds = U.map(u=>u.id).join('|');
+        if(afterIds !== remoteIds || afterIds !== beforeIds) _needsReconverge = true;
+      }
+      if(Array.isArray(data.tags)){
+        // タグも units 等と同じ理由で id単位マージに変更（片方の端末で追加/削除した
+        // タグが、もう片方の古いタグ一覧で消えたり復活したりしないようにする）
+        _tagSync.mergeTomb(data.tagTombstones || {});
+        TAGS = _mergeArrayById(TAGS, data.tags, _tagSync.getTomb());
+        _tagSync.resyncPrev(TAGS);
+        safeSetItem(TAG_KEY, JSON.stringify(TAGS));
+      }
+      if(Array.isArray(data.categories)){
+        _catSync.mergeTomb(data.categoryTombstones || {});
+        CATEGORIES = _mergeArrayById(CATEGORIES, data.categories, _catSync.getTomb());
+        _catSync.resyncPrev(CATEGORIES);
+        safeSetItem(CAT_KEY, JSON.stringify(CATEGORIES));
+      }
       if(Array.isArray(data.studyLogs)){
         // ★勉強時間が消えるバグの修正：リモートで丸ごと上書きせず、id単位で合算する。
         //   これにより、リモートがまだ受信していないローカルの記録が消えなくなる。
@@ -11903,11 +12065,37 @@ const FSYNC = (() => {
         // 収束のためこちらから改めて全体をpushし直す必要がある。
         const remoteIds = data.studyLogs.map(l=>l&&l.id).join('|');
         const afterIds = STUDY_LOGS.map(l=>l.id).join('|');
-        if(afterIds !== remoteIds || afterIds !== beforeIds) _studyMergeChanged = true;
+        if(afterIds !== remoteIds || afterIds !== beforeIds) _needsReconverge = true;
       }
-      if(Array.isArray(data.todos) && typeof TODOS!=='undefined') { TODOS = data.todos; safeSetItem(TODO_KEY, JSON.stringify(TODOS)); }
-      if(Array.isArray(data.plan) && typeof PLAN!=='undefined') { PLAN = data.plan; safeSetItem(PLAN_KEY, JSON.stringify(PLAN)); }
-      if(Array.isArray(data.planRules) && typeof PLAN_RULES!=='undefined') { PLAN_RULES = data.planRules; safeSetItem(PLAN_RULE_KEY, JSON.stringify(PLAN_RULES)); }
+      if(Array.isArray(data.todos) && typeof TODOS!=='undefined'){
+        // units と同じ理由で id単位マージに変更（TODOが消える/復活するのを防ぐ）
+        _todoSync.mergeTomb(data.todoTombstones || {});
+        const beforeIds = TODOS.map(t=>t.id).join('|');
+        TODOS = _mergeArrayById(TODOS, data.todos, _todoSync.getTomb());
+        _todoSync.resyncPrev(TODOS);
+        safeSetItem(TODO_KEY, JSON.stringify(TODOS));
+        const remoteIds = data.todos.map(t=>t&&t.id).join('|');
+        const afterIds = TODOS.map(t=>t.id).join('|');
+        if(afterIds !== remoteIds || afterIds !== beforeIds) _needsReconverge = true;
+      }
+      if(Array.isArray(data.plan) && typeof PLAN!=='undefined'){
+        // ★「計画タスクが5件のはずが4件になる」バグの原因もこれと同じ丸ごと上書き。
+        //   id単位マージに変更し、片方にしかないタスクが消えないようにする。
+        _planSync.mergeTomb(data.planTombstones || {});
+        const beforeIds = PLAN.map(p=>p.id).join('|');
+        PLAN = _mergeArrayById(PLAN, data.plan, _planSync.getTomb());
+        _planSync.resyncPrev(PLAN);
+        safeSetItem(PLAN_KEY, JSON.stringify(PLAN));
+        const remoteIds = data.plan.map(p=>p&&p.id).join('|');
+        const afterIds = PLAN.map(p=>p.id).join('|');
+        if(afterIds !== remoteIds || afterIds !== beforeIds) _needsReconverge = true;
+      }
+      if(Array.isArray(data.planRules) && typeof PLAN_RULES!=='undefined'){
+        _planRuleSync.mergeTomb(data.planRuleTombstones || {});
+        PLAN_RULES = _mergeArrayById(PLAN_RULES, data.planRules, _planRuleSync.getTomb());
+        _planRuleSync.resyncPrev(PLAN_RULES);
+        safeSetItem(PLAN_RULE_KEY, JSON.stringify(PLAN_RULES));
+      }
       if(!data.appIconSkipped && typeof data.appIcon !== 'undefined' && typeof APP_ICON!=='undefined' && typeof saveAppIcon==='function'){
         if(data.appIcon !== APP_ICON) saveAppIcon(data.appIcon);
       }
@@ -11926,10 +12114,10 @@ const FSYNC = (() => {
     } finally {
       setTimeout(()=>{
         applyingRemote = false;
-        // 勉強記録のマージでローカル固有の差分（追加・削除）が残っていた場合は、
-        // 全端末を同じ集合へ収束させるためにこちらの結果を1回だけ送り返す。
-        // 収束後はマージ差分が消える(_studyMergeChanged=false)ためpushループにはならない。
-        if(_studyMergeChanged) schedulePush();
+        // units/todos/plan/studyLogs のいずれかのマージでローカル固有の差分（追加・削除）が
+        // 残っていた場合は、全端末を同じ集合へ収束させるためこちらの結果を1回だけ送り返す。
+        // 収束後はマージ差分が消える(_needsReconverge=false)ためpushループにはならない。
+        if(_needsReconverge) schedulePush();
       }, 400);
     }
   }
@@ -11950,11 +12138,30 @@ const FSYNC = (() => {
     pulled = false;
     setCode(code);
     docRef = db.collection('fukushuSync').doc(code);
-    docRef.onSnapshot(snap=>{
+    // ★重要: Firestoreは既定では「データ本体が変わらず、fromCache等のメタデータだけが
+    //   変化した」場合にコールバックを発火しない（公式ドキュメントに明記されている挙動）。
+    //   つまり { includeMetadataChanges: true } を指定しないと、最初にキャッシュから
+    //   古いデータを受け取った後、サーバーからの「確認が取れました」という通知（データ内容が
+    //   キャッシュと同じ場合）が来ず、pulled が永遠にfalseのまま＝同期が無言で止まる
+    //   事故につながる。これを避けるため明示的に指定する。
+    docRef.onSnapshot({ includeMetadataChanges: true }, snap=>{
       if(snap.metadata.hasPendingWrites) return; // 自分自身の書き込みのエコーは無視
+      // ★根本原因の修正：Firestoreはオンライン時でも、まず端末内のローカルキャッシュに
+      //   残っている（他端末の更新をまだ反映していない、古いかもしれない）スナップショットを
+      //   即座に1回返し、その後サーバーと同期が取れた本物のスナップショットを改めて返す。
+      //   これを区別せず「初回受信＝pushして良い」と扱っていたため、
+      //   「古いキャッシュ＋その直後の1操作」でサーバー側の最新データ（他端末の完了状態や
+      //   追加したタスク）を上書きしてしまう事故が起きていた。
+      //   snap.metadata.fromCache でキャッシュ由来かどうかを判定し、
+      //   サーバーで確認が取れたスナップショットを受け取るまでは pulled をtrueにしない
+      //   （＝それまでは schedulePush() が呼ばれても何も送信しない）。
       const data = snap.data();
       if(data) applyPayload(data);
-      pulled = true; // ドキュメントが存在しない(新規コード)場合も、これで安全にpush可能にする
+      if(!snap.metadata.fromCache){
+        pulled = true; // サーバー確認済み（ドキュメント未存在の確認も含む）なので安全にpush可能
+      } else {
+        console.warn('FSYNC: キャッシュからの応答のため、サーバー確認が取れるまでpushを保留します');
+      }
     }, err=>console.error('FSYNC listen失敗', err));
   }
 
@@ -12012,6 +12219,61 @@ const FSYNC = (() => {
     return r;
   };
 })();
+
+/* ══ 同一端末で複数タブ/複数ウィンドウを開いていた場合の保護 ═══════════════
+   ブラウザの `storage` イベントは「他のタブ」がlocalStorageを書き換えたときに
+   （自分自身のタブには発火せず）発火する。これを使って、他タブでの変更を
+   クラウド同期と同じ「ID単位マージ」で取り込むようにする。
+   これが無いと、同じ端末で2つのタブを開いて操作してしまった場合に、
+   後から保存したタブが前のタブの変更を丸ごと上書きして消してしまう
+   （クラウド同期を使っていなくても起こり得る事故）。
+   ここではメモリ上の状態を更新して画面に反映するだけで、localStorageへの
+   書き戻しは行わない（次にこのタブ自身が保存する時、この最新状態を含めて
+   書き込まれるため、それで十分。書き戻すと無用なイベント連鎖を招くため避ける）。 */
+window.addEventListener('storage', (e) => {
+  if(!e.key || e.newValue == null) return;
+  try{
+    const incoming = JSON.parse(e.newValue);
+    if(!Array.isArray(incoming)) return;
+    let changed = false;
+    if(e.key === KEY && typeof _unitSync!=='undefined'){
+      U = _mergeArrayById(U, incoming, _unitSync.getTomb());
+      _unitSync.resyncPrev(U);
+      changed = true;
+    } else if(e.key === TAG_KEY && typeof _tagSync!=='undefined'){
+      TAGS = _mergeArrayById(TAGS, incoming, _tagSync.getTomb());
+      _tagSync.resyncPrev(TAGS);
+      changed = true;
+    } else if(e.key === CAT_KEY && typeof _catSync!=='undefined'){
+      CATEGORIES = _mergeArrayById(CATEGORIES, incoming, _catSync.getTomb());
+      _catSync.resyncPrev(CATEGORIES);
+      changed = true;
+    } else if(e.key === TODO_KEY && typeof _todoSync!=='undefined'){
+      TODOS = _mergeArrayById(TODOS, incoming, _todoSync.getTomb());
+      _todoSync.resyncPrev(TODOS);
+      changed = true;
+    } else if(e.key === PLAN_KEY && typeof _planSync!=='undefined'){
+      PLAN = _mergeArrayById(PLAN, incoming, _planSync.getTomb());
+      _planSync.resyncPrev(PLAN);
+      changed = true;
+    } else if(e.key === PLAN_RULE_KEY && typeof _planRuleSync!=='undefined'){
+      PLAN_RULES = _mergeArrayById(PLAN_RULES, incoming, _planRuleSync.getTomb());
+      _planRuleSync.resyncPrev(PLAN_RULES);
+      changed = true;
+    } else if(e.key === STUDY_KEY && typeof STUDY_TOMBSTONES!=='undefined'){
+      const merged = _mergeStudyLogs(STUDY_LOGS, incoming, STUDY_TOMBSTONES, STUDY_TOMBSTONES);
+      STUDY_LOGS = merged.logs;
+      changed = true;
+    }
+    if(changed){
+      if(typeof render === 'function') render();
+      if(typeof renderSettings === 'function') renderSettings();
+      if(typeof renderSheetTagSel === 'function') renderSheetTagSel();
+      if(typeof renderEditTagSel === 'function') renderEditTagSel();
+      if(typeof _updateNavIcon === 'function') _updateNavIcon();
+    }
+  }catch(_){ /* 壊れた値は無視 */ }
+});
 
 function updateFSyncUI(){
   const el = document.getElementById('fsync-body');
