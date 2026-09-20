@@ -8456,6 +8456,7 @@ function toggleStudyTimer(){
     if(btn) btn.innerHTML=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> 一時停止`;
     const stateEl=document.getElementById('study-timer-state');
     if(stateEl) stateEl.textContent='計測中…';
+    if(_timerInterval) clearInterval(_timerInterval); // 二重起動で表示更新が重複しないようにする
     _timerInterval=setInterval(_updateTimerDisplay,1000);
     haptic('medium');
   } else {
