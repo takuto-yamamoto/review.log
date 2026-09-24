@@ -2906,7 +2906,7 @@ html.is-landscape-phone-layout .panel{ padding-top:8px;padding-bottom:calc(20px 
 ══════════════════════════════════════════ */
 /* ══ App version ════════════════════════ */
 const APP_VERSION = 'v3.0.0';
-const APP_BUILD   = '2026-09-04';
+const APP_BUILD   = '2026-09-24';
 
 const IC = {
   check:      `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
@@ -3432,10 +3432,29 @@ function planDisplayName(p, idxOverride){
   return p.name;
 }
 
+/* 実施期間の終了日を過ぎていても、まだ終わっていない分が残っているかどうか。
+   ・個別日程(schedule)… 未完了の日程が1件でも残っていれば true
+   ・曜日指定/間隔     … 次回日が終了日以前（＝期間内の回をまだ完了していない）なら true
+   ・毎日              … 過ぎた日の分は持ち越さないため false
+   終了日を過ぎた途端に未完了の計画が今日タブから消えてしまう問題への対策として、
+   こうした「やり残し」は完了するまで期限超過として表示し続ける。 */
+function planHasPendingWork(p){
+  if(!p || p.done) return false;
+  if(p.type==='schedule') return (p.schedule||[]).some(x=>!x.done && x.date);
+  if(p.type==='weekday' || p.type==='interval'){
+    return !!(p.nextDate && p.endDate && p.nextDate <= p.endDate);
+  }
+  return false;
+}
+// 曜日指定/間隔タイプの次回日を終了日より後ろへ動かした（延期・移動）ときは、
+// 終了日もそこまで延ばして「やり残し」として扱い続ける（個別日程と同じ挙動に揃える）
+function _planExtendEndIfNeeded(p, date){
+  if(p && (p.type==='weekday'||p.type==='interval') && p.endDate && date && date>p.endDate) p.endDate=date;
+}
 function planInPeriod(p){
   const t=td();
   if(p.startDate && t < p.startDate) return false;
-  if(p.endDate && t > p.endDate) return false;
+  if(p.endDate && t > p.endDate && !planHasPendingWork(p)) return false;
   return true;
 }
 function planIsOverdue(p){
@@ -3467,7 +3486,8 @@ function planIsDueToday(p){
 let _expiredPlanQueue = [];
 function checkExpiredPlans(){
   const t=td();
-  const expired=PLAN.filter(p=>!p.done && p.type!=='goal' && p.endDate && p.endDate<t);
+  // 終了日を過ぎていても、未完了の回・日程が残っている計画は「終了」扱いにしない
+  const expired=PLAN.filter(p=>!p.done && p.type!=='goal' && p.endDate && p.endDate<t && !planHasPendingWork(p));
   if(!expired.length) return;
   _expiredPlanQueue = expired.map(p=>p.id);
   _showNextExpiredPlan();
@@ -3850,7 +3870,8 @@ function getPlanDoneTodayList(){
   const t=td();
   const out=[];
   PLAN.forEach(p=>{
-    if(!planInPeriod(p)) return;
+    // 終了日後にやり残しを完了した場合も「完了済み」に出すため、ここでは開始日だけを見る
+    if(p.startDate && t < p.startDate) return;
     if(p.type==='goal'){
       if(p.done){
         if(!p.completedAt) return;
@@ -3964,10 +3985,13 @@ function planComplete(id, qty){
   delete p.origDueDate;
   if(p.type==='weekday'){ p.nextDate=planNextWeekday(t,p.weekdays); }
   else if(p.type==='interval'){ p.nextDate=addD(t,p.intervalDays); }
+  // 終了日を過ぎてから最後のやり残しを片付けた場合は、その場で計画全体を完了にする
+  const finishedAll = (p.type==='weekday'||p.type==='interval') && p.endDate && t > p.endDate && p.nextDate > p.endDate;
+  if(finishedAll){ p.done=true; p.completedAt=Date.now(); }
   bumpStreak(); // Bug fix: 計画タスクの completion も「今日の活動」として連続日数に数える
   savePlan(); haptic('medium');
   flashThenShrink('c-'+id, 'w-'+id, ()=>render());
-  toast(IC.check, esc(doneLabel)+'を完了しました！');
+  toast(IC.check, esc(doneLabel)+(finishedAll?'を完了し、計画をすべて終えました！':'を完了しました！'));
 }
 // 個別日程（schedule型）の詳細シートから、特定の1件だけを完了⇔未完了に切り替える。
 // planComplete（「次の1件」を進める用）とは別に、過去分の実施記録や取り消しに対応するため
@@ -6545,7 +6569,7 @@ function applySnooze(days){
       if(itemIdx!=null) _planScheduleRetargetIdx(p, itemIdx, until);
       else _planScheduleRetarget(p, until);
     }
-    else if(p.type==='weekday'||p.type==='interval') p.nextDate=until;
+    else if(p.type==='weekday'||p.type==='interval'){ p.nextDate=until; _planExtendEndIfNeeded(p, until); }
     else p.snoozeUntil=until; // daily / goal は次回発生日という概念がないため専用フィールドで隠す
     savePlan();
     haptic('medium'); render(); _renderCalGrid();
@@ -6813,6 +6837,9 @@ function undoPlanCompleteFromDone(id){
     p.occurrenceCount = Math.max(0, (p.occurrenceCount||0) - 1);
     if(p.type==='weekday' || p.type==='interval'){
       p.nextDate = td();
+      // 終了日後にやり残しを完了→戻した場合は、やり残しの状態（終了日以前の回）に戻す
+      if(p.endDate && p.nextDate > p.endDate) p.nextDate = p.endDate;
+      if(p.done){ p.done=false; delete p.completedAt; }
     }
   }
   savePlan();
@@ -9686,7 +9713,7 @@ function denseShiftPlan(pid, destDate){
   if(!p.origDueDate) p.origDueDate = (p.type==='goal') ? p.deadline : p.nextDate;
   if(p.type==='goal'){ p.deadline = destDate; p.nextDate = destDate; }
   else if(p.type==='schedule'){ _planScheduleRetarget(p, destDate); }
-  else p.nextDate = destDate;
+  else { p.nextDate = destDate; _planExtendEndIfNeeded(p, destDate); }
   savePlan();
   haptic('medium');
   toast(IC.check, esc(planDisplayName(p)) + ' を ' + fmtShortText(destDate) + ' へ移動しました');
