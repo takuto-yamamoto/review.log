@@ -309,6 +309,20 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 .study-hero-progress-fill{height:100%;border-radius:100px;background:rgba(255,255,255,.9);transition:width .4s ease}
 .study-hero-progress-lbl{font-size:11px;color:rgba(255,255,255,.85);margin-top:5px;font-weight:600}
 
+/* ══ 今日タブの「明日」ビュー（隠し機能：ヒーローを左へスワイプ） ══ */
+#p-today .hero{touch-action:pan-y}
+.hero.today-peek-hero{
+  background:linear-gradient(135deg,#1E1B4B 0%,#3730A3 55%,#6366F1 100%);
+  box-shadow:0 4px 24px rgba(55,48,163,.32)
+}
+.today-peek-eyebrow{
+  position:relative;z-index:1;display:flex;align-items:center;gap:5px;
+  font-size:12px;font-weight:700;color:rgba(255,255,255,.72);margin-bottom:5px;letter-spacing:.3px
+}
+.today-peek .plan-list{margin-bottom:4px}
+.today-peek .plan-row-main{cursor:default}
+.today-peek .plan-row-main:active{background:none}
+
 /* ══ ToDo card (今日タブ: 他の復習カードと同じ .cw/.card を1件ずつ使用) ══════ */
 .card.todo{border-left:3px solid #F59E0B;padding-left:11px}
 .todo-half-tag{
@@ -2679,7 +2693,268 @@ html.is-landscape-phone-layout .nav-title{ font-size:17px; }
 html.is-landscape-phone-layout .panels{ max-width:680px;margin:0 auto;width:100%; }
 html.is-landscape-phone-layout .panel{ padding-top:8px;padding-bottom:calc(20px + var(--safe-bottom)); }
 
+/* ══════════════════════════════════════════════════════════════
+   カラーテーマ：レッド＆ブラック（html.theme-p5）
+   設定タブ「表示 → カラーテーマ」で切り替え。クラスを外せば元の配色に戻る。
+   既存のスタイルには一切手を加えず、ここで上書きするだけにしている。
+   ══════════════════════════════════════════════════════════════ */
+html.theme-p5{
+  --p5-red:#E60012; --p5-red-hi:#FF3B47; --p5-ink:#0B0B0D; --p5-paper:#F2F2F2;
+  --bg:#0B0B0D; --card:#24242A;
+  --blue:#E60012; --blue-d:#FF7A82; --blue-bg:rgba(230,0,18,.15); --blue-bd:rgba(230,0,18,.42);
+  --red:#FF453A;
+  --plan:#ECECEC; --plan-d:#ECECEC; --plan-bg:rgba(255,255,255,.07); --plan-bd:rgba(255,255,255,.22);
+  --orange:#E60012; --orange-d:#FF4A55; --orange-bg:rgba(230,0,18,.12); --orange-bd:rgba(230,0,18,.38);
+  --amber:#FFC400; --amber-d:#FFC400; --teal-d:#9AA0A6;
+  --lbl:#FFFFFF; --lbl2:rgba(255,255,255,.80); --lbl3:rgba(255,255,255,.58); --icon-muted:rgba(255,255,255,.72);
+  --sep:rgba(255,255,255,.14); --fill:rgba(255,255,255,.1);
+  --shadow:0 1px 2px rgba(0,0,0,.5),0 10px 24px -8px rgba(0,0,0,.7);
+  --shadow-sm:0 1px 1.5px rgba(0,0,0,.45),0 4px 12px -4px rgba(0,0,0,.6);
+  --shadow-lg:0 8px 16px -4px rgba(0,0,0,.6),0 24px 48px -12px rgba(0,0,0,.8);
+  --card-bd:1px solid rgba(255,255,255,.16);
+  background:#050506;
+  color-scheme:dark;
+}
+html.theme-p5 body{
+  background:
+    repeating-linear-gradient(-58deg,rgba(230,0,18,.025) 0 2px,transparent 2px 26px),
+    var(--bg);
+  box-shadow:0 0 0 1px rgba(255,255,255,.04);
+}
+@media (min-width:520px){ html.theme-p5{ background:#050506; } }
+html.theme-p5.is-desktop-layout{ background:#050506; }
+
+/* 切り替え時だけ、色をふわっと移り変わらせる */
+html.theme-switching, html.theme-switching *{
+  transition:background-color .35s ease,color .35s ease,border-color .35s ease,fill .35s ease !important;
+}
+
+/* ── ナビ・タブ ── */
+html.theme-p5 .navbar{background:rgba(11,11,13,.94);border-bottom:2px solid var(--p5-red);box-shadow:0 8px 18px -12px rgba(230,0,18,.5)}
+html.theme-p5 .nav-title,
+html.theme-p5 .sidebar-brand-name{color:#fff;font-style:italic;letter-spacing:-.2px;text-shadow:1.5px 1.5px 0 var(--p5-red)}
+html.theme-p5 .tab-bar{background:rgba(8,8,10,.97);border-top:2px solid var(--p5-red)}
+html.theme-p5 .tab-btn.on{color:#fff}
+html.theme-p5 .tab-btn::before{background:var(--p5-red);border-radius:4px;transform:translateX(-50%) skewX(-12deg) scale(.72)}
+html.theme-p5 .tab-btn.on::before{transform:translateX(-50%) skewX(-12deg) scale(1)}
+html.theme-p5 .tab-btn.on .tab-lbl{font-style:italic;font-weight:800}
+html.theme-p5.is-desktop-layout .tab-btn::before{transform:skewX(-8deg) scale(1)}
+@media (min-width:900px){ html.theme-p5 .tab-btn::before{transform:skewX(-8deg) scale(1)} }
+
+/* ── 見出し・ヒーロー ── */
+html.theme-p5 .sec{font-style:italic;color:var(--lbl2)}
+html.theme-p5 .hero,
+html.theme-p5 .achiev-hero,
+html.theme-p5 .settings-hero,
+html.theme-p5 .hero.all-done,
+html.theme-p5 .hero[style*="#1740B0"],
+html.theme-p5 .hero[style*="#4C1D95"]{
+  background:var(--p5-red) !important;
+  box-shadow:6px 6px 0 #000,0 10px 30px -10px rgba(230,0,18,.6) !important;
+  clip-path:polygon(0 0,100% 0,100% 84%,96% 100%,0 100%);
+}
+html.theme-p5 .hero::before,
+html.theme-p5 .achiev-hero::before,
+html.theme-p5 .settings-hero::before{
+  width:30%;height:180%;top:-40%;right:-14%;border-radius:0;
+  background:#000;transform:skewX(-22deg);opacity:.9;
+}
+html.theme-p5 .hero::after{
+  width:5px;height:180%;top:-40%;left:auto;right:21%;bottom:auto;border-radius:0;
+  background:#fff;transform:skewX(-22deg);opacity:.85;
+}
+html.theme-p5 .hero-msg,
+html.theme-p5 .settings-hero-title{font-style:italic;font-weight:900;letter-spacing:-.3px;text-shadow:2px 2px 0 rgba(0,0,0,.55)}
+html.theme-p5 .hero.today-peek-hero{background:#000 !important;box-shadow:6px 6px 0 var(--p5-red) !important}
+html.theme-p5 .hero.today-peek-hero::before{background:var(--p5-red)}
+html.theme-p5 .all-done-icon-wrap{border-color:#fff;background:rgba(0,0,0,.35)}
+html.theme-p5 .hero-streak-line{background:#000;color:#fff}
+
+/* ── カード ── */
+html.theme-p5 .card.over{border-left-color:#FFC400}
+html.theme-p5 .card-when.over{color:#FFC400}
+html.theme-p5 .card-when-chip.over{color:#FFC400;background:rgba(255,196,0,.12);border-color:rgba(255,196,0,.35)}
+html.theme-p5 .card-when-chip.fwd{color:#FFC400;background:rgba(255,196,0,.1);border-color:rgba(255,196,0,.3)}
+html.theme-p5 .card.plan{border-left-color:#ECECEC}
+html.theme-p5 .card.todo{border-left-color:#FFC400}
+html.theme-p5 .todo-half-tag{color:#FFC400;background:rgba(255,196,0,.14)}
+html.theme-p5 .plan-row.over{background:linear-gradient(90deg,rgba(255,196,0,.08),transparent 60%)}
+html.theme-p5 .plan-row.over .plan-row-meta{color:#FFC400}
+html.theme-p5 .plan-row.over .plan-row-icon{background:rgba(255,196,0,.14);color:#FFC400}
+html.theme-p5 .card-snooze-note,
+html.theme-p5 .cal-day-item-snooze{color:#FFC400}
+html.theme-p5 .cal-day-item-snooze{background:rgba(255,196,0,.1);border-color:rgba(255,196,0,.3)}
+@keyframes flashGreenP5{0%{background:var(--card)}25%{background:#3A0006}70%{background:#3A0006}100%{background:var(--card)}}
+html.theme-p5 .card.flash{animation:flashGreenP5 .4s ease}
+
+/* ── ボタン ── */
+html.theme-p5 .btn-ok,
+html.theme-p5 .sheet-ok,
+html.theme-p5 .edit-save,
+html.theme-p5 .icrop-btn-ok,
+html.theme-p5 .ob-next,
+html.theme-p5 .tag-add-btn,
+html.theme-p5 .expired-plan-keep,
+html.theme-p5 [style*="#4F8EF7"]{
+  background:var(--p5-red) !important;color:#fff !important;
+  box-shadow:3px 3px 0 #000 !important;font-style:italic;
+}
+html.theme-p5 .btn-plan-ok,
+html.theme-p5 .edit-save[style*="--plan"],
+html.theme-p5 [style*="#0EA874"]{
+  background:var(--p5-paper) !important;color:var(--p5-ink) !important;
+  box-shadow:3px 3px 0 var(--p5-red) !important;font-style:italic;
+}
+html.theme-p5 .plan-wd-btn.on,
+html.theme-p5 .plan-wizard-dot.on{color:var(--p5-ink)}
+html.theme-p5 .float-fab{background:var(--p5-red);box-shadow:4px 4px 0 #000,0 6px 24px rgba(230,0,18,.5)}
+html.theme-p5 .tagf-chip.all.active{background:var(--p5-red);border-color:var(--p5-red)}
+html.theme-p5 .tagf-chip.todo-chip.active{background:#FFC400;border-color:#FFC400;color:#000}
+html.theme-p5 .settings-switch.on{background:var(--p5-red)}
+html.theme-p5 .chip{color:#fff}
+
+/* ── 淡色のアイコン背景・パネルを暗色に置き換え ── */
+html.theme-p5 .settings-row-icon,
+html.theme-p5 .backup-row-icon,
+html.theme-p5 .guide-acc-icon,
+html.theme-p5 .cal-toggle-icon,
+html.theme-p5 .prog-card-icon,
+html.theme-p5 .tag-prog-unit-icon{background:rgba(230,0,18,.15) !important;color:var(--blue-d) !important}
+html.theme-p5 .settings-row-icon span,
+html.theme-p5 .guide-acc-icon span{color:var(--blue-d) !important}
+html.theme-p5 .backup-row-icon svg{stroke:var(--blue-d)}
+html.theme-p5 .done-icon,
+html.theme-p5 .today-done-icon,
+html.theme-p5 .today-done-item-icon{background:rgba(52,199,89,.16)}
+html.theme-p5 .today-done-count{background:rgba(52,199,89,.16);color:#4ADE80}
+html.theme-p5 .backup-reminder{background:#1C0204;border-color:var(--p5-red)}
+html.theme-p5 .backup-reminder-ttl{color:#fff}
+html.theme-p5 .backup-reminder-sub,
+html.theme-p5 .backup-reminder-icon,
+html.theme-p5 .backup-reminder-close{color:var(--blue-d)}
+html.theme-p5 .backup-how-box[style*="#F5F3FF"]{background:var(--plan-bg) !important;border-color:var(--plan-bd) !important}
+html.theme-p5 .pwa-android-note{background:rgba(52,199,89,.1);border-color:rgba(52,199,89,.3);color:#86EFAC}
+html.theme-p5 .chip.warn{background:rgba(255,69,58,.15);color:#FF8A80}
+html.theme-p5 .dow-sun{background:rgba(255,69,58,.18);color:#FF8A80}
+html.theme-p5 .dow-sat{background:rgba(255,255,255,.12);color:#E5E5E5}
+html.theme-p5 .storage-error-toast{background:#3A0006;border:1px solid var(--p5-red)}
+html.theme-p5 .btn-del:active{background:rgba(255,69,58,.15)}
+html.theme-p5 .expired-plan-icon{background:var(--p5-red)}
+html.theme-p5 input[style*="#fff"]{background:var(--fill) !important;color:var(--lbl) !important}
+html.theme-p5 select,html.theme-p5 input,html.theme-p5 textarea{color-scheme:dark}
+
+/* ── 紫で固定されていた箇所（計画ルール・勉強記録） ── */
+html.theme-p5 [style*="color:#7C3AED"]{color:var(--blue-d) !important}
+html.theme-p5 .chat-bubble{border-left-color:var(--p5-red)}
+html.theme-p5 .chat-bubble-meta{color:var(--blue-d)}
+html.theme-p5 .chat-tag{background:var(--blue-bg);color:var(--blue-d)}
+html.theme-p5 .all-logs-filter-sum b{color:var(--blue-d)}
+html.theme-p5 .plan-rule-chip-num,
+html.theme-p5 .plan-rule-pri-num,
+html.theme-p5 .plan-rule-pick-check.on,
+html.theme-p5 .plan-rule-wd-btn.on,
+html.theme-p5 .plan-rule-type-card.on .plan-rule-type-card-icon,
+html.theme-p5 .plan-rule-type-card-check{background:var(--p5-red);border-color:var(--p5-red);color:#fff}
+html.theme-p5 .plan-rule-type-card.on{border-color:var(--p5-red);background:rgba(230,0,18,.1)}
+html.theme-p5 .plan-rule-type-badge,
+html.theme-p5 .plan-rule-pri-first-tag{background:var(--blue-bg);color:var(--blue-d)}
+html.theme-p5 .plan-rule-section-lbl span.count{color:var(--blue-d)}
+html.theme-p5 .plan-rule-preview{background:rgba(230,0,18,.1);border-color:var(--blue-bd)}
+html.theme-p5 .plan-rule-preview-icon{color:var(--blue-d)}
+html.theme-p5 .plan-rule-preview-txt{color:var(--lbl2)}
+html.theme-p5 .plan-rule-preview-txt b{color:#fff}
+html.theme-p5 .plan-rule-pri-row.first{background:linear-gradient(90deg,rgba(230,0,18,.12),transparent 85%)}
+
+/* ── カレンダー ── */
+html.theme-p5 .cal-cell.heat-1{background:rgba(230,0,18,.10)}
+html.theme-p5 .cal-cell.heat-2{background:rgba(230,0,18,.20)}
+html.theme-p5 .cal-cell.heat-3{background:rgba(230,0,18,.32)}
+html.theme-p5 .cal-cell.heat-4{background:rgba(230,0,18,.46)}
+html.theme-p5 .cal-cell.heat-1.overdue,html.theme-p5 .cal-cell.heat-2.overdue,
+html.theme-p5 .cal-cell.heat-3.overdue,html.theme-p5 .cal-cell.heat-4.overdue{background:rgba(255,196,0,.16)}
+html.theme-p5 .cal-cell.today .cal-num{background:var(--p5-red);color:#fff;border-radius:4px;transform:skewX(-10deg)}
+html.theme-p5 .cal-dow.sat,html.theme-p5 .cal-cell.sat .cal-num,html.theme-p5 .cal-day-head.sat{color:#C9C9CC}
+html.theme-p5 .cal-spread-icon{background:var(--p5-red)}
+
+/* ── シート・吹き出し ── */
+html.theme-p5 .ob-bubble{background:var(--card);border:1px solid var(--p5-red)}
+html.theme-p5 .ob-bubble.arrow-down::after{border-top-color:var(--card)}
+html.theme-p5 .ob-bubble.arrow-up::after,
+html.theme-p5 .ob-bubble.arrow-up-left::after,
+html.theme-p5 .ob-bubble.arrow-up-right::after{border-bottom-color:var(--card)}
+html.theme-p5 .ob-badge{background:var(--p5-red)}
+html.theme-p5 .icrop-viewport{box-shadow:0 0 0 3px var(--card),0 0 0 4px var(--p5-red)}
+html.theme-p5 .undo-bar-prog{background:var(--p5-red)}
+html.theme-p5 .undo-btn{background:rgba(230,0,18,.25);color:#FF6B74}
+html.theme-p5 .seg-btn.on,
+html.theme-p5 .plan-type-seg button.on,
+html.theme-p5 .layout-toggle-btn.on,
+html.theme-p5 .cal-mode-btn.active,
+html.theme-p5 .spread-intensity-btn.active{background:#2A2A2F}
+
+html.theme-p5 .card.due{border-left-color:var(--p5-red)}
+html.theme-p5 .cal-pip.plan[style*="#7C3AED"],
+html.theme-p5 .cal-legend-dot.plan{background:#ECECEC !important}
+html.theme-p5 .cal-forecast{color:var(--blue-d)}
+
+/* ── 境目と文字を見やすく：カード類に明るめの輪郭線 ── */
+html.theme-p5 .card,
+html.theme-p5 .settings-section,
+html.theme-p5 .plan-list,
+html.theme-p5 .cal-toggle,
+html.theme-p5 .cal-wrap,
+html.theme-p5 .chat-thread-wrap,
+html.theme-p5 .today-done-header,
+html.theme-p5 .tag-prog-card,
+html.theme-p5 .tag-prog-notag,
+html.theme-p5 .done-row,
+html.theme-p5 .prog-card,
+html.theme-p5 .cat-bd-card,
+html.theme-p5 .todo-inline-card,
+html.theme-p5 .plan-add-cta,
+html.theme-p5 .guide-acc,
+html.theme-p5 .backup-row{border:1px solid rgba(255,255,255,.16)}
+html.theme-p5 .today-done-acc.open .today-done-header{border-bottom-color:rgba(255,255,255,.16)}
+html.theme-p5 .today-done-body{border:1px solid rgba(255,255,255,.16);border-top:none}
+html.theme-p5 .plan-add-cta{border-style:dashed;border-color:rgba(255,255,255,.3)}
+html.theme-p5 .backup-row{background:#2C2C33}
+html.theme-p5 .chat-bubble{background:#2E2E35}
+html.theme-p5 .sec{color:rgba(255,255,255,.82)}
+html.theme-p5 .hero-sub,
+html.theme-p5 .settings-hero-sub,
+html.theme-p5 .today-peek-eyebrow{color:#fff;text-shadow:1px 1px 0 rgba(0,0,0,.45)}
+html.theme-p5 .card-when-chip{background:rgba(255,255,255,.1)}
+html.theme-p5 .step-dot{background:rgba(255,255,255,.22)}
+html.theme-p5 .tagf-chip{background:var(--card);border-color:rgba(255,255,255,.2);color:var(--lbl)}
+
+html.theme-p5 .card-when-chip.due{background:var(--p5-red);border-color:var(--p5-red);color:#fff}
+html.theme-p5 .step-mini-lbl.active,
+html.theme-p5 .step-dot-lbl.active,
+html.theme-p5 .card-when.due,
+html.theme-p5 .card.due .card-when,
+html.theme-p5 .plan-row.due .plan-row-meta,
+html.theme-p5 .sched-toggle,
+html.theme-p5 .tag-sel-open-mgr,
+html.theme-p5 .sched-row.sched-next .sched-row-rel,
+html.theme-p5 .sched-row.sched-next .sched-row-date{color:var(--blue-d)}
+html.theme-p5 .plan-row.due .plan-row-icon{color:var(--blue-d)}
+
+/* ── 設定：テーマ切り替えボタン ── */
+.theme-toggle{display:flex;gap:8px;padding:0 16px 14px}
+.theme-opt{
+  flex:1;display:flex;align-items:center;gap:9px;padding:10px 12px;border-radius:12px;
+  border:1.5px solid var(--sep);background:var(--card);cursor:pointer;font-family:inherit;
+  font-size:13px;font-weight:700;color:var(--lbl2);text-align:left;transition:border-color .15s,background .15s
+}
+.theme-opt.on{border-color:var(--blue);color:var(--lbl);background:var(--blue-bg)}
+.theme-swatch{width:26px;height:26px;border-radius:8px;flex-shrink:0;overflow:hidden;display:flex;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+.theme-swatch i{flex:1}
+
 </style>
+<script>
+/* 保存済みのカラーテーマを描画前に適用して、起動時のちらつきを防ぐ */
+try{ if(localStorage.getItem('fukushu-theme-v1')!=='default'){ /* 未設定ならレッド＆ブラックを既定にする */ document.documentElement.classList.add('theme-p5'); document.querySelector('meta[name="theme-color"]').setAttribute('content','#0B0B0D'); } }catch(_){}
+</script>
 <!-- クラウド同期（PC/スマホ間でのデータ共有）用SDK。読み込みに失敗してもアプリ本体の動作には影響しない -->
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -6931,7 +7206,7 @@ function render(){
 }
 
 /* ── Today panel ── */
-function rToday(list, hasActive, allDone){
+function _rTodayMain(list, hasActive, allDone){
   const el=document.getElementById('p-today');
   const bannerHtml = backupBannerHtml();
   const compact = isTodayGridLayout();
@@ -7177,6 +7452,205 @@ function rToday(list, hasActive, allDone){
   html += todayDoneAccHtml();
   el.innerHTML=html;
   _restoreTodayTagfScroll(el);
+}
+
+/* ══ 今日タブの「明日」ビュー（隠し機能） ══════════════════
+   今日タブのヒーロー（「◯件のタスクがあります」）を右から左へスワイプすると、
+   明日の今日タブをのぞき見できる。右へスワイプで今日に戻る。
+   案内はあえて出さない（知っている人だけが使える隠し部屋）。
+   明日のビューは閲覧専用で、完了などの操作ボタンは置かない。 */
+let _todayPeek = false;
+let _peekSavedScroll = 0;
+
+function rToday(list, hasActive, allDone){
+  if(_todayPeek) rTodayTomorrow();
+  else _rTodayMain(list, hasActive, allDone);
+  const nt=document.getElementById('nav-title');
+  if(nt) nt.textContent = _todayPeek ? '明日のタスク' : TABS.today;
+  _bindTodayPeekSwipe();
+}
+
+function _tomorrowPeekData(){
+  const tm = addD(td(),1);
+  const reviews = U.filter(u=>!u.done && u.nextDate===tm);
+  const plans = [];
+  PLAN.forEach(p=>{
+    if(p.done) return;
+    if(p.startDate && tm < p.startDate) return;
+    if(p.snoozeUntil && p.snoozeUntil > tm) return;
+    if(p.type==='schedule'){
+      (p.schedule||[]).forEach(it=>{
+        if(!it.done && it.date===tm) plans.push({p, name:planDisplayName(p, it)});
+      });
+      return;
+    }
+    if(_planOccursOn(p, tm)) plans.push({p, name:planDisplayName(p)});
+  });
+  const todos = TODOS.filter(x=>!x.done && !x.longterm && x.date===tm)
+    .sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+  const longterm = TODOS.filter(x=>!x.done && x.longterm)
+    .sort((a,b)=>(a.deadline||'').localeCompare(b.deadline||''));
+  return {tm, reviews, plans, todos, longterm};
+}
+
+function _peekRowHtml(icon, bg, fg, name, meta, tags){
+  const tagsHtml = (tags&&tags.length) ? `<div class="plan-row-tags">${tags.map(tid=>tagHtml(tid)).join('')}</div>` : '';
+  return `<div class="plan-row">
+    <div class="plan-row-icon" style="background:${bg};color:${fg}">${icon}</div>
+    <div class="plan-row-main">
+      <div class="plan-row-name">${esc(name)}</div>
+      <div class="plan-row-meta">${meta}</div>
+      ${tagsHtml}
+    </div>
+  </div>`;
+}
+
+function rTodayTomorrow(){
+  const el=document.getElementById('p-today'); if(!el) return;
+  const d=_tomorrowPeekData();
+  const total=d.reviews.length+d.plans.length+d.todos.length+d.longterm.length;
+  const dt=new Date(d.tm+'T00:00:00');
+  const dateLbl=`${dt.getMonth()+1}月${dt.getDate()}日（${DOW[dt.getDay()]}）`;
+  const stars=`
+    <span class="study-hero-sparkle" style="width:4px;height:4px;top:16px;left:62%;animation-delay:0s"></span>
+    <span class="study-hero-sparkle" style="width:3px;height:3px;top:40px;left:84%;animation-delay:.8s"></span>
+    <span class="study-hero-sparkle" style="width:5px;height:5px;top:66px;left:74%;animation-delay:1.5s"></span>`;
+  let html=`<div class="hero today-peek-hero">${stars}
+    <div class="today-peek-eyebrow">${IC.moon} ${dateLbl}</div>
+    <div class="hero-msg">${total ? `${total} 件のタスクがあります` : '明日の予定はありません'}</div>
+    ${total ? '' : '<div class="hero-sub" style="margin-top:6px">ゆっくり休めそうです</div>'}
+  </div>`;
+
+  const sec=(color, icon, title, rows, first)=>
+    `<div class="sec${first?' sec-first':''}" style="color:${color}">${icon}${title} · ${rows.length}件</div>
+     <div class="plan-list">${rows.join('')}</div>`;
+  const bookIc = IC.book.replace('width="24" height="24"','width="16" height="16"');
+  let first=true;
+  let body='';
+  if(d.todos.length){
+    body+=sec('var(--amber-d)', IC.listCheck, 'ToDo',
+      d.todos.map(x=>_peekRowHtml(IC.listCheck,'rgba(245,158,11,.14)','#B45309',x.text,'ToDo',x.tags)), first);
+    first=false;
+  }
+  if(d.reviews.length){
+    body+=sec('var(--blue-d)', bookIc, '復習',
+      d.reviews.map(u=>_peekRowHtml(bookIc,'var(--blue-bg)','var(--blue)',u.name,
+        `${esc(STEPS[u.step]||`${u.step+1}回目`)}の復習`,u.tags)), first);
+    first=false;
+  }
+  if(d.plans.length){
+    body+=sec('var(--plan-d)', IC.calendar, '計画タスク',
+      d.plans.map(({p,name})=>_peekRowHtml(PLAN_TYPE_ICON[p.type]||PLAN_TYPE_ICON.daily,'var(--plan-bg)','var(--plan-d)',name,
+        esc(PLAN_TYPE_LABEL[p.type]||''),p.tags)), first);
+    first=false;
+  }
+  if(d.longterm.length){
+    body+=sec('var(--teal-d)', IC.target, '長期タスク',
+      d.longterm.map(x=>_peekRowHtml(IC.target,'rgba(13,148,136,.12)','var(--teal-d)',x.text,
+        `${fmtShortText(x.deadline||d.tm)}まで`,x.tags)), first);
+  }
+  el.innerHTML = html + `<div class="today-peek">${body}</div>`;
+}
+
+// ヒーローの横スワイプ：指に1:1で追従し、離した位置／勢いで切り替えるか戻すかを決める
+function _bindTodayPeekSwipe(){
+  const panel=document.getElementById('p-today');
+  const hero=panel && panel.querySelector('.hero');
+  if(!hero || hero._peekBound) return;
+  hero._peekBound=true;
+  let sx=null, sy=null, axis=null, dx=0, t0=0;
+  const W=()=>panel.clientWidth||360;
+  const dirOK=v=>_todayPeek ? v>0 : v<0; // 今日→明日は左へ、明日→今日は右へ
+
+  function start(x,y){
+    if(panel._peekAnimating) return false;
+    sx=x; sy=y; axis=null; dx=0; t0=performance.now();
+    return true;
+  }
+  function move(x,y,ev){
+    if(sx===null) return;
+    const cx=x-sx, cy=y-sy;
+    if(axis===null){
+      if(Math.abs(cx)<8 && Math.abs(cy)<8) return;
+      axis = Math.abs(cx) > Math.abs(cy)*1.2 ? 'x' : 'y';
+      if(axis==='x'){
+        panel.classList.remove('slide-in','slide-back');
+        panel.classList.add('visible');
+        panel.style.transition='none';
+      }
+    }
+    if(axis!=='x') return;
+    if(ev && ev.cancelable) ev.preventDefault();
+    // 進めない方向は、ゴムのような軽い手応えだけ返す
+    dx = dirOK(cx) ? cx : cx*0.18;
+    panel.style.transform=`translate3d(${dx}px,0,0)`;
+    panel.style.opacity=String(1 - Math.min(Math.abs(dx)/W(),1)*0.4);
+  }
+  function end(cancel){
+    if(sx===null) return;
+    sx=null;
+    if(axis!=='x') return;
+    const v = Math.abs(dx)/Math.max(1, performance.now()-t0);
+    const far = Math.abs(dx) >= Math.min(90, W()*0.22);
+    const flick = v > 0.5 && Math.abs(dx) > 30;
+    if(!cancel && dirOK(dx) && (far || flick)){
+      _todayPeekCommit(dx<0 ? -1 : 1);
+    } else {
+      panel.style.transition='transform .34s cubic-bezier(.22,1,.36,1), opacity .3s ease-out';
+      panel.style.transform='';
+      panel.style.opacity='';
+      setTimeout(()=>{ if(!panel._peekAnimating) panel.style.transition=''; }, 360);
+    }
+  }
+
+  hero.addEventListener('touchstart',e=>{
+    if(e.touches.length===1) start(e.touches[0].clientX, e.touches[0].clientY);
+  },{passive:true});
+  hero.addEventListener('touchmove',e=>{
+    if(e.touches.length===1) move(e.touches[0].clientX, e.touches[0].clientY, e);
+  },{passive:false});
+  hero.addEventListener('touchend',()=>end(false),{passive:true});
+  hero.addEventListener('touchcancel',()=>end(true),{passive:true});
+  hero.addEventListener('mousedown',e=>{
+    if(e.button!==0 || !start(e.clientX, e.clientY)) return;
+    const mm=ev=>move(ev.clientX, ev.clientY, ev);
+    const mu=()=>{
+      document.removeEventListener('mousemove',mm);
+      document.removeEventListener('mouseup',mu);
+      end(false);
+    };
+    document.addEventListener('mousemove',mm);
+    document.addEventListener('mouseup',mu);
+  });
+}
+
+// dir: -1 = 明日へ（左に抜ける）、+1 = 今日へ（右に抜ける）
+function _todayPeekCommit(dir){
+  const panel=document.getElementById('p-today'); if(!panel) return;
+  panel._peekAnimating=true;
+  const W=panel.clientWidth||360;
+  haptic('light');
+  if(dir<0) _peekSavedScroll = panel.scrollTop;
+  // 1) 今の画面を、指が離れた位置からそのまま流れるように外へ送り出す
+  panel.style.transition='transform .2s cubic-bezier(.4,0,1,1), opacity .18s ease-in';
+  panel.style.transform=`translate3d(${dir*W}px,0,0)`;
+  panel.style.opacity='0';
+  setTimeout(()=>{
+    // 2) 中身を入れ替え、反対側から少しだけずらした位置に置く
+    _todayPeek = dir<0;
+    panel.style.transition='none';
+    render();
+    const top = dir<0 ? 0 : _peekSavedScroll;
+    panel.scrollTop = top; _scroll.today = top;
+    panel.style.transform=`translate3d(${-dir*W*0.35}px,0,0)`;
+    panel.style.opacity='0';
+    void panel.offsetWidth;
+    // 3) 減速カーブでふわっと着地させる
+    panel.style.transition='transform .42s cubic-bezier(.22,1,.36,1), opacity .32s ease-out';
+    panel.style.transform='';
+    panel.style.opacity='';
+    setTimeout(()=>{ panel.style.transition=''; panel._peekAnimating=false; }, 440);
+  }, 200);
 }
 
 /* ── Upcoming panel ── */
@@ -8976,7 +9450,7 @@ function _renderCalGrid(){
 
   if(forecastEl){
     const txt = _calForecastText(evMap);
-    forecastEl.textContent = txt || '';
+    forecastEl.innerHTML = txt || ''; // アイコン(SVG)を含むためHTMLとして差し込む
     forecastEl.style.display = txt ? 'flex' : 'none';
   }
   if(legendEl) legendEl.innerHTML = _calLegendHtml();
@@ -9963,6 +10437,8 @@ function cHtmlUpcoming(u){
 /* ══ Tab switch ════════════════════════ */
 let currentTabIdx=0;
 function switchTab(btn){
+  _todayPeek=false; // タブを切り替えたら「明日」ビューは閉じる
+  { const _pt=document.getElementById('p-today'); if(_pt){ _pt.style.transform=''; _pt.style.opacity=''; _pt.style.transition=''; _pt._peekAnimating=false; } }
   const id=btn.dataset.tab, newIdx=parseInt(btn.dataset.idx);
   // 勉強タブのみナビアイコンを非表示
   const navIconWrap=document.getElementById('nav-icon-wrap');
@@ -10277,6 +10753,31 @@ function setTodayLayout(mode){
   haptic('light');
   renderSettings();
   render();
+}
+
+/* ══ カラーテーマ（標準 / レッド＆ブラック） ══
+   html に theme-p5 クラスを付け外しするだけで切り替わる。端末ごとの設定で、同期はしない。 */
+const THEME_KEY = 'fukushu-theme-v1';
+function getTheme(){
+  // 未設定の人はレッド＆ブラックを既定にする（心機一転）。標準を選んだ人はその選択を尊重する
+  try { return localStorage.getItem(THEME_KEY)==='default' ? 'default' : 'p5'; } catch { return 'p5'; }
+}
+function applyTheme(t){
+  document.documentElement.classList.toggle('theme-p5', t==='p5');
+  const m=document.querySelector('meta[name="theme-color"]');
+  if(m) m.setAttribute('content', t==='p5' ? '#0B0B0D' : '#F2F2F7');
+}
+function setTheme(t){
+  if(t!=='p5' && t!=='default') return;
+  if(getTheme()===t) return;
+  try { localStorage.setItem(THEME_KEY, t); } catch {}
+  const root=document.documentElement;
+  root.classList.add('theme-switching');
+  applyTheme(t);
+  setTimeout(()=>root.classList.remove('theme-switching'), 420);
+  haptic('medium');
+  renderSettings();
+  toast(IC.checkCircle, t==='p5' ? 'レッド＆ブラックに切り替えました' : '標準の配色に戻しました');
 }
 
 /* ══ 今日タブのタグ絞り込み設定 ══
@@ -11182,6 +11683,21 @@ function renderSettings(){
 
     <div class="sec">表示</div>
     <div class="settings-section" style="margin-bottom:12px">
+      <div class="settings-row" style="border-bottom:none;padding-bottom:10px">
+        <div class="settings-row-icon" style="background:#FFF1F0;color:#C0392B">${IC.star}</div>
+        <div class="settings-row-body">
+          <div class="settings-row-title">カラーテーマ</div>
+          <div class="settings-row-sub">アプリ全体の配色を切り替えます。いつでも元に戻せます</div>
+        </div>
+      </div>
+      <div class="theme-toggle" role="group" aria-label="カラーテーマ" style="border-bottom:.5px solid var(--sep)">
+        <button class="theme-opt${getTheme()==='default'?' on':''}" onclick="setTheme('default')" aria-pressed="${getTheme()==='default'}">
+          <span class="theme-swatch"><i style="background:#2563EB"></i><i style="background:#F2F4F9"></i></span>標準
+        </button>
+        <button class="theme-opt${getTheme()==='p5'?' on':''}" onclick="setTheme('p5')" aria-pressed="${getTheme()==='p5'}">
+          <span class="theme-swatch"><i style="background:#E60012"></i><i style="background:#0B0B0D"></i></span>レッド＆ブラック
+        </button>
+      </div>
       <div class="settings-row">
         <div class="settings-row-icon" style="background:#EEF2FF;color:var(--blue-d)">${IC.spread}</div>
         <div class="settings-row-body">
@@ -11594,6 +12110,7 @@ window.addEventListener('pageshow', applyResponsiveLayoutClass);
     const today = td();
     if(today !== _lastActiveDate){
       _lastActiveDate = today;
+      _todayPeek = false;
       // 日付表示を更新
       const d=new Date();
       document.getElementById('nav-date').textContent=
@@ -11644,7 +12161,7 @@ if('serviceWorker' in navigator){
   <div class="dense-sheet-head">
     <div class="dense-sheet-ttl" id="dense-sheet-ttl"></div>
     <div class="dense-sheet-sub" id="dense-sheet-sub"></div>
-    <div class="dense-sheet-note" style="display:flex;align-items:center;gap:5px">${IC.alertSm} のついた移動先はその日が過密になります</div>
+    <div class="dense-sheet-note" style="display:flex;align-items:center;gap:5px"><span data-ic="alertSm"></span> のついた移動先はその日が過密になります</div>
   </div>
   <div class="dense-sheet-scroll" id="dense-sheet-scroll"></div>
   <button class="dense-close-btn" onclick="closeDenseSheet()">閉じる</button>
@@ -11713,13 +12230,13 @@ if('serviceWorker' in navigator){
 <div class="backup-sheet" id="backup-sheet">
   <div class="sheet-pull"></div>
   <div class="backup-body">
-    <div class="backup-ttl" style="display:flex;align-items:center;gap:6px">${IC.save}データの保存・読み込み</div>
+    <div class="backup-ttl" style="display:flex;align-items:center;gap:6px"><span data-ic="save"></span>データの保存・読み込み</div>
     <div class="backup-sub" id="backup-last-text">読み込み中…</div>
 
     <div class="backup-how-box">
-      <div class="backup-how-title" style="display:flex;align-items:center;gap:5px">${IC.bulb}バックアップとは？</div>
+      <div class="backup-how-title" style="display:flex;align-items:center;gap:5px"><span data-ic="bulb"></span>バックアップとは？</div>
       <div class="backup-how-text">スマホを機種変更したり、アプリのデータが消えてしまったときでも、あなたの復習記録を元に戻せるようにするための機能です。<br>定期的に保存しておくことをおすすめします。</div>
-      <div class="backup-how-text" style="margin-top:8px;display:flex;gap:5px"><span style="flex-shrink:0">${IC.folder}</span><span>ファイルを増やしたくない場合は、保存時に前回と同じ場所を選んでください。ファイル名は毎回同じなので、「置き換える」を選べば上書きできます。</span></div>
+      <div class="backup-how-text" style="margin-top:8px;display:flex;gap:5px"><span style="flex-shrink:0"><span data-ic="folder"></span></span><span>ファイルを増やしたくない場合は、保存時に前回と同じ場所を選んでください。ファイル名は毎回同じなので、「置き換える」を選べば上書きできます。</span></div>
     </div>
 
     <div class="backup-divider">データを保存する（バックアップ）</div>
@@ -11743,7 +12260,7 @@ if('serviceWorker' in navigator){
       </div>
       <div class="backup-row-body">
         <div class="backup-row-ttl">保存済みデータを読み込む</div>
-        <div class="backup-row-sub">以前に保存したバックアップファイルを選んでください。<br><span style="color:#B45309;font-weight:600;display:inline-flex;align-items:center;gap:4px">${IC.alertSm}現在のデータは上書きされます</span></div>
+        <div class="backup-row-sub">以前に保存したバックアップファイルを選んでください。<br><span style="color:#B45309;font-weight:600;display:inline-flex;align-items:center;gap:4px"><span data-ic="alertSm"></span>現在のデータは上書きされます</span></div>
       </div>
       <div class="backup-row-arrow">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
@@ -11757,11 +12274,11 @@ if('serviceWorker' in navigator){
 <div class="backup-sheet" id="sync-sheet">
   <div class="sheet-pull"></div>
   <div class="backup-body">
-    <div class="backup-ttl" style="display:flex;align-items:center;gap:6px">${IC.link}他の端末とつなげる</div>
+    <div class="backup-ttl" style="display:flex;align-items:center;gap:6px"><span data-ic="link"></span>他の端末とつなげる</div>
     <div class="backup-sub">PCなど、他の端末とデータを自動で同じにします</div>
 
     <div class="backup-how-box" style="background:#F5F3FF;border-color:rgba(124,58,237,.18)">
-      <div class="backup-how-title" style="display:flex;align-items:center;gap:5px">${IC.bulb}連携コードについて</div>
+      <div class="backup-how-title" style="display:flex;align-items:center;gap:5px"><span data-ic="bulb"></span>連携コードについて</div>
       <div class="backup-how-text">ログインは不要です。コードを発行し、他の端末でそのコードを入力するだけで、以後は自動的に同じデータになるよう同期されます。<br>※コードを知っている人は誰でもデータを見られる仕組みなので、他人に教えないでください。</div>
     </div>
     <div id="fsync-body"></div>
@@ -11773,7 +12290,7 @@ if('serviceWorker' in navigator){
 <div class="guide-sheet" id="guide-sheet">
   <div class="sheet-pull"></div>
   <div class="guide-body" id="guide-body">
-    <div class="guide-ttl" style="display:flex;align-items:center;gap:6px">${IC.book}使い方ガイド</div>
+    <div class="guide-ttl" style="display:flex;align-items:center;gap:6px"><span data-ic="book"></span>使い方ガイド</div>
     <div class="guide-sub">このアプリでは3種類のタスク（復習・計画・ToDo）を<br>組み合わせて管理します。タップして詳しく見てみましょう。</div>
     <div id="guide-acc-list"></div>
   </div>
@@ -12411,6 +12928,13 @@ FSYNC.init();
     </div>
   </div>
 </div>
+<script>
+/* 静的HTML内のアイコン（data-ic属性）を、IC ライブラリのSVGに差し替える */
+document.querySelectorAll('[data-ic]').forEach(el=>{
+  const svg = (typeof IC!=='undefined') ? IC[el.dataset.ic] : '';
+  if(svg) el.outerHTML = svg; else el.remove();
+});
+</script>
 <!-- ══ Onboarding coach marks ═══════════════════════════════════════ -->
 <!-- SVG cutout dimmer for spotlight -->
 <svg id="ob-svg-mask" xmlns="http://www.w3.org/2000/svg">
