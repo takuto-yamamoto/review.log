@@ -2080,9 +2080,22 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 
 /* Color picker in tag manager */
 .color-pick-wrap{
-  display:flex;gap:8px;flex-wrap:wrap;padding:10px 12px;
+  display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:7px 6px;padding:12px;
   background:var(--bg);border-radius:12px;margin-top:6px
 }
+.color-pick-wrap .color-swatch{width:100%;height:auto;aspect-ratio:1/1;max-width:30px;justify-self:center}
+/* カスタム色：最下段いっぱいの「好きな色を選ぶ」ボタン */
+.color-pick-wrap .color-custom{
+  grid-column:1/-1;position:relative;display:flex;align-items:center;justify-content:center;gap:8px;
+  height:34px;margin-top:2px;border-radius:100px;border:1.5px dashed var(--sep);
+  font-size:12.5px;font-weight:700;color:var(--lbl2);cursor:pointer;overflow:hidden
+}
+.color-pick-wrap .color-custom.selected{border-style:solid;border-color:var(--blue);color:var(--lbl)}
+.color-custom-dot{
+  width:18px;height:18px;border-radius:50%;flex-shrink:0;
+  background:conic-gradient(#EF4444,#EAB308,#22C55E,#06B6D4,#3B82F6,#A855F7,#EC4899,#EF4444)
+}
+.color-custom input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:none;padding:0}
 
 /* ══ Category manager (in tag mgr sheet) ══ */
 .cat-section-hd{
@@ -2197,6 +2210,63 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
   transition:all .15s;flex-shrink:0
 }
 .tag-sel-btn.on{color:#fff;border-color:transparent}
+
+/* ══ タグの配置エディタ（ドラッグで自由に並べ、改行も入れられる） ══ */
+.tag-br{flex-basis:100%;height:0;margin-bottom:-6px}
+.tag-sel-label .tag-layout-btn{
+  display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:var(--blue);
+  background:none;border:none;cursor:pointer;padding:0;font-family:inherit
+}
+.tle-overlay{position:fixed;inset:0;z-index:9200;background:rgba(0,0,0,0);pointer-events:none;transition:background .25s}
+.tle-overlay.on{background:rgba(0,0,0,.45);pointer-events:all}
+.tle-panel{
+  position:fixed;left:0;right:0;bottom:0;z-index:9201;margin:0 auto;max-width:var(--app-w);
+  background:var(--card);border-radius:24px 24px 0 0;box-shadow:var(--shadow-lg);
+  display:flex;flex-direction:column;max-height:88dvh;
+  padding-bottom:var(--safe-bottom);
+  transform:translateY(105%);transition:transform .36s var(--ease-sheet)
+}
+.tle-panel.on{transform:translateY(0)}
+.tle-handle{width:36px;height:5px;border-radius:3px;background:var(--lbl3);margin:8px auto 0}
+.tle-head{padding:12px 20px 4px;text-align:center}
+.tle-ttl{font-size:17px;font-weight:700;color:var(--lbl)}
+.tle-sub{font-size:12px;color:var(--lbl2);margin-top:6px;line-height:1.6}
+.tle-canvas-wrap{overflow-y:auto;flex:1;min-height:0;padding:14px 20px 6px}
+.tle-canvas{
+  display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start;
+  padding:14px;border-radius:14px;background:var(--bg);border:1.5px dashed var(--sep);min-height:120px
+}
+.tle-tok{touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}
+.tle-tok.tag-sel-btn{padding:7px 12px;font-size:13px;background:var(--card)}
+.tle-tok.tle-ghost{opacity:.25}
+.tle-br{
+  flex-basis:100%;display:flex;align-items:center;gap:8px;height:22px;
+  color:var(--lbl3);font-size:11px;font-weight:700
+}
+.tle-br::before,.tle-br::after{content:'';flex:1;border-top:1.5px dashed var(--lbl3)}
+.tle-br-x{
+  border:none;background:var(--fill);color:var(--lbl2);border-radius:100px;
+  width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;
+  font-size:13px;line-height:1;cursor:pointer;padding:0;font-family:inherit
+}
+.tle-float{
+  position:fixed;z-index:9300;pointer-events:none;margin:0;
+  transform:translate(-50%,-50%) scale(1.08);box-shadow:0 10px 24px rgba(0,0,0,.28);
+  transition:none
+}
+.tle-actions{display:flex;gap:8px;padding:10px 20px 14px;border-top:.5px solid var(--sep)}
+.tle-btn{
+  flex:1;border:none;border-radius:12px;padding:13px 8px;font-family:inherit;
+  font-size:14px;font-weight:700;cursor:pointer;background:var(--fill);color:var(--lbl)
+}
+.tle-btn.primary{background:var(--blue);color:#fff}
+.tle-tools{display:flex;gap:8px;padding:10px 20px 0}
+.tle-tool{
+  border:1.5px dashed var(--sep);background:none;border-radius:100px;padding:7px 14px;
+  font-family:inherit;font-size:13px;font-weight:700;color:var(--lbl2);cursor:pointer
+}
+
+
 
 /* ══ Backup sheet ══════════════════════ */
 .backup-sheet{
@@ -2743,7 +2813,7 @@ html.theme-p5.is-desktop-layout .tab-btn::before{transform:skewX(-8deg) scale(1)
 
 /* ── 見出し・ヒーロー ── */
 html.theme-p5 .sec{font-style:italic;color:var(--lbl2)}
-html.theme-p5 .hero,
+html.theme-p5 .hero:not([style*="background"]),
 html.theme-p5 .achiev-hero,
 html.theme-p5 .settings-hero,
 html.theme-p5 .hero.all-done,
@@ -2939,21 +3009,208 @@ html.theme-p5 .sched-row.sched-next .sched-row-rel,
 html.theme-p5 .sched-row.sched-next .sched-row-date{color:var(--blue-d)}
 html.theme-p5 .plan-row.due .plan-row-icon{color:var(--blue-d)}
 
+/* ══════════════════════════════════════════════════════════════
+   カラーテーマ：ホワイト＆ゴールド（html.theme-rm）
+   白を基調に、ロイヤルブルー・ゴールド・パープル（モラード）を差し色にした配色。
+   レッド＆ブラックと同様、既存スタイルには手を加えず上書きするだけ。
+   ══════════════════════════════════════════════════════════════ */
+html.theme-rm{
+  --rm-navy:#0B2A5B; --rm-royal:#00529F; --rm-gold:#FEBE10; --rm-gold-hi:#FFD45A; --rm-gold-d:#8A6400; --rm-gold-bg:#FFF6DA; --rm-purple:#4B2A7B;
+  --bg:#F3F4F7; --card:#FFFFFF;
+  --blue:#00529F; --blue-d:#0B2A5B; --blue-bg:#E8F0FA; --blue-bd:rgba(0,82,159,.22);
+  --red:#D7263D;
+  --plan:#4B2A7B; --plan-d:#3E2266; --plan-bg:#F2EDF8; --plan-bd:rgba(75,42,123,.22);
+  --orange:#00529F; --orange-d:#0B2A5B; --orange-bg:#E8F0FA; --orange-bd:rgba(0,82,159,.22);
+  --amber:#FEBE10; --amber-d:#8A6400; --teal-d:#0B2A5B;
+  --lbl:#0B1A33; --lbl2:rgba(11,26,51,.68); --lbl3:rgba(11,26,51,.42); --icon-muted:rgba(11,26,51,.6);
+  --sep:rgba(11,42,91,.12); --fill:rgba(11,42,91,.06);
+  --shadow:0 1px 2px rgba(11,42,91,.06),0 10px 24px -10px rgba(11,42,91,.18);
+  --shadow-sm:0 1px 1.5px rgba(11,42,91,.05),0 4px 12px -4px rgba(11,42,91,.12);
+  --shadow-lg:0 8px 16px -4px rgba(11,42,91,.12),0 24px 48px -12px rgba(11,42,91,.26);
+  --card-bd:1px solid rgba(11,42,91,.12);
+  background:#F3F4F7;
+}
+html.theme-rm body{background:var(--bg)}
+@media (min-width:520px){ html.theme-rm{ background:#E6E9F0; } }
+html.theme-rm.is-desktop-layout{ background:#E6E9F0; }
+
+/* ── ナビ・タブ ── */
+html.theme-rm .navbar{background:rgba(255,255,255,.96);border-bottom:2px solid var(--rm-gold)}
+html.theme-rm .nav-title,
+html.theme-rm .sidebar-brand-name{color:var(--rm-navy);font-weight:800;letter-spacing:.2px}
+html.theme-rm .tab-bar{background:rgba(255,255,255,.98);border-top:2px solid var(--rm-gold)}
+html.theme-rm .tab-btn.on{color:var(--rm-navy)}
+html.theme-rm .tab-btn::before{background:rgba(254,190,16,.22);box-shadow:inset 0 -2px 0 var(--rm-gold)}
+html.theme-rm .tab-btn.on .tab-lbl{font-weight:800}
+
+/* ── 見出し・ヒーロー（白いユニフォーム：白地＋金と紺の縁取り＋紫の斜め帯） ── */
+html.theme-rm .sec{color:var(--rm-navy);letter-spacing:.4px}
+html.theme-rm .hero:not(.all-done):not(.today-peek-hero):not([style*="background"]),
+html.theme-rm .achiev-hero,
+html.theme-rm .settings-hero,
+html.theme-rm .hero[style*="#1740B0"],
+html.theme-rm .hero[style*="#4C1D95"]{
+  background:#fff !important;
+  border:1px solid rgba(254,190,16,.55);
+  /* 下端に「紺の細線＋金のライン」：ユニフォームの襟・袖の縁取りのイメージ */
+  box-shadow:inset 0 -3px 0 var(--rm-gold),inset 0 -5px 0 var(--rm-navy),0 8px 22px -10px rgba(11,42,91,.22) !important;
+  padding-right:76px;
+}
+/* 紫（モラード）の斜め帯と、それに沿う金の細線 */
+html.theme-rm .hero::before,
+html.theme-rm .achiev-hero::before,
+html.theme-rm .settings-hero::before{
+  width:22px;height:240%;top:-70%;right:26px;border-radius:0;
+  background:var(--rm-purple);transform:rotate(30deg);opacity:1;
+}
+html.theme-rm .hero::after,
+html.theme-rm .settings-hero::after{
+  content:'';position:absolute;pointer-events:none;
+  width:4px;height:240%;top:-70%;left:auto;right:58px;bottom:auto;border-radius:0;
+  background:var(--rm-gold);transform:rotate(30deg);opacity:1;
+}
+/* 白いヒーロー内の文字は紺に */
+html.theme-rm .hero-msg,
+html.theme-rm .settings-hero-title,
+html.theme-rm .achiev-stat-num{color:var(--rm-navy);font-weight:800;letter-spacing:.2px}
+html.theme-rm .hero-sub,
+html.theme-rm .settings-hero-sub,
+html.theme-rm .achiev-stat-lbl,
+html.theme-rm .achiev-hero-eyebrow{color:var(--lbl2)}
+html.theme-rm .hero[style*="#1740B0"] [style*="color:#fff"]{color:var(--rm-navy) !important}
+html.theme-rm .hero[style*="#1740B0"] [style*="rgba(255,255,255,.7)"]{color:var(--lbl2) !important}
+html.theme-rm .hero[style*="#1740B0"] [style*="rgba(255,255,255,.2)"]{background:var(--rm-gold-bg) !important;color:var(--rm-navy) !important}
+
+/* 勉強時間100h以上の特別なヒーロー（独自のグラデーション）は白文字のまま */
+html.theme-rm .hero[style*="background"]:not([style*="#1740B0"]):not([style*="#4C1D95"]) .hero-msg{color:#fff}
+html.theme-rm .hero[style*="background"]:not([style*="#1740B0"]):not([style*="#4C1D95"]) .hero-sub{color:rgba(255,255,255,.85)}
+
+/* 全部終えた日：金のヒーロー（タイトルを獲った瞬間） */
+html.theme-rm .hero.all-done{
+  background:linear-gradient(135deg,#C98F00 0%,#FEBE10 55%,#FFD761 100%) !important;
+  box-shadow:inset 0 -4px 0 #fff,inset 0 -6px 0 var(--rm-navy),0 8px 22px -8px rgba(201,143,0,.55) !important;
+}
+html.theme-rm .hero.all-done::before{background:#fff;opacity:.45}
+html.theme-rm .hero.all-done::after{background:var(--rm-navy);opacity:.6}
+html.theme-rm .hero.all-done .hero-msg{color:var(--rm-navy)}
+html.theme-rm .hero.all-done .hero-sub{color:rgba(11,42,91,.78)}
+html.theme-rm .all-done-icon-wrap{border-color:#fff;background:rgba(255,255,255,.35)}
+html.theme-rm .hero-streak-line{background:var(--rm-navy);color:#fff}
+
+/* 明日ビュー：紫の夜空 */
+html.theme-rm .hero.today-peek-hero{
+  background:linear-gradient(135deg,#1E0F38 0%,#3E2266 55%,#4B2A7B 100%) !important;
+  box-shadow:inset 0 -4px 0 var(--rm-gold),0 8px 22px -8px rgba(62,34,102,.5) !important;
+}
+html.theme-rm .hero.today-peek-hero::before{background:rgba(255,255,255,.12)}
+html.theme-rm .hero.today-peek-hero .hero-msg{color:#fff}
+html.theme-rm .hero.today-peek-hero .hero-sub{color:rgba(255,255,255,.85)}
+html.theme-rm .today-peek-eyebrow{color:var(--rm-gold)}
+
+/* レアルモードの名言ヒーロー */
+html.theme-rm .real-quote-hero{padding-top:16px;padding-bottom:18px}
+html.theme-rm .real-quote-mark{
+  position:relative;z-index:1;font-family:Georgia,'Times New Roman',serif;font-size:44px;line-height:.6;
+  height:20px;color:var(--rm-gold);font-weight:700;margin-bottom:4px
+}
+html.theme-rm .real-quote-text{font-weight:700;line-height:1.6;letter-spacing:.2px}
+html.theme-rm .real-quote-who{margin-top:10px;font-size:12px;font-weight:700;color:var(--rm-purple);letter-spacing:.3px}
+
+/* ── カード ── */
+html.theme-rm .card.due{border-left-color:var(--rm-royal)}
+html.theme-rm .card.todo{border-left-color:var(--rm-gold)}
+html.theme-rm .todo-half-tag{color:var(--rm-gold-d);background:var(--rm-gold-bg)}
+html.theme-rm .card-when-chip.due{background:var(--rm-royal);border-color:var(--rm-royal);color:#fff}
+@keyframes flashGreenRM{0%{background:var(--card)}25%{background:#FFF6DA}70%{background:#FFF6DA}100%{background:var(--card)}}
+html.theme-rm .card.flash{animation:flashGreenRM .4s ease}
+
+/* ── ボタン（紺地に白文字、金の下線） ── */
+html.theme-rm .btn-ok,
+html.theme-rm .sheet-ok,
+html.theme-rm .edit-save,
+html.theme-rm .icrop-btn-ok,
+html.theme-rm .ob-next,
+html.theme-rm .tag-add-btn,
+html.theme-rm .expired-plan-keep,
+html.theme-rm [style*="#4F8EF7"]{
+  background:var(--rm-navy) !important;color:#fff !important;
+  box-shadow:inset 0 -3px 0 var(--rm-gold) !important;
+}
+html.theme-rm .btn-plan-ok,
+html.theme-rm .edit-save[style*="--plan"]{
+  background:var(--rm-purple) !important;color:#fff !important;
+  box-shadow:inset 0 -3px 0 var(--rm-gold) !important;
+}
+html.theme-rm [style*="#0EA874"]{
+  background:var(--rm-gold) !important;color:var(--rm-navy) !important;
+  box-shadow:inset 0 -3px 0 var(--rm-navy),0 4px 14px -4px rgba(201,143,0,.45) !important;
+}
+html.theme-rm .float-fab{background:var(--rm-navy);box-shadow:0 0 0 3px var(--rm-gold),0 8px 24px rgba(11,42,91,.4)}
+html.theme-rm .tagf-chip.all.active{background:var(--rm-navy);border-color:var(--rm-navy)}
+html.theme-rm .tagf-chip.todo-chip.active{background:var(--rm-gold);border-color:var(--rm-gold);color:var(--rm-navy)}
+html.theme-rm .settings-switch.on{background:var(--rm-royal)}
+
+/* ── 淡色のアイコン背景をテーマの色に揃える ── */
+html.theme-rm .settings-row-icon,
+html.theme-rm .backup-row-icon,
+html.theme-rm .guide-acc-icon,
+html.theme-rm .cal-toggle-icon,
+html.theme-rm .prog-card-icon,
+html.theme-rm .tag-prog-unit-icon{background:var(--rm-gold-bg) !important;color:var(--rm-navy) !important}
+html.theme-rm .settings-row-icon span,
+html.theme-rm .guide-acc-icon span{color:var(--rm-navy) !important}
+html.theme-rm .backup-row-icon svg{stroke:var(--rm-navy)}
+html.theme-rm .backup-reminder{background:var(--rm-gold-bg);border-color:var(--rm-gold)}
+html.theme-rm .backup-reminder-ttl{color:var(--rm-navy)}
+html.theme-rm .backup-reminder-sub,
+html.theme-rm .backup-reminder-icon,
+html.theme-rm .backup-reminder-close{color:var(--rm-gold-d)}
+html.theme-rm [style*="color:#7C3AED"]{color:var(--rm-purple) !important}
+
+/* ── 計画ルール・勉強記録 ── */
+html.theme-rm .chat-bubble{border-left-color:var(--rm-gold)}
+html.theme-rm .plan-rule-chip-num,
+html.theme-rm .plan-rule-pri-num,
+html.theme-rm .plan-rule-pick-check.on,
+html.theme-rm .plan-rule-wd-btn.on,
+html.theme-rm .plan-rule-type-card.on .plan-rule-type-card-icon,
+html.theme-rm .plan-rule-type-card-check{background:var(--rm-purple);border-color:var(--rm-purple);color:#fff}
+html.theme-rm .plan-rule-preview-txt{color:var(--rm-purple)}
+
+/* ── カレンダー ── */
+html.theme-rm .cal-cell.heat-1{background:rgba(0,82,159,.07)}
+html.theme-rm .cal-cell.heat-2{background:rgba(0,82,159,.14)}
+html.theme-rm .cal-cell.heat-3{background:rgba(0,82,159,.24)}
+html.theme-rm .cal-cell.heat-4{background:rgba(0,82,159,.36)}
+html.theme-rm .cal-cell.today .cal-num{background:var(--rm-navy);color:#fff;box-shadow:0 0 0 2px var(--rm-gold)}
+html.theme-rm .cal-spread-icon{background:var(--rm-navy)}
+
+/* ── その他 ── */
+html.theme-rm .ob-badge{background:var(--rm-navy)}
+html.theme-rm .undo-bar-prog{background:var(--rm-gold)}
+html.theme-rm .undo-btn{color:var(--rm-gold-hi)}
+
 /* ── 設定：テーマ切り替えボタン ── */
-.theme-toggle{display:flex;gap:8px;padding:0 16px 14px}
+.theme-toggle{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 16px 14px}
 .theme-opt{
-  flex:1;display:flex;align-items:center;gap:9px;padding:10px 12px;border-radius:12px;
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:12px 6px 10px;border-radius:12px;
   border:1.5px solid var(--sep);background:var(--card);cursor:pointer;font-family:inherit;
-  font-size:13px;font-weight:700;color:var(--lbl2);text-align:left;transition:border-color .15s,background .15s
+  font-size:12px;font-weight:700;color:var(--lbl2);text-align:center;line-height:1.3;transition:border-color .15s,background .15s
 }
 .theme-opt.on{border-color:var(--blue);color:var(--lbl);background:var(--blue-bg)}
-.theme-swatch{width:26px;height:26px;border-radius:8px;flex-shrink:0;overflow:hidden;display:flex;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+.theme-swatch{width:30px;height:30px;border-radius:50%;border-radius:8px;flex-shrink:0;overflow:hidden;display:flex;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
 .theme-swatch i{flex:1}
 
 </style>
 <script>
 /* 保存済みのカラーテーマを描画前に適用して、起動時のちらつきを防ぐ */
-try{ if(localStorage.getItem('fukushu-theme-v1')!=='default'){ /* 未設定ならレッド＆ブラックを既定にする */ document.documentElement.classList.add('theme-p5'); document.querySelector('meta[name="theme-color"]').setAttribute('content','#0B0B0D'); } }catch(_){}
+try{
+  /* 一度だけ、全員をホワイト＆ゴールドに切り替える（以後は各自の選択を尊重） */
+  if(!localStorage.getItem('fukushu-theme-reset-rm-1')){ localStorage.setItem('fukushu-theme-v1','rm'); localStorage.setItem('fukushu-theme-reset-rm-1','1'); }
+}catch(_){}
+try{ var _t=localStorage.getItem('fukushu-theme-v1'); /* 未設定ならホワイト＆ゴールドを既定にする */
+  if(_t!=='default' && _t!=='p5'){ document.documentElement.classList.add('theme-rm'); document.querySelector('meta[name="theme-color"]').setAttribute('content','#FFFFFF'); }
+  else if(_t==='p5'){ document.documentElement.classList.add('theme-p5'); document.querySelector('meta[name="theme-color"]').setAttribute('content','#0B0B0D'); } }catch(_){}
 </script>
 <!-- クラウド同期（PC/スマホ間でのデータ共有）用SDK。読み込みに失敗してもアプリ本体の動作には影響しない -->
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -3180,8 +3437,8 @@ try{ if(localStorage.getItem('fukushu-theme-v1')!=='default'){ /* 未設定な�
    B5 fix: define proper large/small variants, no string.replace() hacks
 ══════════════════════════════════════════ */
 /* ══ App version ════════════════════════ */
-const APP_VERSION = 'v3.0.0';
-const APP_BUILD   = '2026-09-24';
+const APP_VERSION = 'v4.0.0';
+const APP_BUILD   = '2026-10-11';
 
 const IC = {
   check:      `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
@@ -3388,11 +3645,42 @@ function _mergeArrayById(localArr, remoteArr, tomb){
 
 /* ══ Tag data ══════════════════════════ */
 const TAG_KEY = 'fukushu-tags-v1';
+/* タグの色。10列×4段で、縦の列が同じ系統の色になるように並べている。
+   1段目（元からある10色）は新しいタグに自動で割り当てる順番も兼ねる。 */
 const TAG_COLORS = [
-  '#EF4444','#F97316','#EAB308','#22C55E','#14B8A6',
-  '#3B82F6','#8B5CF6','#EC4899','#6B7280','#0EA5E9'
+  // 基本
+  '#EF4444','#F97316','#EAB308','#22C55E','#14B8A6','#3B82F6','#8B5CF6','#EC4899','#6B7280','#0EA5E9',
+  // 明るめ
+  '#F87171','#FB923C','#FACC15','#4ADE80','#2DD4BF','#60A5FA','#A78BFA','#F472B6','#9CA3AF','#38BDF8',
+  // 深め
+  '#B91C1C','#C2410C','#A16207','#15803D','#0F766E','#1D4ED8','#6D28D9','#BE185D','#374151','#0369A1',
+  // 別の色合い
+  '#F43F5E','#F59E0B','#84CC16','#10B981','#06B6D4','#6366F1','#A855F7','#D946EF','#8B5E3C','#1E3A8A'
 ];
+// 色の選択欄（プリセット＋自由に選べる「カスタム」）。onPick は '#RRGGBB' を受け取る関数名
+function colorSwatchesHtml(selected, onPick, arg){
+  const call = c => arg!=null ? `${onPick}('${arg}','${c}')` : `${onPick}('${c}')`;
+  const sel = (selected||'').toUpperCase();
+  const isCustom = sel && !TAG_COLORS.includes(sel);
+  const presets = TAG_COLORS.map(c=>`<div class="color-swatch${c===sel?' selected':''}" style="background:${c}" onclick="${call(c)}" role="button" aria-label="${c}"></div>`).join('');
+  const customVal = isCustom ? sel : '#FF6B6B';
+  const custom = `<label class="color-custom${isCustom?' selected':''}">
+      <span class="color-custom-dot" style="${isCustom?`background:${sel}`:''}"></span>${isCustom?`選んだ色 ${sel}`:'好きな色を選ぶ'}
+      <input type="color" value="${customVal.toLowerCase()}" onchange="${arg!=null?`${onPick}('${arg}',this.value.toUpperCase())`:`${onPick}(this.value.toUpperCase())`}">
+    </label>`;
+  return presets + custom;
+}
 let TAGS = (() => { try { return JSON.parse(localStorage.getItem(TAG_KEY)) || []; } catch { return []; } })();
+// タグの配置（pos: 並び順 / br: このタグの後で改行）。pos が無いタグは元の順のまま後ろへ
+function sortTagsByLayout(arr){
+  const idx=new Map(arr.map((t,i)=>[t.id,i]));
+  return arr.slice().sort((a,b)=>{
+    const pa=(typeof a.pos==='number')?a.pos:1e6+idx.get(a.id);
+    const pb=(typeof b.pos==='number')?b.pos:1e6+idx.get(b.id);
+    return pa-pb;
+  });
+}
+TAGS = sortTagsByLayout(TAGS);
 const TAG_TOMB_KEY = 'fukushu-tag-tomb-v1';
 const _tagSync = createSyncTracker(TAG_TOMB_KEY);
 _tagSync.resyncPrev(TAGS);
@@ -5390,8 +5678,8 @@ function renderPlanTagSel(){
   if(!TAGS.length){ wrap.innerHTML=''; return; }
   wrap.innerHTML=`
     <div class="tag-sel-wrap">
-      <div class="tag-sel-label"><span>タグ</span></div>
-      <div class="tag-sel-list">${TAGS.map(t=>{
+      <div class="tag-sel-label"><span>タグ</span>${tagLayoutBtnHtml()}</div>
+      <div class="tag-sel-list">${mapTagsLaidOut(t=>{
         const on=_planDraft.tags.includes(t.id);
         return `<button class="tag-sel-btn${on?' on':''}"
           style="${on?`background:${t.color};border-color:${t.color}`:''}"
@@ -6024,7 +6312,7 @@ function addCategory(){
   if(CATEGORIES.some(c=>c.name===name)){
     inp.classList.add('shake'); setTimeout(()=>inp.classList.remove('shake'),400); haptic('medium'); return;
   }
-  const color=TAG_COLORS[CATEGORIES.length % TAG_COLORS.length];
+  const color=TAG_COLORS[CATEGORIES.length % 10];
   CATEGORIES.push({id:Date.now().toString(), name, color});
   saveCategories();
   inp.value='';
@@ -6238,10 +6526,7 @@ function closeTagMgr(){
 function renderTagMgr(){
   // Color picker for new tag
   const cp = document.getElementById('tag-color-pick');
-  cp.innerHTML = TAG_COLORS.map(c=>`
-    <div class="color-swatch${c===_tagPickColor?' selected':''}"
-      style="background:${c}"
-      onclick="selectNewTagColor('${c}')"></div>`).join('');
+  cp.innerHTML = colorSwatchesHtml(_tagPickColor,'selectNewTagColor');
 
   const wrap = document.getElementById('tag-list-wrap');
 
@@ -6256,8 +6541,7 @@ function renderTagMgr(){
         <button class="cat-list-del" onclick="deleteCategory('${c.id}')" aria-label="カテゴリを削除">${IC.trash}</button>
       </div>
       ${_catEditingId===c.id ? `<div class="color-pick-wrap" style="margin-bottom:4px">${
-        TAG_COLORS.map(col=>`<div class="color-swatch${col===c.color?' selected':''}"
-          style="background:${col}" onclick="setCategoryColor('${c.id}','${col}')"></div>`).join('')
+        colorSwatchesHtml(c.color,'setCategoryColor',c.id)
       }</div>` : ''}`).join('');
   } else {
     html += `<div class="cat-empty-hint">まだカテゴリーがありません</div>`;
@@ -6288,8 +6572,7 @@ function renderTagMgr(){
         <button class="tag-list-del" onclick="deleteTag('${t.id}')" aria-label="タグを削除">${IC.trash}</button>
       </div>
       ${_tagEditingId===t.id ? `<div class="color-pick-wrap" style="margin-bottom:8px">${
-        TAG_COLORS.map(c=>`<div class="color-swatch${c===t.color?' selected':''}"
-          style="background:${c}" onclick="setTagColor('${t.id}','${c}')"></div>`).join('')
+        colorSwatchesHtml(t.color,'setTagColor',t.id)
       }</div>` : ''}`).join('');
   }
 
@@ -6313,6 +6596,7 @@ function _bindTagDrag(){
     const [moved]=TAGS.splice(fromIdx,1);
     const insertAt=overBot?toIdx+1:toIdx;
     TAGS.splice(fromIdx<toIdx?insertAt-1:insertAt,0,moved);
+    TAGS.forEach((t,i)=>{ t.pos=i; });
     saveTags(); _tagsMutated=true; renderTagMgr();
   };
 
@@ -6450,7 +6734,7 @@ function addTag(){
   const newTag={id:Date.now().toString(), name, color:_tagPickColor};
   TAGS.push(newTag); saveTags(); _tagsMutated=true;
   inp.value='';
-  _tagPickColor=TAG_COLORS[TAGS.length % TAG_COLORS.length];
+  _tagPickColor=TAG_COLORS[TAGS.length % 10];
   renderTagMgr();
   haptic('medium');
 }
@@ -6466,9 +6750,9 @@ function renderSheetTagSel(){
     <div class="tag-sel-wrap">
       <div class="tag-sel-label">
         <span>タグ</span>
-        <button class="tag-sel-open-mgr" onclick="openTagMgr()">タグを管理 →</button>
+        <span style="display:flex;gap:14px">${tagLayoutBtnHtml()}<button class="tag-sel-open-mgr" onclick="openTagMgr()">タグを管理 →</button></span>
       </div>
-      <div class="tag-sel-list">${TAGS.map(t=>{
+      <div class="tag-sel-list">${mapTagsLaidOut(t=>{
         const on=_sheetTags.includes(t.id);
         return `<button class="tag-sel-btn${on?' on':''}"
           style="${on?`background:${t.color};border-color:${t.color}`:''}"
@@ -6490,8 +6774,8 @@ function renderEditTagSel(){
   if(!TAGS.length){ wrap.innerHTML=''; return; }
   wrap.innerHTML=`
     <div class="tag-sel-wrap">
-      <div class="tag-sel-label"><span>タグ</span></div>
-      <div class="tag-sel-list">${TAGS.map(t=>{
+      <div class="tag-sel-label"><span>タグ</span>${tagLayoutBtnHtml()}</div>
+      <div class="tag-sel-list">${mapTagsLaidOut(t=>{
         const on=_editTags.includes(t.id);
         return `<button class="tag-sel-btn${on?' on':''}"
           style="${on?`background:${t.color};border-color:${t.color}`:''}"
@@ -7395,10 +7679,10 @@ function _rTodayMain(list, hasActive, allDone){
         </div>`+todayTagFilterBar+wrap(todoCardsHtml+longtermTodoCardsHtml)+todayDoneAccHtml();
     } else {
       el.innerHTML=bannerHtml+`
-        <div class="hero">
+        ${getTheme()==='rm' ? realQuoteHeroHtml() : `<div class="hero">
           <div class="hero-msg">単元を追加しましょう</div>
           <div class="hero-sub" style="margin-top:6px">＋ボタンから最初の単元を登録できます</div>
-        </div>`+todayTagFilterBar+wrap(todoCardsHtml+longtermTodoCardsHtml)+`
+        </div>`}`+todayTagFilterBar+wrap(todoCardsHtml+longtermTodoCardsHtml)+`
         <div class="empty">
           <div class="empty-icon">${IC.calendarLg}</div>
           <p>復習したい単元を追加すると<br>スケジュールが自動で組まれます</p>
@@ -7484,6 +7768,12 @@ function _tomorrowPeekData(){
       });
       return;
     }
+    if(p.type==='goal'){
+      // 目標タイプは「締切日」ではなく、ペース配分で今日タブに出るかが決まる。
+      // 今日の目安を今日中に終える前提で、明日も目安が残るなら明日の一覧に入れる
+      if(_planGoalTomorrowTarget(p, tm) > 0) plans.push({p, name:planDisplayName(p)});
+      return;
+    }
     if(_planOccursOn(p, tm)) plans.push({p, name:planDisplayName(p)});
   });
   const todos = TODOS.filter(x=>!x.done && !x.longterm && x.date===tm)
@@ -7491,6 +7781,26 @@ function _tomorrowPeekData(){
   const longterm = TODOS.filter(x=>!x.done && x.longterm)
     .sort((a,b)=>(a.deadline||'').localeCompare(b.deadline||''));
   return {tm, reviews, plans, todos, longterm};
+}
+
+function _planGoalTomorrowTarget(p, tm){
+  if(p.endDate && tm > p.endDate) return 0;
+  const {todayCount, target} = _planGoalTodayStatus(p);
+  const totalCount = p.totalCount||0;
+  const doneBeforeToday = Math.max(0, (p.doneCount||0) - todayCount);
+  // 今日の目安を今日中に終えた想定での、今日の終わり時点の累計
+  const doneByTonight = Math.max(p.doneCount||0, doneBeforeToday + target);
+  const remain = Math.max(0, totalCount - doneByTonight);
+  if(remain<=0) return 0;
+  if(planGoalPaceMode(p)==='self') return remain;
+  const start = p.startDate || p.createdDate || td();
+  const rawDuration = daysBetween(start, p.deadline);
+  if(!Number.isFinite(rawDuration)) return remain;
+  const totalDurationDays = Math.max(1, rawDuration);
+  if(p.deadline < tm) return remain; // 明日の時点で締切を過ぎている
+  const elapsed = Math.min(totalDurationDays, Math.max(0, daysBetween(start, tm)) + 1);
+  const expected = Math.floor(elapsed * totalCount / totalDurationDays);
+  return Math.max(0, Math.min(remain, expected - doneByTonight));
 }
 
 function _peekRowHtml(icon, bg, fg, name, meta, tags){
@@ -7651,6 +7961,248 @@ function _todayPeekCommit(dir){
     panel.style.opacity='';
     setTimeout(()=>{ panel.style.transition=''; panel._peekAnimating=false; }, 440);
   }, 200);
+}
+
+/* ══ ホワイト＆ゴールド（レアル）モード限定：名言ヒーロー ══
+   今日タブの「単元を追加しましょう」の場所に、マドリディスモの名言をランダムで1つ表示する。
+   再描画のたびに入れ替わるとちらつくので、アプリを開くたびに1回だけ選ぶ。 */
+const REAL_QUOTES = [
+  {who:'ルカ・モドリッチ', text:'小さい？細過ぎる？僕は自分を疑ったことが一度もない。むしろその言葉はモチベーションになる。'},
+  {who:'ルカ・モドリッチ', text:'経験があきらめるなと言っている。'},
+  {who:'クリスティアーノ・ロナウド', text:'苦しみのない栄光などない。'},
+  {who:'クリスティアーノ・ロナウド', text:'世界一でいる為のモチベーションの秘訣は、情熱だよ。'},
+  {who:'アルフレード・ディ・ステファノ', text:'まずは汗をかかないと、ねえ！'},
+  {who:'サンティアゴ・ベルナベウ', text:'レアル・マドリードのユニフォームは白だ。泥、汗、そして血でさえも汚れるかもしれない。しかし、恥では決して！'},
+  {who:'セルヒオ・ラモス', text:'このシャツを着るとき、あなたは頂点に到達したことを知る。これ以上の名誉はない。'},
+  {who:'フアニート', text:'ベルナベウでの90分は、とても長い時間だ。'},
+  {who:'マルセロ・ヴィエイラ', text:'僕はいつだってモチベーションを失わなかったし、笑顔を忘れたことも一度だってないよ'},
+];
+const _realQuoteIdx = Math.floor(Math.random()*REAL_QUOTES.length);
+function realQuoteHeroHtml(){
+  const q = REAL_QUOTES[_realQuoteIdx];
+  const long = q.text.length > 40;
+  return `<div class="hero real-quote-hero">
+    <div class="real-quote-mark" aria-hidden="true">“</div>
+    <div class="hero-msg real-quote-text" style="font-size:${long?15:17}px">${esc(q.text)}</div>
+    <div class="hero-sub real-quote-who">— ${esc(q.who)}</div>
+  </div>`;
+}
+
+/* ══ タグの配置（自由に並べて保存） ════════════════════
+   タグを選ぶ画面の「配置」から開く。チップをドラッグして好きな順番に並べ、
+   「改行」を入れた位置で次の行に送られる。保存した配置は各タグの pos / br に入るため、
+   クラウド同期で他の端末にも同じ並びが反映される（スマホの幅で崩れない）。 */
+function mapTagsLaidOut(fn){
+  const out=[];
+  TAGS.forEach((t,i)=>{
+    out.push(fn(t));
+    if(t.br && i<TAGS.length-1) out.push('<span class="tag-br" aria-hidden="true"></span>');
+  });
+  return out;
+}
+function tagLayoutBtnHtml(){
+  if(TAGS.length<2) return '';
+  return `<button type="button" class="tag-layout-btn" onclick="openTagLayoutEditor()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>配置</button>`;
+}
+
+let _tle = null; // { toks:[{k,type,id}], seq }
+
+function openTagLayoutEditor(){
+  const toks=[]; let seq=0;
+  TAGS.forEach((t,i)=>{
+    toks.push({k:'t:'+t.id, type:'tag', id:t.id});
+    if(t.br && i<TAGS.length-1) toks.push({k:'b:'+(seq++), type:'br'});
+  });
+  _tle={toks, seq};
+  let ov=document.getElementById('tle-overlay');
+  if(!ov){
+    ov=document.createElement('div'); ov.id='tle-overlay'; ov.className='tle-overlay';
+    ov.onclick=closeTagLayoutEditor;
+    const pn=document.createElement('div'); pn.id='tle-panel'; pn.className='tle-panel';
+    pn.setAttribute('role','dialog'); pn.setAttribute('aria-label','タグの配置');
+    pn.innerHTML=`
+      <div class="tle-handle"></div>
+      <div class="tle-head">
+        <div class="tle-ttl">タグの配置</div>
+        <div class="tle-sub">タグをドラッグして、好きな位置へ動かせます。<br>「改行」を入れると、そこで次の行に送られます。</div>
+      </div>
+      <div class="tle-tools">
+        <button class="tle-tool" onclick="tleAddBreak()">＋ 改行を追加</button>
+        <button class="tle-tool" onclick="tleClearBreaks()">改行をすべて外す</button>
+      </div>
+      <div class="tle-canvas-wrap" id="tle-scroll"><div class="tle-canvas" id="tle-canvas"></div></div>
+      <div class="tle-actions">
+        <button class="tle-btn" onclick="closeTagLayoutEditor()">キャンセル</button>
+        <button class="tle-btn primary" onclick="saveTagLayout()">保存</button>
+      </div>`;
+    document.body.appendChild(ov); document.body.appendChild(pn);
+    _tleBindDrag(document.getElementById('tle-canvas'));
+  }
+  _tleRender();
+  requestAnimationFrame(()=>{
+    ov.classList.add('on');
+    document.getElementById('tle-panel').classList.add('on');
+  });
+  haptic();
+}
+function closeTagLayoutEditor(){
+  const ov=document.getElementById('tle-overlay'), pn=document.getElementById('tle-panel');
+  if(ov) ov.classList.remove('on');
+  if(pn) pn.classList.remove('on');
+  _tle=null;
+}
+function _tleTokHtml(tok){
+  if(tok.type==='br'){
+    return `<div class="tle-tok tle-br" data-k="${tok.k}">改行<button class="tle-br-x" aria-label="この改行を外す" onpointerdown="event.stopPropagation()" onclick="tleRemoveBreak('${tok.k}')">×</button></div>`;
+  }
+  const t=TAGS.find(x=>x.id===tok.id); if(!t) return '';
+  return `<span class="tle-tok tag-sel-btn" data-k="${tok.k}"><span class="tag-dot" style="background:${t.color}"></span>${esc(t.name)}</span>`;
+}
+// FLIP: 並びが変わった時、各チップが元の位置から新しい位置へスッと滑るように動かす
+function _tleRender(dragKey){
+  const cv=document.getElementById('tle-canvas'); if(!cv||!_tle) return;
+  const before=new Map();
+  cv.querySelectorAll('[data-k]').forEach(el=>before.set(el.dataset.k, el.getBoundingClientRect()));
+  cv.innerHTML=_tle.toks.map(_tleTokHtml).join('');
+  cv.querySelectorAll('[data-k]').forEach(el=>{
+    if(el.dataset.k===dragKey) el.classList.add('tle-ghost');
+    const b=before.get(el.dataset.k); if(!b) return;
+    const a=el.getBoundingClientRect();
+    const dx=b.left-a.left, dy=b.top-a.top;
+    if(!dx && !dy) return;
+    el.style.transition='none';
+    el.style.transform=`translate(${dx}px,${dy}px)`;
+    requestAnimationFrame(()=>{
+      el.style.transition='transform .22s cubic-bezier(.22,1,.36,1)';
+      el.style.transform='';
+    });
+  });
+}
+function tleAddBreak(){
+  if(!_tle) return;
+  _tle.toks.push({k:'b:'+(_tle.seq++), type:'br'});
+  _tleRender(); haptic('light');
+  const sc=document.getElementById('tle-scroll'); if(sc) sc.scrollTop=sc.scrollHeight;
+}
+function tleRemoveBreak(k){
+  if(!_tle) return;
+  _tle.toks=_tle.toks.filter(x=>x.k!==k);
+  _tleRender(); haptic('light');
+}
+function tleClearBreaks(){
+  if(!_tle) return;
+  _tle.toks=_tle.toks.filter(x=>x.type!=='br');
+  _tleRender(); haptic('light');
+}
+function _tleBindDrag(cv){
+  let drag=null; // {k, el, float, sx, sy, started}
+  const scroller=()=>document.getElementById('tle-scroll');
+  let autoTimer=null;
+
+  function targetIndex(x,y){
+    // ドラッグ中のもの以外で、指に一番近い要素の前後に差し込む（縦方向のずれを重く見る）
+    const els=[...cv.querySelectorAll('[data-k]')].filter(el=>el.dataset.k!==drag.k);
+    if(!els.length) return 0;
+    let best=null, bestD=Infinity;
+    els.forEach(el=>{
+      const r=el.getBoundingClientRect();
+      const cx=Math.max(r.left,Math.min(x,r.right)), cy=Math.max(r.top,Math.min(y,r.bottom));
+      const d=Math.abs(x-cx)+Math.abs(y-cy)*3;
+      if(d<bestD){ bestD=d; best=el; }
+    });
+    const r=best.getBoundingClientRect();
+    const isBr=best.classList.contains('tle-br');
+    const after = isBr ? (y > r.top+r.height/2) : (x > r.left+r.width/2);
+    const rest=_tle.toks.filter(t=>t.k!==drag.k);
+    const i=rest.findIndex(t=>t.k===best.dataset.k);
+    return after ? i+1 : i;
+  }
+  function move(x,y){
+    if(!drag) return;
+    if(!drag.started){
+      if(Math.abs(x-drag.sx)<4 && Math.abs(y-drag.sy)<4) return;
+      drag.started=true;
+      const r=drag.el.getBoundingClientRect();
+      const fl=drag.el.cloneNode(true);
+      fl.classList.remove('tle-ghost'); fl.classList.add('tle-float');
+      fl.style.width=r.width+'px';
+      document.body.appendChild(fl); drag.float=fl;
+      drag.el.classList.add('tle-ghost');
+      haptic('light');
+    }
+    drag.float.style.left=x+'px'; drag.float.style.top=y+'px';
+    // 並べ替え直後はチップが滑っている最中なので、少し待ってから次の判定をする（ガタつき防止）
+    const now=performance.now();
+    if(drag.lastSwap && now-drag.lastSwap<110) return _tleAutoScroll(y);
+    const rest=_tle.toks.filter(t=>t.k!==drag.k);
+    const me=_tle.toks.find(t=>t.k===drag.k);
+    const ti=targetIndex(x,y);
+    const cur=_tle.toks.findIndex(t=>t.k===drag.k);
+    rest.splice(ti,0,me);
+    if(rest.findIndex(t=>t.k===drag.k)!==cur){
+      _tle.toks=rest;
+      _tleRender(drag.k);
+      drag.el=cv.querySelector(`[data-k="${drag.k}"]`);
+      drag.lastSwap=now;
+    }
+    _tleAutoScroll(y);
+  }
+  // 端に近づいたら自動スクロール
+  function _tleAutoScroll(y){
+    const sc=scroller(); if(!sc) return;
+    const sr=sc.getBoundingClientRect();
+    clearInterval(autoTimer); autoTimer=null;
+    const v = y<sr.top+36 ? -8 : y>sr.bottom-36 ? 8 : 0;
+    if(v) autoTimer=setInterval(()=>{ sc.scrollTop+=v; },16);
+  }
+  function end(){
+    if(!drag) return;
+    clearInterval(autoTimer); autoTimer=null;
+    if(drag.float) drag.float.remove();
+    const el=cv.querySelector(`[data-k="${drag.k}"]`); if(el) el.classList.remove('tle-ghost');
+    drag=null;
+  }
+  cv.addEventListener('pointerdown',e=>{
+    const el=e.target.closest('.tle-tok'); if(!el||!_tle) return;
+    e.preventDefault();
+    drag={k:el.dataset.k, el, sx:e.clientX, sy:e.clientY, started:false};
+    const mv=ev=>move(ev.clientX, ev.clientY);
+    const up=()=>{ document.removeEventListener('pointermove',mv); document.removeEventListener('pointerup',up); document.removeEventListener('pointercancel',up); end(); };
+    document.addEventListener('pointermove',mv);
+    document.addEventListener('pointerup',up);
+    document.addEventListener('pointercancel',up);
+  });
+}
+function saveTagLayout(){
+  if(!_tle) return;
+  const byId=new Map(TAGS.map(t=>[t.id,t]));
+  const ordered=[], brAfter=new Set();
+  let pendingBr=false;
+  _tle.toks.forEach(tok=>{
+    if(tok.type==='br'){ if(ordered.length) pendingBr=true; return; }
+    const t=byId.get(tok.id); if(!t) return;
+    if(pendingBr) brAfter.add(ordered[ordered.length-1].id); // 改行は「直前のタグの後ろ」として保存
+    pendingBr=false;
+    ordered.push(t);
+  });
+  // エディタを開いている間に増えたタグがあれば末尾へ
+  TAGS.forEach(t=>{ if(!ordered.includes(t)) ordered.push(t); });
+  ordered.forEach((t,i)=>{
+    t.pos=i;
+    if(brAfter.has(t.id) && i<ordered.length-1) t.br=true; else delete t.br;
+  });
+  TAGS.splice(0, TAGS.length, ...ordered);
+  saveTags();
+  closeTagLayoutEditor();
+  // 開いているタグ選択欄を新しい配置で描き直す
+  ['renderSheetTagSel','renderEditTagSel','renderTodoTagSel','renderPlanTagSel','renderEditLogTagSel'].forEach(fn=>{
+    try{ if(typeof window[fn]==='function') window[fn](); }catch(_){}
+  });
+  try{ if(document.getElementById('study-sheet')?.classList.contains('on')) _renderStudySheet(); }catch(_){}
+  render();
+  haptic('medium');
+  toast(IC.checkCircle,'タグの配置を保存しました');
 }
 
 /* ── Upcoming panel ── */
@@ -8283,8 +8835,8 @@ function toggleEditLogTag(id){
 function renderEditLogTagSel(){
   const wrap=document.getElementById('edit-log-tag-sel-wrap'); if(!wrap) return;
   wrap.innerHTML = `
-    <div class="tag-sel-label"><span>タグ</span></div>
-    <div class="tag-sel-list">${TAGS.map(t=>{
+    <div class="tag-sel-label"><span>タグ</span>${tagLayoutBtnHtml()}</div>
+    <div class="tag-sel-list">${mapTagsLaidOut(t=>{
       const on=_editLogTags.includes(t.id);
       return `<button class="tag-sel-btn${on?' on':''}"
         style="${on?`background:${t.color};border-color:${t.color}`:''}"
@@ -8797,14 +9349,14 @@ function _renderStudySheet(){
   const isTagEditable = _studySheetMode==='new' || (_studySheetMode==='review' && td_);
   const tagSelHtml = isTagEditable
     ? (TAGS.length?`<div style="margin-bottom:14px">
-    <div style="font-size:13px;font-weight:600;color:var(--lbl2);margin-bottom:8px">タグ</div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap">${TAGS.map(t=>{
+    <div class="tag-sel-label"><span>タグ</span>${tagLayoutBtnHtml()}</div>
+    <div class="tag-sel-list">${mapTagsLaidOut(t=>{
       const on=_studySheetTags.includes(t.id);
       return `<button class="tag-sel-btn${on?' on':''}" style="${on?`background:${t.color};border-color:${t.color}`:''}" onclick="toggleStudyTag('${t.id}')"><span class="tag-dot" style="background:${on?'#fff':t.color}"></span>${esc(t.name)}</button>`;
     }).join('')}</div></div>`:'')
     : (_studySheetTags.length ? `<div style="margin-bottom:14px">
         <div style="font-size:13px;font-weight:600;color:var(--lbl2);margin-bottom:8px">タグ</div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap">${_studySheetTags.map(id=>{
+        <div class="tag-sel-list">${_studySheetTags.map(id=>{
           const t=TAGS.find(x=>x.id===id); if(!t) return '';
           return `<span class="tag-sel-btn on" style="background:${t.color};border-color:${t.color};cursor:default"><span class="tag-dot" style="background:#fff"></span>${esc(t.name)}</span>`;
         }).join('')}</div></div>` : '');
@@ -10755,20 +11307,30 @@ function setTodayLayout(mode){
   render();
 }
 
-/* ══ カラーテーマ（標準 / レッド＆ブラック） ══
-   html に theme-p5 クラスを付け外しするだけで切り替わる。端末ごとの設定で、同期はしない。 */
+/* ══ カラーテーマ（標準 / レッド＆ブラック / ホワイト＆ゴールド） ══
+   html に theme-p5 / theme-rm クラスを付け外しするだけで切り替わる。端末ごとの設定で、同期はしない。 */
 const THEME_KEY = 'fukushu-theme-v1';
+const THEMES = {
+  default:{ label:'標準',             meta:'#F2F2F7', sw:['#2563EB','#F2F4F9'] },
+  p5:     { label:'レッド＆ブラック', meta:'#0B0B0D', sw:['#E60012','#0B0B0D'] },
+  rm:     { label:'ホワイト＆ゴールド', meta:'#FFFFFF', sw:['#0B2A5B','#FFFFFF','#D4A62A'] },
+};
 function getTheme(){
-  // 未設定の人はレッド＆ブラックを既定にする（心機一転）。標準を選んだ人はその選択を尊重する
-  try { return localStorage.getItem(THEME_KEY)==='default' ? 'default' : 'p5'; } catch { return 'p5'; }
+  // 未設定の人はホワイト＆ゴールドを既定にする。選んだ人はその選択を尊重する
+  try {
+    const v = localStorage.getItem(THEME_KEY);
+    return (v==='default' || v==='p5') ? v : 'rm';
+  } catch { return 'rm'; }
 }
 function applyTheme(t){
-  document.documentElement.classList.toggle('theme-p5', t==='p5');
+  const root=document.documentElement;
+  root.classList.toggle('theme-p5', t==='p5');
+  root.classList.toggle('theme-rm', t==='rm');
   const m=document.querySelector('meta[name="theme-color"]');
-  if(m) m.setAttribute('content', t==='p5' ? '#0B0B0D' : '#F2F2F7');
+  if(m) m.setAttribute('content', (THEMES[t]||THEMES.default).meta);
 }
 function setTheme(t){
-  if(t!=='p5' && t!=='default') return;
+  if(!THEMES[t]) return;
   if(getTheme()===t) return;
   try { localStorage.setItem(THEME_KEY, t); } catch {}
   const root=document.documentElement;
@@ -10777,7 +11339,14 @@ function setTheme(t){
   setTimeout(()=>root.classList.remove('theme-switching'), 420);
   haptic('medium');
   renderSettings();
-  toast(IC.checkCircle, t==='p5' ? 'レッド＆ブラックに切り替えました' : '標準の配色に戻しました');
+  toast(IC.checkCircle, t==='default' ? '標準の配色に戻しました' : `${THEMES[t].label}に切り替えました`);
+}
+function themeToggleHtml(){
+  const cur=getTheme();
+  return Object.entries(THEMES).map(([k,v])=>`
+        <button class="theme-opt${cur===k?' on':''}" onclick="setTheme('${k}')" aria-pressed="${cur===k}">
+          <span class="theme-swatch">${v.sw.map(c=>`<i style="background:${c}"></i>`).join('')}</span><span>${v.label.replace('＆','<br>＆')}</span>
+        </button>`).join('');
 }
 
 /* ══ 今日タブのタグ絞り込み設定 ══
@@ -10974,7 +11543,7 @@ function addTagFromTodoSheet(){
   const inp=document.getElementById('todo-tag-new-inp');
   const name=inp?.value.trim(); if(!name) return;
   if(TAGS.some(t=>t.name===name)){ inp.classList.add('shake'); setTimeout(()=>inp.classList.remove('shake'),400); haptic('medium'); return; }
-  const color=TAG_COLORS[TAGS.length % TAG_COLORS.length];
+  const color=TAG_COLORS[TAGS.length % 10];
   const newTag={id:Date.now().toString(), name, color};
   TAGS.push(newTag); saveTags();
   _todoDraftTags=[..._todoDraftTags, newTag.id];
@@ -10985,7 +11554,7 @@ function addTagFromTodoSheet(){
 }
 function renderTodoTagSel(){
   const wrap=document.getElementById('todo-tag-sel-wrap'); if(!wrap) return;
-  const existingBtns = TAGS.map(t=>{
+  const existingBtns = mapTagsLaidOut(t=>{
     const on=_todoDraftTags.includes(t.id);
     return `<button class="tag-sel-btn${on?' on':''}"
       style="${on?`background:${t.color};border-color:${t.color}`:''}"
@@ -11000,7 +11569,7 @@ function renderTodoTagSel(){
     </div>` : '';
   wrap.innerHTML=`
     <div class="tag-sel-wrap">
-      <div class="tag-sel-label"><span>タグ</span></div>
+      <div class="tag-sel-label"><span>タグ</span>${tagLayoutBtnHtml()}</div>
       <div class="tag-sel-list">${existingBtns}${addBtn}</div>
       ${addRow}
     </div>`;
@@ -11690,13 +12259,7 @@ function renderSettings(){
           <div class="settings-row-sub">アプリ全体の配色を切り替えます。いつでも元に戻せます</div>
         </div>
       </div>
-      <div class="theme-toggle" role="group" aria-label="カラーテーマ" style="border-bottom:.5px solid var(--sep)">
-        <button class="theme-opt${getTheme()==='default'?' on':''}" onclick="setTheme('default')" aria-pressed="${getTheme()==='default'}">
-          <span class="theme-swatch"><i style="background:#2563EB"></i><i style="background:#F2F4F9"></i></span>標準
-        </button>
-        <button class="theme-opt${getTheme()==='p5'?' on':''}" onclick="setTheme('p5')" aria-pressed="${getTheme()==='p5'}">
-          <span class="theme-swatch"><i style="background:#E60012"></i><i style="background:#0B0B0D"></i></span>レッド＆ブラック
-        </button>
+      <div class="theme-toggle" role="group" aria-label="カラーテーマ" style="border-bottom:.5px solid var(--sep)">${themeToggleHtml()}
       </div>
       <div class="settings-row">
         <div class="settings-row-icon" style="background:#EEF2FF;color:var(--blue-d)">${IC.spread}</div>
@@ -12585,7 +13148,7 @@ const FSYNC = (() => {
         // タグも units 等と同じ理由で id単位マージに変更（片方の端末で追加/削除した
         // タグが、もう片方の古いタグ一覧で消えたり復活したりしないようにする）
         _tagSync.mergeTomb(data.tagTombstones || {});
-        TAGS = _mergeArrayById(TAGS, data.tags, _tagSync.getTomb());
+        TAGS = sortTagsByLayout(_mergeArrayById(TAGS, data.tags, _tagSync.getTomb()));
         _tagSync.resyncPrev(TAGS);
         safeSetItem(TAG_KEY, JSON.stringify(TAGS));
       }
@@ -12786,7 +13349,7 @@ window.addEventListener('storage', (e) => {
       _unitSync.resyncPrev(U);
       changed = true;
     } else if(e.key === TAG_KEY && typeof _tagSync!=='undefined'){
-      TAGS = _mergeArrayById(TAGS, incoming, _tagSync.getTomb());
+      TAGS = sortTagsByLayout(_mergeArrayById(TAGS, incoming, _tagSync.getTomb()));
       _tagSync.resyncPrev(TAGS);
       changed = true;
     } else if(e.key === CAT_KEY && typeof _catSync!=='undefined'){
