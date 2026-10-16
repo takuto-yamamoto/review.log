@@ -22,8 +22,8 @@
 <!-- 初回描画をブロックしないよう、フォントCSSは非同期で読み込む。
      読み込みが終わるまでは -apple-system 等のフォールバック書体で即座に表示され、
      完了後にこのフォントへ切り替わる（font-display:swapとの二段構え）。 -->
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=M+PLUS+Rounded+1c:wght@700;800;900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-<noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=M+PLUS+Rounded+1c:wght@700;800;900&display=swap" rel="stylesheet"></noscript>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=M+PLUS+Rounded+1c:wght@700;800;900&family=Anton&family=Dela+Gothic+One&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=M+PLUS+Rounded+1c:wght@700;800;900&family=Anton&family=Dela+Gothic+One&display=swap" rel="stylesheet"></noscript>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
 :root{
@@ -2231,13 +2231,17 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 .tle-head{padding:12px 20px 4px;text-align:center}
 .tle-ttl{font-size:17px;font-weight:700;color:var(--lbl)}
 .tle-sub{font-size:12px;color:var(--lbl2);margin-top:6px;line-height:1.6}
-.tle-canvas-wrap{overflow-y:auto;flex:1;min-height:0;padding:14px 20px 6px}
+.tle-canvas-wrap{overflow-y:auto;flex:1;min-height:0;padding:22px calc(20px + var(--safe-right)) 14px calc(20px + var(--safe-left))}
 .tle-canvas{
-  display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start;
-  padding:14px;border-radius:14px;background:var(--bg);border:1.5px dashed var(--sep);min-height:120px
+  /* 実際のタグ選択欄（シート本体の左右20px余白・チップ間6px）と同じ横幅で並べる。
+     枠線は内側の幅を削らないよう outline で外側に描く */
+  display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start;
+  padding:0;border-radius:4px;min-height:96px;
+  outline:1.5px dashed var(--sep);outline-offset:10px;
+  background:var(--bg);box-shadow:0 0 0 10px var(--bg)
 }
 .tle-tok{touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}
-.tle-tok.tag-sel-btn{padding:7px 12px;font-size:13px;background:var(--card)}
+.tle-tok.tag-sel-btn{background:var(--card)} /* 実物と同じサイズにするため padding/font は変えない */
 .tle-tok.tle-ghost{opacity:.25}
 .tle-br{
   flex-basis:100%;display:flex;align-items:center;gap:8px;height:22px;
@@ -2769,30 +2773,30 @@ html.is-landscape-phone-layout .panel{ padding-top:8px;padding-bottom:calc(20px 
    既存のスタイルには一切手を加えず、ここで上書きするだけにしている。
    ══════════════════════════════════════════════════════════════ */
 html.theme-p5{
-  --p5-red:#E60012; --p5-red-hi:#FF3B47; --p5-ink:#0B0B0D; --p5-paper:#F2F2F2;
-  --bg:#0B0B0D; --card:#24242A;
-  --blue:#E60012; --blue-d:#FF7A82; --blue-bg:rgba(230,0,18,.15); --blue-bd:rgba(230,0,18,.42);
-  --red:#FF453A;
+  --p5-red:#B8343B; --p5-red-hi:#CF4A50; --p5-ink:#131215; --p5-paper:#F2F2F2;
+  --bg:#131215; --card:#1E1D21;
+  --blue:#B8343B; --blue-d:#E8898C; --blue-bg:rgba(184,52,59,.15); --blue-bd:rgba(184,52,59,.42);
+  --red:#D9534F;
   --plan:#ECECEC; --plan-d:#ECECEC; --plan-bg:rgba(255,255,255,.07); --plan-bd:rgba(255,255,255,.22);
-  --orange:#E60012; --orange-d:#FF4A55; --orange-bg:rgba(230,0,18,.12); --orange-bd:rgba(230,0,18,.38);
-  --amber:#FFC400; --amber-d:#FFC400; --teal-d:#9AA0A6;
+  --orange:#B8343B; --orange-d:#D9666A; --orange-bg:rgba(184,52,59,.12); --orange-bd:rgba(184,52,59,.38);
+  --amber:#E5B53A; --amber-d:#E5B53A; --teal-d:#9AA0A6;
   --lbl:#FFFFFF; --lbl2:rgba(255,255,255,.80); --lbl3:rgba(255,255,255,.58); --icon-muted:rgba(255,255,255,.72);
   --sep:rgba(255,255,255,.14); --fill:rgba(255,255,255,.1);
   --shadow:0 1px 2px rgba(0,0,0,.5),0 10px 24px -8px rgba(0,0,0,.7);
   --shadow-sm:0 1px 1.5px rgba(0,0,0,.45),0 4px 12px -4px rgba(0,0,0,.6);
   --shadow-lg:0 8px 16px -4px rgba(0,0,0,.6),0 24px 48px -12px rgba(0,0,0,.8);
   --card-bd:1px solid rgba(255,255,255,.16);
-  background:#050506;
+  background:#09090A;
   color-scheme:dark;
 }
 html.theme-p5 body{
   background:
-    repeating-linear-gradient(-58deg,rgba(230,0,18,.025) 0 2px,transparent 2px 26px),
+    repeating-linear-gradient(-58deg,rgba(184,52,59,.025) 0 2px,transparent 2px 26px),
     var(--bg);
   box-shadow:0 0 0 1px rgba(255,255,255,.04);
 }
-@media (min-width:520px){ html.theme-p5{ background:#050506; } }
-html.theme-p5.is-desktop-layout{ background:#050506; }
+@media (min-width:520px){ html.theme-p5{ background:#09090A; } }
+html.theme-p5.is-desktop-layout{ background:#09090A; }
 
 /* 切り替え時だけ、色をふわっと移り変わらせる */
 html.theme-switching, html.theme-switching *{
@@ -2800,7 +2804,7 @@ html.theme-switching, html.theme-switching *{
 }
 
 /* ── ナビ・タブ ── */
-html.theme-p5 .navbar{background:rgba(11,11,13,.94);border-bottom:2px solid var(--p5-red);box-shadow:0 8px 18px -12px rgba(230,0,18,.5)}
+html.theme-p5 .navbar{background:rgba(11,11,13,.94);border-bottom:2px solid var(--p5-red);box-shadow:0 8px 18px -12px rgba(184,52,59,.5)}
 html.theme-p5 .nav-title,
 html.theme-p5 .sidebar-brand-name{color:#fff;font-style:italic;letter-spacing:-.2px;text-shadow:1.5px 1.5px 0 var(--p5-red)}
 html.theme-p5 .tab-bar{background:rgba(8,8,10,.97);border-top:2px solid var(--p5-red)}
@@ -2820,7 +2824,7 @@ html.theme-p5 .hero.all-done,
 html.theme-p5 .hero[style*="#1740B0"],
 html.theme-p5 .hero[style*="#4C1D95"]{
   background:var(--p5-red) !important;
-  box-shadow:6px 6px 0 #000,0 10px 30px -10px rgba(230,0,18,.6) !important;
+  box-shadow:6px 6px 0 #000,0 10px 30px -10px rgba(184,52,59,.6) !important;
   clip-path:polygon(0 0,100% 0,100% 84%,96% 100%,0 100%);
 }
 html.theme-p5 .hero::before,
@@ -2841,20 +2845,20 @@ html.theme-p5 .all-done-icon-wrap{border-color:#fff;background:rgba(0,0,0,.35)}
 html.theme-p5 .hero-streak-line{background:#000;color:#fff}
 
 /* ── カード ── */
-html.theme-p5 .card.over{border-left-color:#FFC400}
-html.theme-p5 .card-when.over{color:#FFC400}
-html.theme-p5 .card-when-chip.over{color:#FFC400;background:rgba(255,196,0,.12);border-color:rgba(255,196,0,.35)}
-html.theme-p5 .card-when-chip.fwd{color:#FFC400;background:rgba(255,196,0,.1);border-color:rgba(255,196,0,.3)}
+html.theme-p5 .card.over{border-left-color:#E5B53A}
+html.theme-p5 .card-when.over{color:#E5B53A}
+html.theme-p5 .card-when-chip.over{color:#E5B53A;background:rgba(229,181,58,.12);border-color:rgba(229,181,58,.35)}
+html.theme-p5 .card-when-chip.fwd{color:#E5B53A;background:rgba(229,181,58,.1);border-color:rgba(229,181,58,.3)}
 html.theme-p5 .card.plan{border-left-color:#ECECEC}
-html.theme-p5 .card.todo{border-left-color:#FFC400}
-html.theme-p5 .todo-half-tag{color:#FFC400;background:rgba(255,196,0,.14)}
-html.theme-p5 .plan-row.over{background:linear-gradient(90deg,rgba(255,196,0,.08),transparent 60%)}
-html.theme-p5 .plan-row.over .plan-row-meta{color:#FFC400}
-html.theme-p5 .plan-row.over .plan-row-icon{background:rgba(255,196,0,.14);color:#FFC400}
+html.theme-p5 .card.todo{border-left-color:#E5B53A}
+html.theme-p5 .todo-half-tag{color:#E5B53A;background:rgba(229,181,58,.14)}
+html.theme-p5 .plan-row.over{background:linear-gradient(90deg,rgba(229,181,58,.08),transparent 60%)}
+html.theme-p5 .plan-row.over .plan-row-meta{color:#E5B53A}
+html.theme-p5 .plan-row.over .plan-row-icon{background:rgba(229,181,58,.14);color:#E5B53A}
 html.theme-p5 .card-snooze-note,
-html.theme-p5 .cal-day-item-snooze{color:#FFC400}
-html.theme-p5 .cal-day-item-snooze{background:rgba(255,196,0,.1);border-color:rgba(255,196,0,.3)}
-@keyframes flashGreenP5{0%{background:var(--card)}25%{background:#3A0006}70%{background:#3A0006}100%{background:var(--card)}}
+html.theme-p5 .cal-day-item-snooze{color:#E5B53A}
+html.theme-p5 .cal-day-item-snooze{background:rgba(229,181,58,.1);border-color:rgba(229,181,58,.3)}
+@keyframes flashGreenP5{0%{background:var(--card)}25%{background:#3A1517}70%{background:#3A1517}100%{background:var(--card)}}
 html.theme-p5 .card.flash{animation:flashGreenP5 .4s ease}
 
 /* ── ボタン ── */
@@ -2877,9 +2881,9 @@ html.theme-p5 [style*="#0EA874"]{
 }
 html.theme-p5 .plan-wd-btn.on,
 html.theme-p5 .plan-wizard-dot.on{color:var(--p5-ink)}
-html.theme-p5 .float-fab{background:var(--p5-red);box-shadow:4px 4px 0 #000,0 6px 24px rgba(230,0,18,.5)}
+html.theme-p5 .float-fab{background:var(--p5-red);box-shadow:4px 4px 0 #000,0 6px 24px rgba(184,52,59,.5)}
 html.theme-p5 .tagf-chip.all.active{background:var(--p5-red);border-color:var(--p5-red)}
-html.theme-p5 .tagf-chip.todo-chip.active{background:#FFC400;border-color:#FFC400;color:#000}
+html.theme-p5 .tagf-chip.todo-chip.active{background:#E5B53A;border-color:#E5B53A;color:#000}
 html.theme-p5 .settings-switch.on{background:var(--p5-red)}
 html.theme-p5 .chip{color:#fff}
 
@@ -2889,7 +2893,7 @@ html.theme-p5 .backup-row-icon,
 html.theme-p5 .guide-acc-icon,
 html.theme-p5 .cal-toggle-icon,
 html.theme-p5 .prog-card-icon,
-html.theme-p5 .tag-prog-unit-icon{background:rgba(230,0,18,.15) !important;color:var(--blue-d) !important}
+html.theme-p5 .tag-prog-unit-icon{background:rgba(184,52,59,.15) !important;color:var(--blue-d) !important}
 html.theme-p5 .settings-row-icon span,
 html.theme-p5 .guide-acc-icon span{color:var(--blue-d) !important}
 html.theme-p5 .backup-row-icon svg{stroke:var(--blue-d)}
@@ -2897,17 +2901,17 @@ html.theme-p5 .done-icon,
 html.theme-p5 .today-done-icon,
 html.theme-p5 .today-done-item-icon{background:rgba(52,199,89,.16)}
 html.theme-p5 .today-done-count{background:rgba(52,199,89,.16);color:#4ADE80}
-html.theme-p5 .backup-reminder{background:#1C0204;border-color:var(--p5-red)}
+html.theme-p5 .backup-reminder{background:#1F1011;border-color:var(--p5-red)}
 html.theme-p5 .backup-reminder-ttl{color:#fff}
 html.theme-p5 .backup-reminder-sub,
 html.theme-p5 .backup-reminder-icon,
 html.theme-p5 .backup-reminder-close{color:var(--blue-d)}
 html.theme-p5 .backup-how-box[style*="#F5F3FF"]{background:var(--plan-bg) !important;border-color:var(--plan-bd) !important}
 html.theme-p5 .pwa-android-note{background:rgba(52,199,89,.1);border-color:rgba(52,199,89,.3);color:#86EFAC}
-html.theme-p5 .chip.warn{background:rgba(255,69,58,.15);color:#FF8A80}
-html.theme-p5 .dow-sun{background:rgba(255,69,58,.18);color:#FF8A80}
+html.theme-p5 .chip.warn{background:rgba(255,69,58,.15);color:#E8898C}
+html.theme-p5 .dow-sun{background:rgba(255,69,58,.18);color:#E8898C}
 html.theme-p5 .dow-sat{background:rgba(255,255,255,.12);color:#E5E5E5}
-html.theme-p5 .storage-error-toast{background:#3A0006;border:1px solid var(--p5-red)}
+html.theme-p5 .storage-error-toast{background:#3A1517;border:1px solid var(--p5-red)}
 html.theme-p5 .btn-del:active{background:rgba(255,69,58,.15)}
 html.theme-p5 .expired-plan-icon{background:var(--p5-red)}
 html.theme-p5 input[style*="#fff"]{background:var(--fill) !important;color:var(--lbl) !important}
@@ -2925,23 +2929,23 @@ html.theme-p5 .plan-rule-pick-check.on,
 html.theme-p5 .plan-rule-wd-btn.on,
 html.theme-p5 .plan-rule-type-card.on .plan-rule-type-card-icon,
 html.theme-p5 .plan-rule-type-card-check{background:var(--p5-red);border-color:var(--p5-red);color:#fff}
-html.theme-p5 .plan-rule-type-card.on{border-color:var(--p5-red);background:rgba(230,0,18,.1)}
+html.theme-p5 .plan-rule-type-card.on{border-color:var(--p5-red);background:rgba(184,52,59,.1)}
 html.theme-p5 .plan-rule-type-badge,
 html.theme-p5 .plan-rule-pri-first-tag{background:var(--blue-bg);color:var(--blue-d)}
 html.theme-p5 .plan-rule-section-lbl span.count{color:var(--blue-d)}
-html.theme-p5 .plan-rule-preview{background:rgba(230,0,18,.1);border-color:var(--blue-bd)}
+html.theme-p5 .plan-rule-preview{background:rgba(184,52,59,.1);border-color:var(--blue-bd)}
 html.theme-p5 .plan-rule-preview-icon{color:var(--blue-d)}
 html.theme-p5 .plan-rule-preview-txt{color:var(--lbl2)}
 html.theme-p5 .plan-rule-preview-txt b{color:#fff}
-html.theme-p5 .plan-rule-pri-row.first{background:linear-gradient(90deg,rgba(230,0,18,.12),transparent 85%)}
+html.theme-p5 .plan-rule-pri-row.first{background:linear-gradient(90deg,rgba(184,52,59,.12),transparent 85%)}
 
 /* ── カレンダー ── */
-html.theme-p5 .cal-cell.heat-1{background:rgba(230,0,18,.10)}
-html.theme-p5 .cal-cell.heat-2{background:rgba(230,0,18,.20)}
-html.theme-p5 .cal-cell.heat-3{background:rgba(230,0,18,.32)}
-html.theme-p5 .cal-cell.heat-4{background:rgba(230,0,18,.46)}
+html.theme-p5 .cal-cell.heat-1{background:rgba(184,52,59,.10)}
+html.theme-p5 .cal-cell.heat-2{background:rgba(184,52,59,.20)}
+html.theme-p5 .cal-cell.heat-3{background:rgba(184,52,59,.32)}
+html.theme-p5 .cal-cell.heat-4{background:rgba(184,52,59,.46)}
 html.theme-p5 .cal-cell.heat-1.overdue,html.theme-p5 .cal-cell.heat-2.overdue,
-html.theme-p5 .cal-cell.heat-3.overdue,html.theme-p5 .cal-cell.heat-4.overdue{background:rgba(255,196,0,.16)}
+html.theme-p5 .cal-cell.heat-3.overdue,html.theme-p5 .cal-cell.heat-4.overdue{background:rgba(229,181,58,.16)}
 html.theme-p5 .cal-cell.today .cal-num{background:var(--p5-red);color:#fff;border-radius:4px;transform:skewX(-10deg)}
 html.theme-p5 .cal-dow.sat,html.theme-p5 .cal-cell.sat .cal-num,html.theme-p5 .cal-day-head.sat{color:#C9C9CC}
 html.theme-p5 .cal-spread-icon{background:var(--p5-red)}
@@ -2955,12 +2959,12 @@ html.theme-p5 .ob-bubble.arrow-up-right::after{border-bottom-color:var(--card)}
 html.theme-p5 .ob-badge{background:var(--p5-red)}
 html.theme-p5 .icrop-viewport{box-shadow:0 0 0 3px var(--card),0 0 0 4px var(--p5-red)}
 html.theme-p5 .undo-bar-prog{background:var(--p5-red)}
-html.theme-p5 .undo-btn{background:rgba(230,0,18,.25);color:#FF6B74}
+html.theme-p5 .undo-btn{background:rgba(184,52,59,.25);color:#E8898C}
 html.theme-p5 .seg-btn.on,
 html.theme-p5 .plan-type-seg button.on,
 html.theme-p5 .layout-toggle-btn.on,
 html.theme-p5 .cal-mode-btn.active,
-html.theme-p5 .spread-intensity-btn.active{background:#2A2A2F}
+html.theme-p5 .spread-intensity-btn.active{background:#2A292E}
 
 html.theme-p5 .card.due{border-left-color:var(--p5-red)}
 html.theme-p5 .cal-pip.plan[style*="#7C3AED"],
@@ -2987,8 +2991,8 @@ html.theme-p5 .backup-row{border:1px solid rgba(255,255,255,.16)}
 html.theme-p5 .today-done-acc.open .today-done-header{border-bottom-color:rgba(255,255,255,.16)}
 html.theme-p5 .today-done-body{border:1px solid rgba(255,255,255,.16);border-top:none}
 html.theme-p5 .plan-add-cta{border-style:dashed;border-color:rgba(255,255,255,.3)}
-html.theme-p5 .backup-row{background:#2C2C33}
-html.theme-p5 .chat-bubble{background:#2E2E35}
+html.theme-p5 .backup-row{background:#26252A}
+html.theme-p5 .chat-bubble{background:#26252A}
 html.theme-p5 .sec{color:rgba(255,255,255,.82)}
 html.theme-p5 .hero-sub,
 html.theme-p5 .settings-hero-sub,
@@ -3008,6 +3012,137 @@ html.theme-p5 .tag-sel-open-mgr,
 html.theme-p5 .sched-row.sched-next .sched-row-rel,
 html.theme-p5 .sched-row.sched-next .sched-row-date{color:var(--blue-d)}
 html.theme-p5 .plan-row.due .plan-row-icon{color:var(--blue-d)}
+
+/* ══════════════════════════════════════════════════════════════
+   レッド＆ブラック：P5スタイル仕上げ（使いやすさ優先）
+   開発者インタビューの方針に沿って、やりすぎない範囲で取り入れる：
+   ・メインカラーは赤だけ。サブカラーは極力使わない（数値は例外）
+   ・形は誰でも見慣れたものに。角は小さめにして「シャープ」に寄せる程度
+   ・白いラインで視線を誘導する
+   ・優先度の高い領域は明るく、そうでない領域は暗くして重要度を示す
+   ・遊び心は見出しラベルなど要所だけに
+   ══════════════════════════════════════════════════════════════ */
+html.theme-p5{
+  --p5-font-head:'Dela Gothic One','Hiragino Kaku Gothic StdN','Hiragino Sans',sans-serif;
+  --p5-font-num:'Anton','Outfit','Impact',sans-serif;
+  --r:6px;
+  /* サブカラーを減らす：警告の黄色も赤系に寄せる */
+  --amber:#E8898C; --amber-d:#E8898C;
+}
+/* 角は小さく（丸ではなくシャープに）。小さな点やスイッチなど、形で意味を伝える部品はそのまま */
+html.theme-p5 .card,html.theme-p5 .settings-section,html.theme-p5 .plan-list,html.theme-p5 .cal-toggle,
+html.theme-p5 .cal-wrap,html.theme-p5 .chat-thread-wrap,html.theme-p5 .tag-prog-card,html.theme-p5 .prog-card,
+html.theme-p5 .cat-bd-card,html.theme-p5 .todo-inline-card,html.theme-p5 .done-row,html.theme-p5 .today-done-header,
+html.theme-p5 .plan-add-cta,html.theme-p5 .backup-row,html.theme-p5 .guide-acc,html.theme-p5 .chat-bubble,
+html.theme-p5 .btn-ok,html.theme-p5 .btn-plan-ok,html.theme-p5 .btn-snooze,html.theme-p5 .btn-start,
+html.theme-p5 .sheet-ok,html.theme-p5 .edit-save,html.theme-p5 .edit-cancel,html.theme-p5 .tle-btn,
+html.theme-p5 .ob-next,html.theme-p5 .icrop-btn,html.theme-p5 .tag-add-btn,html.theme-p5 .dense-close-btn,
+html.theme-p5 .snooze-opt,html.theme-p5 .sheet-inp,html.theme-p5 .edit-modal-inp,html.theme-p5 .tag-add-inp,
+html.theme-p5 .date-inp,html.theme-p5 .plan-num-inp,html.theme-p5 .hero,html.theme-p5 .settings-hero,
+html.theme-p5 .achiev-hero,html.theme-p5 .backup-reminder,html.theme-p5 .toast,html.theme-p5 .undo-bar{border-radius:4px !important}
+html.theme-p5 .today-grid .card{border-radius:4px}
+html.theme-p5 .tag-chip,html.theme-p5 .tag-sel-btn,html.theme-p5 .tagf-chip,html.theme-p5 .card-when-chip,
+html.theme-p5 .plan-type-badge,html.theme-p5 .chat-tag{border-radius:3px !important}
+html.theme-p5 .sheet,html.theme-p5 .snooze-pick-box,html.theme-p5 .edit-modal-box,html.theme-p5 .dense-sheet,
+html.theme-p5 .tag-mgr-sheet,html.theme-p5 .backup-sheet,html.theme-p5 .all-logs-sheet,html.theme-p5 .guide-sheet,
+html.theme-p5 .pwa-sheet,html.theme-p5 .tle-panel,html.theme-p5 .expired-plan-box{border-radius:8px 8px 0 0 !important}
+
+/* ── 書体：キーフォントは「見出し」だけに使い、本文は読みやすいゴシックのまま ── */
+html.theme-p5 .nav-title,html.theme-p5 .sidebar-brand-name,html.theme-p5 .hero-msg,
+html.theme-p5 .settings-hero-title,html.theme-p5 .sheet-ttl,html.theme-p5 .tag-mgr-ttl,
+html.theme-p5 .backup-ttl,html.theme-p5 .guide-ttl,html.theme-p5 .tle-ttl,html.theme-p5 .dense-sheet-ttl,
+html.theme-p5 .all-logs-ttl,html.theme-p5 .celebrate-title,html.theme-p5 .ob-ttl{
+  font-family:var(--p5-font-head);font-weight:400;font-style:normal;letter-spacing:.02em;
+}
+html.theme-p5 .nav-title{font-size:19px;text-shadow:2px 2px 0 var(--p5-red)}
+html.theme-p5 .hero-msg{font-size:18px;line-height:1.4;text-shadow:none}
+html.theme-p5 .sec{font-style:normal}
+/* 数値は例外的に目立たせてよい部分。大きな数字だけ英字書体に */
+html.theme-p5 #study-timer-num,html.theme-p5 .achiev-stat-num{
+  font-family:var(--p5-font-num) !important;font-weight:400 !important;letter-spacing:.05em;
+}
+html.theme-p5 #study-timer-num{font-size:54px !important;color:#fff !important}
+
+/* ── 遊び心：セクション見出しだけ、白地に黒文字の斜めラベル ── */
+html.theme-p5 .sec{
+  width:fit-content;max-width:100%;justify-self:start;
+  background:#EDEAE6;color:#141316 !important;font-family:var(--p5-font-head);font-weight:400;
+  font-size:11.5px;letter-spacing:.05em;padding:3px 12px 3px 9px;
+  transform:skewX(-10deg);transform-origin:left bottom;margin-left:4px;
+  box-shadow:2px 2px 0 var(--p5-red);
+}
+html.theme-p5 .sec svg{color:var(--p5-red)}
+
+/* ── 白いラインで視線を誘導：ナビ下・アクティブタブ・ヒーロー ── */
+html.theme-p5 .navbar{border-bottom:2px solid var(--p5-red);box-shadow:0 2px 0 rgba(255,255,255,.08)}
+html.theme-p5 .tab-bar{border-top:2px solid var(--p5-red)}
+html.theme-p5 .tab-btn::before{background:transparent !important;border-bottom:2px solid #fff;
+  transform:translateX(-50%) skewX(-12deg) scale(.6) !important;opacity:0}
+html.theme-p5 .tab-btn.on::before{opacity:1;transform:translateX(-50%) skewX(-12deg) scale(1) !important}
+html.theme-p5 .tab-btn::before{top:auto !important;bottom:3px;height:0 !important;width:26px !important}
+html.theme-p5 .tab-btn.on{color:#fff}
+html.theme-p5 .tab-btn.on svg{color:var(--p5-red-hi)}
+html.theme-p5 .tab-btn.on .tab-lbl{font-style:normal;font-weight:800}
+html.theme-p5.is-desktop-layout .tab-btn::before{border-bottom:none;border-left:3px solid #fff;transform:none !important;background:rgba(255,255,255,.06) !important}
+@media (min-width:900px){ html.theme-p5 .tab-btn::before{border-bottom:none;border-left:3px solid #fff;transform:none !important;background:rgba(255,255,255,.06) !important} }
+
+/* ヒーロー：赤一色の板に、白い斜線を1本だけ通す（控えめなカット） */
+html.theme-p5 .hero:not([style*="background"]),html.theme-p5 .achiev-hero,html.theme-p5 .settings-hero,
+html.theme-p5 .hero.all-done,html.theme-p5 .hero[style*="#1740B0"],html.theme-p5 .hero[style*="#4C1D95"]{
+  background:var(--p5-red) !important;
+  clip-path:polygon(0 0,100% 0,100% 82%,97% 100%,0 100%) !important;
+  box-shadow:none !important;
+}
+html.theme-p5 .hero::before,html.theme-p5 .achiev-hero::before,html.theme-p5 .settings-hero::before{
+  width:22%;height:200%;top:-50%;right:-6%;background:rgba(0,0,0,.28);transform:skewX(-22deg);opacity:1;
+}
+html.theme-p5 .hero::after{width:3px;height:200%;top:-50%;right:19%;left:auto;bottom:auto;background:rgba(255,255,255,.75);transform:skewX(-22deg)}
+
+/* ── 明度で重要度を示す：今日やるカードは明るく、それ以外は一段暗く ── */
+html.theme-p5 .card{box-shadow:none;border:1px solid rgba(255,255,255,.1)}
+html.theme-p5 .card.due,html.theme-p5 .card.over{background:#28262B;border-color:rgba(255,255,255,.18)}
+html.theme-p5 #p-upcoming .card,html.theme-p5 .plan-list{background:#1A191D}
+html.theme-p5 .today-done-header,html.theme-p5 .today-done-body{background:#18171A}
+html.theme-p5 .card.due,html.theme-p5 .card.over,html.theme-p5 .card.plan,html.theme-p5 .card.todo,html.theme-p5 .card.fwd{border-left-width:3px}
+/* サブカラー削減：期限超過・ToDo・計画も赤／白の濃淡で表す */
+html.theme-p5 .card.due{border-left-color:var(--p5-red)}
+html.theme-p5 .card.over{border-left-color:var(--p5-red-hi)}
+html.theme-p5 .card.todo{border-left-color:#EDEAE6}
+html.theme-p5 .card.plan{border-left-color:rgba(255,255,255,.45)}
+html.theme-p5 .card-when.over,html.theme-p5 .card-when-chip.over,html.theme-p5 .plan-row.over .plan-row-meta,
+html.theme-p5 .card-snooze-note{color:var(--blue-d) !important}
+html.theme-p5 .card-when-chip.over{background:rgba(184,52,59,.16);border-color:rgba(184,52,59,.45)}
+html.theme-p5 .todo-half-tag{color:#EDEAE6;background:rgba(255,255,255,.1)}
+
+/* ── ボタン：普通の長方形。主ボタンだけ赤で、他は落ち着いたグレー ── */
+html.theme-p5 .btn-ok,html.theme-p5 .sheet-ok,html.theme-p5 .edit-save,html.theme-p5 .icrop-btn-ok,
+html.theme-p5 .ob-next,html.theme-p5 .tag-add-btn,html.theme-p5 .expired-plan-keep,html.theme-p5 .tle-btn.primary,
+html.theme-p5 [style*="#4F8EF7"]{
+  background:var(--p5-red) !important;color:#fff !important;box-shadow:none !important;font-style:normal;font-weight:800;
+}
+html.theme-p5 .btn-plan-ok,html.theme-p5 .edit-save[style*="--plan"],html.theme-p5 [style*="#0EA874"]{
+  background:#EDEAE6 !important;color:#141316 !important;box-shadow:none !important;font-style:normal;font-weight:800;
+}
+html.theme-p5 .btn-ok:active,html.theme-p5 .btn-plan-ok:active{transform:scale(.97)}
+html.theme-p5 .float-fab{background:var(--p5-red);border-radius:14px !important;box-shadow:0 4px 14px rgba(0,0,0,.5)}
+
+/* ── 選択中の状態は赤で一目で ── */
+html.theme-p5 .seg-btn.on,html.theme-p5 .plan-type-seg button.on,html.theme-p5 .layout-toggle-btn.on,
+html.theme-p5 .cal-mode-btn.active,html.theme-p5 .spread-intensity-btn.active{
+  background:var(--p5-red) !important;color:#fff !important;
+}
+html.theme-p5 .tagf-chip.all.active{background:#EDEAE6;border-color:#EDEAE6;color:#141316}
+html.theme-p5 .sheet-inp:focus,html.theme-p5 .edit-modal-inp:focus,html.theme-p5 .tag-add-inp:focus,
+html.theme-p5 .date-inp:focus{box-shadow:0 0 0 2px var(--blue-bd);background:rgba(255,255,255,.08)}
+
+/* ── シート：上端に赤いライン1本だけ ── */
+html.theme-p5 .sheet,html.theme-p5 .snooze-pick-box,html.theme-p5 .edit-modal-box,html.theme-p5 .dense-sheet,
+html.theme-p5 .tag-mgr-sheet,html.theme-p5 .backup-sheet,html.theme-p5 .all-logs-sheet,html.theme-p5 .guide-sheet,
+html.theme-p5 .pwa-sheet,html.theme-p5 .tle-panel,html.theme-p5 .expired-plan-box{border-top:2px solid var(--p5-red)}
+html.theme-p5 .toast,html.theme-p5 .undo-bar{border-left:3px solid var(--p5-red)}
+
+/* ── カレンダー：今日だけ赤い四角で ── */
+html.theme-p5 .cal-cell.today .cal-num{border-radius:3px;transform:none}
 
 /* ══════════════════════════════════════════════════════════════
    カラーテーマ：ホワイト＆ゴールド（html.theme-rm）
@@ -3210,7 +3345,7 @@ try{
 }catch(_){}
 try{ var _t=localStorage.getItem('fukushu-theme-v1'); /* 未設定ならホワイト＆ゴールドを既定にする */
   if(_t!=='default' && _t!=='p5'){ document.documentElement.classList.add('theme-rm'); document.querySelector('meta[name="theme-color"]').setAttribute('content','#FFFFFF'); }
-  else if(_t==='p5'){ document.documentElement.classList.add('theme-p5'); document.querySelector('meta[name="theme-color"]').setAttribute('content','#0B0B0D'); } }catch(_){}
+  else if(_t==='p5'){ document.documentElement.classList.add('theme-p5'); document.querySelector('meta[name="theme-color"]').setAttribute('content','#131215'); } }catch(_){}
 </script>
 <!-- クラウド同期（PC/スマホ間でのデータ共有）用SDK。読み込みに失敗してもアプリ本体の動作には影響しない -->
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -11312,7 +11447,7 @@ function setTodayLayout(mode){
 const THEME_KEY = 'fukushu-theme-v1';
 const THEMES = {
   default:{ label:'標準',             meta:'#F2F2F7', sw:['#2563EB','#F2F4F9'] },
-  p5:     { label:'レッド＆ブラック', meta:'#0B0B0D', sw:['#E60012','#0B0B0D'] },
+  p5:     { label:'レッド＆ブラック', meta:'#131215', sw:['#B8343B','#131215'] },
   rm:     { label:'ホワイト＆ゴールド', meta:'#FFFFFF', sw:['#0B2A5B','#FFFFFF','#D4A62A'] },
 };
 function getTheme(){
