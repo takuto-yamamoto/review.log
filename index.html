@@ -2698,7 +2698,11 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
   }
   .tab-lbl{ display:none; } /* 横幅が無いのでアイコンのみにする */
   .tab-btn{ flex:0 0 auto;min-height:40px;padding:8px 0; }
-  .tab-btn::before{ width:34px;height:30px; }
+  /* 細いレールではアイコンが縦中央に来るので、背景のピルも縦中央に揃える */
+  .tab-btn{ min-height:46px; }
+  .tab-btn::before{ top:50%;width:42px;height:36px;border-radius:12px;transform:translate(-50%,-50%) scale(.72); }
+  .tab-btn.on::before{ transform:translate(-50%,-50%) scale(1); }
+  .tab-btn.on svg{ transform:none; }
   .tbadge{ top:0;left:calc(50% + 9px); }
 
   /* ナビバーの上下の余白を削り、縦のスペースをコンテンツに回す */
@@ -2760,7 +2764,10 @@ html.is-landscape-phone-layout .tab-bar{
 }
 html.is-landscape-phone-layout .tab-lbl{ display:none; }
 html.is-landscape-phone-layout .tab-btn{ flex:0 0 auto;min-height:40px;padding:8px 0; }
-html.is-landscape-phone-layout .tab-btn::before{ width:34px;height:30px; }
+html.is-landscape-phone-layout .tab-btn{ min-height:46px; }
+html.is-landscape-phone-layout .tab-btn::before{ top:50%;width:42px;height:36px;border-radius:12px;transform:translate(-50%,-50%) scale(.72); }
+html.is-landscape-phone-layout .tab-btn.on::before{ transform:translate(-50%,-50%) scale(1); }
+html.is-landscape-phone-layout .tab-btn.on svg{ transform:none; }
 html.is-landscape-phone-layout .tbadge{ top:0;left:calc(50% + 9px); }
 html.is-landscape-phone-layout .nav-inner{ padding:6px 20px;max-width:680px;margin:0 auto; }
 html.is-landscape-phone-layout .nav-title{ font-size:17px; }
@@ -3242,15 +3249,6 @@ html.theme-rm .hero.today-peek-hero .hero-msg{color:#fff}
 html.theme-rm .hero.today-peek-hero .hero-sub{color:rgba(255,255,255,.85)}
 html.theme-rm .today-peek-eyebrow{color:var(--rm-gold)}
 
-/* レアルモードの名言ヒーロー */
-html.theme-rm .real-quote-hero{padding-top:16px;padding-bottom:18px}
-html.theme-rm .real-quote-mark{
-  position:relative;z-index:1;font-family:Georgia,'Times New Roman',serif;font-size:44px;line-height:.6;
-  height:20px;color:var(--rm-gold);font-weight:700;margin-bottom:4px
-}
-html.theme-rm .real-quote-text{font-weight:700;line-height:1.6;letter-spacing:.2px}
-html.theme-rm .real-quote-who{margin-top:10px;font-size:12px;font-weight:700;color:var(--rm-purple);letter-spacing:.3px}
-
 /* ── カード ── */
 html.theme-rm .card.due{border-left-color:var(--rm-royal)}
 html.theme-rm .card.todo{border-left-color:var(--rm-gold)}
@@ -3324,6 +3322,250 @@ html.theme-rm .cal-spread-icon{background:var(--rm-navy)}
 html.theme-rm .ob-badge{background:var(--rm-navy)}
 html.theme-rm .undo-bar-prog{background:var(--rm-gold)}
 html.theme-rm .undo-btn{color:var(--rm-gold-hi)}
+
+/* ══════════════════════════════════════════════════════════════
+   PC向け表示（html.pc-dense）
+   設定タブ「表示 → PC向け表示」で切り替え。Notionの埋め込みのように
+   横長で背の低い枠でも、今日のタスクを一画面にまとめて見渡せるようにする。
+   ・今日タブはスクロールさせず、カードを横にいくつも並べる
+   ・入り切らないときは JS(fitTodayPanel) が段階的に詰めて縮小して収める
+   ══════════════════════════════════════════════════════════════ */
+.nav-rec-btn{display:none}
+html.pc-dense .nav-rec-btn{
+  display:flex;align-items:center;gap:4px;cursor:pointer;
+  background:var(--blue-bg);border:1px solid var(--blue-bd);color:var(--blue-d);
+  padding:5px 10px 5px 8px;border-radius:100px;font-size:12.5px;font-weight:700;font-family:inherit
+}
+html.pc-dense .float-fab{display:none !important}
+/* Notionなどに埋め込んだとき境目がわかるよう、アプリ全体を角丸の枠で囲む。
+   外側は透明にして、埋め込み先の背景がそのまま見えるようにする */
+html.pc-dense{background:transparent !important;--pc-frame:rgba(15,15,20,.2)}
+html.pc-dense.theme-rm{--pc-frame:rgba(11,42,91,.28)}
+html.pc-dense.theme-p5{--pc-frame:rgba(184,52,59,.6)}
+html.pc-dense body{
+  border-radius:14px;overflow:hidden;clip-path:inset(0 round 14px);
+  box-shadow:none !important
+}
+html.pc-dense body::after{
+  content:'';position:fixed;inset:0;border:1.5px solid var(--pc-frame);border-radius:14px;
+  pointer-events:none;z-index:2147483000
+}
+html.pc-dense:not(.is-desktop-layout){--app-w:100vw}
+html.pc-dense .panels,html.pc-dense .nav-inner{max-width:none !important}
+html.pc-dense .nav-inner{padding-top:6px !important;padding-bottom:6px !important}
+html.pc-dense .nav-title{font-size:17px}
+html.pc-dense #p-today{
+  overflow:hidden;
+  padding:8px calc(12px + var(--safe-right)) 8px calc(12px + var(--safe-left)) !important;
+}
+html.pc-dense #p-today.pc-fit-scroll{overflow-y:auto}
+html.pc-dense #p-today > *{zoom:var(--pc-zoom,1)}
+html.pc-dense #p-today .backup-reminder{padding:8px 12px;margin-bottom:6px}
+html.pc-dense #p-today .hero{padding:9px 14px !important;margin-bottom:8px}
+html.pc-dense #p-today .hero-msg{font-size:15px !important;line-height:1.3}
+html.pc-dense #p-today .hero-sub{font-size:12px;margin-top:2px !important}
+html.pc-dense #p-today .hero.all-done{display:flex;flex-wrap:wrap;align-items:center;column-gap:12px;row-gap:2px;text-align:left !important}
+html.pc-dense #p-today .all-done-icon-wrap{width:40px;height:40px;margin:0;border-width:2px;flex-shrink:0}
+html.pc-dense #p-today .hero-streak-line{margin-top:0;margin-left:auto}
+html.pc-dense #p-today .tagf-wrap{position:static;padding:0 0 6px}
+html.pc-dense #p-today .tagf-chip{padding:4px 11px;font-size:12px}
+html.pc-dense #p-today .today-grid{
+  grid-template-columns:repeat(auto-fill,minmax(var(--pc-col,168px),1fr));
+  gap:7px;align-items:stretch
+}
+html.pc-dense #p-today .today-grid .sec{margin:6px 2px 0}
+html.pc-dense #p-today .today-grid .sec.sec-first{margin-top:0}
+html.pc-dense #p-today .today-grid .cw{aspect-ratio:auto}
+html.pc-dense #p-today .today-grid .card{aspect-ratio:auto;height:100%;padding:9px 10px}
+html.pc-dense #p-today .today-grid .card-name{font-size:13px}
+html.pc-dense #p-today .today-grid .card-status-row{margin-bottom:7px}
+html.pc-dense #p-today .today-grid .btn-ok,
+html.pc-dense #p-today .today-grid .btn-plan-ok{min-height:32px;padding:6px 4px;font-size:11.5px}
+html.pc-dense #p-today .today-grid .btn-snooze{width:32px;min-height:32px}
+html.pc-dense #p-today .today-grid .btn-edit,
+html.pc-dense #p-today .today-grid .btn-del{min-width:24px;min-height:24px}
+/* カードは「名前 → 期限チップと完了ボタンを1行」にまとめて背を低くする */
+html.pc-dense #p-today .today-grid{--pc-col:226px}
+html.pc-dense #p-today .today-grid .card{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;align-content:space-between;column-gap:6px}
+html.pc-dense #p-today .today-grid .card > *{flex:0 0 100%;min-width:0}
+html.pc-dense #p-today .today-grid .card-top{order:1;margin-bottom:5px}
+html.pc-dense #p-today .today-grid .card-name{-webkit-line-clamp:1}
+html.pc-dense #p-today .today-grid .card-meta-row,
+html.pc-dense #p-today .today-grid .card-tags-row{order:2;margin-bottom:5px}
+html.pc-dense #p-today .today-grid .plan-progress-lbl,
+html.pc-dense #p-today .today-grid .plan-progress-track,
+html.pc-dense #p-today .today-grid .plan-pace{order:3}
+html.pc-dense #p-today .today-grid .plan-pace{margin:0 0 5px}
+html.pc-dense #p-today .today-grid .card-snooze-note{order:4;margin:0 0 5px}
+html.pc-dense #p-today .today-grid .card-status-row{order:5;flex:0 1 auto;min-width:0;max-width:100%;margin:0;flex-wrap:nowrap}
+html.pc-dense #p-today .today-grid .step-mini-lbl{display:none}
+html.pc-dense #p-today .today-grid .card-when-chip{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:1}
+html.pc-dense #p-today .today-grid .acts{order:6;flex:0 0 auto;margin:0 0 0 auto;padding:0;gap:4px}
+html.pc-dense #p-today .today-grid .btn-ok,
+html.pc-dense #p-today .today-grid .btn-plan-ok{flex:0 0 auto;min-height:30px;padding:5px 9px;font-size:11px;white-space:nowrap}
+html.pc-dense #p-today .today-grid .btn-snooze{width:30px;min-height:30px}
+html.pc-dense #p-today .today-done-header{min-height:40px;padding:8px 14px}
+html.pc-dense #p-today .today-done-acc{margin-bottom:0;margin-top:8px}
+
+/* ヘッダー：アイコンを消し、今日タブでは見出しカードをタイトルの位置に置く */
+.nav-hero-slot{display:none}
+@media (max-width:640px){
+  html.pc-dense .nav-date{display:none}           /* 狭い枠では見出しを優先（日付は予定タブで確認できる） */
+  html.pc-dense .nav-rec-btn,html.pc-dense #todo-add-btn{padding:5px 9px 5px 7px !important}
+}
+html.pc-dense #nav-icon-wrap{display:none !important}
+html.pc-dense .nav-row > div:first-child{flex:1;min-width:0;margin-right:12px}
+html.pc-dense .nav-hero-slot{display:flex;flex:1;min-width:0}
+html.pc-dense .nav-hero-slot:empty{display:none}
+html.pc-dense .nav-hero{
+  flex:1;min-width:0;margin:0 !important;padding:8px 62px 8px 14px !important;
+  border-radius:10px !important;min-height:0;touch-action:pan-y
+}
+html.pc-dense .nav-hero .hero-msg{
+  font-size:14.5px !important;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left
+}
+html.pc-dense .nav-hero .hero-sub,
+html.pc-dense .nav-hero .today-peek-eyebrow,
+html.pc-dense .nav-hero .study-hero-sparkle{display:none}
+html.pc-dense .nav-hero.all-done{display:flex;align-items:center;gap:10px;text-align:left !important}
+html.pc-dense .nav-hero .all-done-icon-wrap{width:26px;height:26px;margin:0;border-width:1.5px;flex-shrink:0;box-shadow:none}
+html.pc-dense .nav-hero .all-done-icon-fallback svg{width:16px;height:16px}
+html.pc-dense .nav-hero .hero-streak-line{margin:0 0 0 auto;padding:3px 9px;font-size:11.5px;flex-shrink:0}
+
+/* ヘッダーの見出しはカード風にせず、タイトルと同じ書体のすっきりした1行にする */
+html.pc-dense #nav-hero-slot > .nav-hero{
+  background:none !important;border:none !important;box-shadow:none !important;clip-path:none !important;
+  padding:2px 0 2px 11px !important;border-radius:0 !important;overflow:visible;
+  animation:none !important;filter:none !important
+}
+html.pc-dense #nav-hero-slot > .nav-hero::before{
+  content:'';display:block;position:absolute;left:0;top:50%;right:auto;bottom:auto;
+  width:3.5px;height:1.15em;border-radius:3px;transform:translateY(-50%) !important;
+  background:var(--blue) !important;opacity:1 !important
+}
+html.pc-dense #nav-hero-slot > .nav-hero::after{display:none !important}
+html.pc-dense #nav-hero-slot > .nav-hero .hero-msg{
+  font-family:'M PLUS Rounded 1c','Outfit',sans-serif;font-size:16px !important;font-weight:900;
+  color:var(--lbl) !important;text-shadow:none !important;letter-spacing:-.2px;font-style:normal
+}
+html.pc-dense.theme-rm #nav-hero-slot > .nav-hero .hero-msg{color:var(--rm-navy) !important}
+html.pc-dense.theme-rm #nav-hero-slot > .nav-hero::before{background:var(--rm-gold) !important}
+html.pc-dense.theme-p5 #nav-hero-slot > .nav-hero::before{background:var(--p5-red) !important}
+html.pc-dense.theme-p5 #nav-hero-slot > .nav-hero .hero-msg{font-family:var(--p5-font-head);font-weight:400}
+html.pc-dense #nav-hero-slot > .nav-hero.all-done::before{background:#10B981 !important}
+html.pc-dense #nav-hero-slot > .nav-hero.today-peek-hero::before{background:#6366F1 !important}
+html.pc-dense #nav-hero-slot > .nav-hero .all-done-icon-wrap{display:none}
+html.pc-dense #nav-hero-slot > .nav-hero .hero-streak-line{background:var(--fill) !important;color:var(--lbl2) !important;animation:none}
+/* カード内の文字：1行に収め、はみ出す分は文字を少し小さくして入れる（JSの_pcFitText） */
+html.pc-dense #p-today .today-grid .card-name{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html.pc-dense #p-today .today-grid .card-when-chip{padding:3px 8px;max-width:100%}
+html.pc-dense #p-today .today-grid .card-when-chip svg{flex-shrink:0}
+/* 完了ボタンは「完了」だけにして横幅を節約する（アイコンはそのまま） */
+html.pc-dense #p-today .today-grid .btn-ok,
+html.pc-dense #p-today .today-grid .btn-plan-ok{font-size:0 !important;gap:4px;padding:5px 10px}
+html.pc-dense #p-today .today-grid .btn-ok::after,
+html.pc-dense #p-today .today-grid .btn-plan-ok::after{content:'完了';font-size:11.5px;font-weight:700}
+html.pc-dense #p-today .today-grid .card{row-gap:5px}
+/* 入り切らないときの詰め方（段階1：補足情報を隠す／段階2：列を細くする） */
+html.pc-dense #p-today[data-fit="1"] .card-tags-row,
+html.pc-dense #p-today[data-fit="2"] .card-tags-row,
+html.pc-dense #p-today[data-fit="1"] .card-snooze-note,
+html.pc-dense #p-today[data-fit="2"] .card-snooze-note,
+html.pc-dense #p-today[data-fit="1"] .hero-sub,
+html.pc-dense #p-today[data-fit="2"] .hero-sub,
+html.pc-dense #p-today[data-fit="2"] .step-mini-lbl,
+html.pc-dense #p-today[data-fit="2"] .plan-pace{display:none}
+html.pc-dense #p-today[data-fit="2"] .today-grid{--pc-col:196px}
+html.pc-dense #p-today[data-fit="2"] .today-grid .card-status-row{margin-bottom:5px}
+
+/* ══ PC向け表示：今日タブ以外も含めた全体の最適化 ════════════════ */
+html.pc-dense .panel{padding-bottom:calc(14px + var(--safe-bottom)) !important}
+html.pc-dense #p-upcoming,html.pc-dense #p-study,html.pc-dense #p-settings,html.pc-dense #p-plan{container-type:inline-size}
+html.pc-dense .sec{margin:12px 0 6px}
+html.pc-dense .sec.sec-first{margin-top:2px}
+html.pc-dense .panel:not(#p-today) .hero{padding:13px 18px !important;margin-bottom:10px}
+html.pc-dense .panel:not(#p-today) .hero-msg{font-size:16px}
+html.pc-dense .plan-add-cta{padding:10px 14px;margin:8px 0}
+html.pc-dense .plan-add-cta-icon{width:32px;height:32px}
+
+/* 左右2列（各列が独立してスクロール） */
+.pc-cols{display:block}
+@container (min-width:640px){
+  html.pc-dense .pc-cols{
+    display:grid;grid-template-columns:minmax(300px,.92fr) minmax(0,1.08fr);gap:16px;
+    height:100%;min-height:0
+  }
+  html.pc-dense .pc-col{
+    overflow-y:auto;min-height:0;overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;scrollbar-width:thin;padding:0 2px 12px
+  }
+  html.pc-dense .pc-col-l{position:relative}
+  html.pc-dense .pc-settings{columns:2;column-gap:16px}
+  html.pc-dense .settings-group{break-inside:avoid;-webkit-column-break-inside:avoid;padding-top:1px}
+  html.pc-dense .settings-group .sec{margin-top:6px}
+}
+@container (min-width:1000px){
+  html.pc-dense .pc-settings{columns:3}
+}
+
+/* 予定タブ：カレンダーは常に表示し、カードは横にも並べる */
+html.pc-dense #p-upcoming .cal-toggle{display:none}
+html.pc-dense #p-upcoming .cal-wrap{max-height:none !important;opacity:1 !important;pointer-events:auto !important;margin-bottom:10px}
+html.pc-dense #p-upcoming .cal-grid:not(.cal-grid-day) .cal-cell{aspect-ratio:auto;min-height:0;height:40px}
+html.pc-dense #p-upcoming .cal-grid{padding-bottom:8px}
+html.pc-dense #p-upcoming .cal-header{padding:6px 16px}
+html.pc-dense #p-upcoming .cal-nav-btn{width:34px;height:34px}
+html.pc-dense #p-upcoming .cal-day-list{max-height:none}
+html.pc-dense #p-upcoming .pc-col-r{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));grid-auto-rows:max-content;gap:8px;align-content:start
+}
+html.pc-dense #p-upcoming .pc-col-r > :not(.cw){grid-column:1/-1}
+html.pc-dense #p-upcoming .pc-col-r > .sec{margin:8px 2px 0}
+html.pc-dense #p-upcoming .pc-col-r > .sec.sec-first{margin-top:0}
+html.pc-dense #p-upcoming .pc-col-r .cw{margin:0}
+html.pc-dense #p-upcoming .pc-col-r .card{height:100%;padding:11px 13px}
+html.pc-dense #p-upcoming .pc-col-r .plan-add-cta{margin:0 0 2px}
+html.pc-dense #p-upcoming .tagf-wrap{padding-top:0}
+
+/* 計画タブ：一覧を複数列のタイルに */
+html.pc-dense #p-plan .plan-list{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));
+  gap:1px;background:var(--sep)
+}
+html.pc-dense #p-plan .plan-row{background-color:var(--card);border-bottom:none;padding:11px 12px}
+html.pc-dense #p-plan .plan-row-bar-track{max-width:none}
+
+/* 勉強時間タブ */
+html.pc-dense #p-study .hero{margin-bottom:10px}
+html.pc-dense #p-study .hero [style*="font-size:30px"]{font-size:24px !important;margin-top:2px !important}
+html.pc-dense #p-study .hero img,html.pc-dense #p-study .hero > div > div:first-child{width:38px !important;height:38px !important}
+html.pc-dense #p-study .pc-col-l > .btn-ok{padding:12px !important;font-size:15px !important}
+html.pc-dense #p-study .pc-col-r > .sec:first-child{margin-top:2px}
+
+/* 設定タブ */
+html.pc-dense .settings-row{padding:12px 14px;min-height:50px}
+html.pc-dense .settings-row-icon{width:32px;height:32px}
+html.pc-dense .theme-toggle{padding:0 14px 12px}
+
+/* シート・ダイアログは画面いっぱいに広げず、中央の読みやすい幅に */
+html.pc-dense .sheet,html.pc-dense .tag-mgr-sheet,html.pc-dense .backup-sheet,html.pc-dense .all-logs-sheet,
+html.pc-dense .guide-sheet,html.pc-dense .dense-sheet,html.pc-dense .pwa-sheet,html.pc-dense .tle-panel{
+  left:0;right:0;margin:0 auto;max-width:600px
+}
+html.pc-dense .snooze-pick-box,html.pc-dense .edit-modal-box,html.pc-dense .expired-plan-box{max-width:600px;margin:0 auto}
+html.pc-dense .undo-bar{max-width:520px;margin:0 auto}
+
+/* マウス操作向けのホバー表現 */
+@media (hover:hover){
+  html.pc-dense .card{transition:transform .15s var(--ease-out),box-shadow .15s var(--ease-out)}
+  html.pc-dense .cw:hover .card{transform:translateY(-1px);box-shadow:var(--shadow)}
+  html.pc-dense .plan-row:hover{background-color:var(--bg)}
+  html.pc-dense .settings-row[onclick]:hover,html.pc-dense .backup-row:hover{background:var(--fill)}
+  html.pc-dense .tagf-chip:not(.active):hover{border-color:var(--lbl3)}
+  html.pc-dense .cal-cell:hover{background:var(--fill)}
+  html.pc-dense .pc-col::-webkit-scrollbar{width:8px}
+  html.pc-dense .pc-col::-webkit-scrollbar-thumb{background:var(--sep);border-radius:8px}
+}
 
 /* ── 設定：テーマ切り替えボタン ── */
 .theme-toggle{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 16px 14px}
@@ -3471,6 +3713,10 @@ try{
 try{ var _t=localStorage.getItem('fukushu-theme-v1'); /* 未設定ならホワイト＆ゴールドを既定にする */
   if(_t!=='default' && _t!=='p5'){ document.documentElement.classList.add('theme-rm'); document.querySelector('meta[name="theme-color"]').setAttribute('content','#FFFFFF'); }
   else if(_t==='p5'){ document.documentElement.classList.add('theme-p5'); document.querySelector('meta[name="theme-color"]').setAttribute('content','#131215'); } }catch(_){}
+/* PC向け表示も描画前に反映（端末の設定 → なければURLの ?pc=1 / #pc） */
+try{ var _pc=null; try{ _pc=localStorage.getItem('fukushu-pc-dense-v1'); }catch(_){}
+  if(_pc!=='1' && _pc!=='0'){ var _q=new URLSearchParams(location.search).get('pc'); _pc=(_q==='1'||/(^#|&)pc(=1)?(&|$)/.test(location.hash))?'1':'0'; }
+  if(_pc==='1') document.documentElement.classList.add('pc-dense'); }catch(_){}
 </script>
 <!-- クラウド同期（PC/スマホ間でのデータ共有）用SDK。読み込みに失敗してもアプリ本体の動作には影響しない -->
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -3490,8 +3736,12 @@ try{ var _t=localStorage.getItem('fukushu-theme-v1'); /* 未設定ならホワ�
             <div id="nav-icon" style="width:38px;height:38px;border-radius:50%;overflow:hidden;background:var(--blue-bg);border:2px solid var(--blue-bd);display:flex;align-items:center;justify-content:center;color:var(--blue-d);transition:opacity .15s"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
           </div>
           <div class="nav-title" id="nav-title">今日のタスク</div>
+          <div class="nav-hero-slot" id="nav-hero-slot"></div>
         </div>
         <div style="display:flex;align-items:center;gap:10px">
+          <button onclick="openNewStudySheet()" class="nav-rec-btn" aria-label="勉強時間を記録">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M9 2h6"/></svg>記録
+          </button>
           <button onclick="openTodoAddSheet()" aria-label="ToDoを追加" style="background:var(--blue-bg);border:1px solid var(--blue-bd);cursor:pointer;padding:5px 10px 5px 8px;color:var(--blue-d);display:flex;align-items:center;gap:4px;border-radius:100px;font-size:12.5px;font-weight:700;transition:opacity .12s" id="todo-add-btn">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>ToDo
           </button>
@@ -3697,7 +3947,7 @@ try{ var _t=localStorage.getItem('fukushu-theme-v1'); /* 未設定ならホワ�
    B5 fix: define proper large/small variants, no string.replace() hacks
 ══════════════════════════════════════════ */
 /* ══ App version ════════════════════════ */
-const APP_VERSION = 'v4.1.0';
+const APP_VERSION = 'v4.4.2';
 const APP_BUILD   = '2026-10-24';
 
 const IC = {
@@ -7707,6 +7957,7 @@ function toggleTodayDone(){
   _todayDoneOpen = !_todayDoneOpen;
   const acc = document.getElementById('today-done-acc');
   if(acc){ acc.classList.toggle('open', _todayDoneOpen); haptic(); }
+  if(typeof scheduleFitTodayPanel==='function') scheduleFitTodayPanel(330); // 開閉アニメーション後に収め直す
 }
 
 /* ══════════════════════════════════════════
@@ -7740,6 +7991,7 @@ function render(){
   // 表示されることはない。
   const activeTab = document.querySelector('.tab-btn.on')?.dataset?.tab || 'today';
   if(activeTab==='today')    rToday(todayL, active.length > 0, doneL);
+  if(activeTab==='upcoming' && isPcDense()){ _calInit(); _calOpen = true; } // PC向け表示ではカレンダーを常に開いておく
   if(activeTab==='upcoming') rUpcoming(upL);
   if(activeTab==='plan')     rPlan();
   if(activeTab==='study')    rStudy();
@@ -7756,7 +8008,7 @@ function render(){
 function _rTodayMain(list, hasActive, allDone){
   const el=document.getElementById('p-today');
   const bannerHtml = backupBannerHtml();
-  const compact = isTodayGridLayout();
+  const compact = isTodayGridLayout() || isPcDense();
 
   // ── タグ絞り込み（予定タブと同じUI。設定でON/OFF、デフォルトON）──
   const t0 = td();
@@ -7942,10 +8194,10 @@ function _rTodayMain(list, hasActive, allDone){
         </div>`+todayTagFilterBar+wrap(todoCardsHtml+longtermTodoCardsHtml)+todayDoneAccHtml();
     } else {
       el.innerHTML=bannerHtml+`
-        ${getTheme()==='rm' ? realQuoteHeroHtml() : `<div class="hero">
+        <div class="hero">
           <div class="hero-msg">単元を追加しましょう</div>
-          <div class="hero-sub" style="margin-top:6px">＋ボタンから最初の単元を登録できます</div>
-        </div>`}`+todayTagFilterBar+wrap(todoCardsHtml+longtermTodoCardsHtml)+`
+          <div class="hero-sub" style="margin-top:6px">「予定」タブから最初の単元を登録できます</div>
+        </div>`+todayTagFilterBar+wrap(todoCardsHtml+longtermTodoCardsHtml)+`
         <div class="empty">
           <div class="empty-icon">${IC.calendarLg}</div>
           <p>復習したい単元を追加すると<br>スケジュールが自動で組まれます</p>
@@ -8014,8 +8266,116 @@ function rToday(list, hasActive, allDone){
   else _rTodayMain(list, hasActive, allDone);
   const nt=document.getElementById('nav-title');
   if(nt) nt.textContent = _todayPeek ? '明日のタスク' : TABS.today;
+  _pcMoveHeroToNav();
   _bindTodayPeekSwipe();
+  fitTodayPanel();
 }
+
+/* PC向け表示：今日タブの見出しカード（「今日の計画タスクがあります」など）を
+   ヘッダーのアイコン・タイトルの位置へ移し、タスク一覧に使える高さを増やす */
+function _pcMoveHeroToNav(){
+  const slot=document.getElementById('nav-hero-slot');
+  const nt=document.getElementById('nav-title');
+  if(!slot) return;
+  slot.innerHTML='';
+  const panel=document.getElementById('p-today');
+  const hero=isPcDense() && panel ? panel.querySelector(':scope > .hero') : null;
+  if(!hero){ if(nt) nt.style.display=''; return; }
+  hero.classList.add('nav-hero');
+  slot.appendChild(hero);
+  if(nt) nt.style.display='none';
+}
+
+/* ══ PC向け表示：今日タブを一画面に収める ══════════════════
+   スクロールさせない代わりに、はみ出す場合は
+   ① タグ・延期メモなどの補足を隠す → ② 列を細くする → ③ 全体を少しずつ縮小
+   の順に詰めていく。最小まで縮めても入らないほど多い日だけ、
+   タスクが隠れてしまわないようスクロールを許可する。 */
+const PC_DENSE_KEY = 'fukushu-pc-dense-v1';
+function _pcDenseUrlDefault(){
+  try{
+    const q = new URLSearchParams(location.search).get('pc');
+    if(q==='1') return true;
+    if(/(^#|&)pc(=1)?(&|$)/.test(location.hash)) return true;
+  }catch(_){}
+  return false;
+}
+function isPcDense(){
+  try{
+    const v = localStorage.getItem(PC_DENSE_KEY);
+    if(v==='1') return true;
+    if(v==='0') return false;
+  }catch(_){}
+  return _pcDenseUrlDefault();
+}
+function setPcDense(on){
+  try{ localStorage.setItem(PC_DENSE_KEY, on?'1':'0'); }catch(_){}
+  document.documentElement.classList.toggle('pc-dense', on);
+  applyResponsiveLayoutClass();
+  haptic('light');
+  renderSettings();
+  render();
+  if(!on){
+    const p=document.getElementById('p-today');
+    if(p){ p.removeAttribute('data-fit'); p.style.removeProperty('--pc-zoom'); p.classList.remove('pc-fit-scroll'); }
+  }
+  toast(IC.checkCircle, on ? 'PC向け表示にしました' : 'スマホ向け表示に戻しました');
+}
+const PC_FIT_ZOOMS = [0.94, 0.88, 0.82, 0.76, 0.7, 0.64, 0.58];
+function fitTodayPanel(){
+  const p = document.getElementById('p-today'); if(!p) return;
+  if(!document.documentElement.classList.contains('pc-dense')){
+    p.removeAttribute('data-fit'); p.style.removeProperty('--pc-zoom'); p.classList.remove('pc-fit-scroll');
+    return;
+  }
+  if(!p.clientHeight) return; // 非表示中は測れない
+  p.classList.remove('pc-fit-scroll');
+  p.scrollTop = 0;
+  const fits = () => p.scrollHeight <= p.clientHeight + 1;
+  const steps = [[0,1],[1,1],[2,1], ...PC_FIT_ZOOMS.map(z=>[2,z])];
+  let textFitFor = null;
+  for(const [fit, zoom] of steps){
+    if(fit) p.setAttribute('data-fit', fit); else p.removeAttribute('data-fit');
+    if(zoom===1) p.style.removeProperty('--pc-zoom'); else p.style.setProperty('--pc-zoom', zoom);
+    const colKey = fit>=2 ? 'narrow' : 'wide'; // 列幅が変わったときだけ文字の詰め直しをする
+    if(textFitFor!==colKey){ _pcFitText(p); textFitFor=colKey; }
+    if(fits()) return;
+  }
+  p.classList.add('pc-fit-scroll');
+}
+// カード名・期限チップがはみ出すとき、最小サイズまで少しずつ文字を小さくする（それでも入らなければ「…」）
+function _pcFitText(root){
+  root.querySelectorAll('.today-grid .card-name, .today-grid .card-when-chip').forEach(el=>{
+    el.style.fontSize='';
+    let fs = parseFloat(getComputedStyle(el).fontSize) || 12;
+    const min = el.classList.contains('card-name') ? 10.5 : 8.5;
+    let guard = 0;
+    while(el.scrollWidth > el.clientWidth + 1 && fs > min && guard++ < 16){
+      fs = Math.max(min, fs - 0.5);
+      el.style.fontSize = fs + 'px';
+    }
+  });
+}
+let _pcFitTimer = null;
+function scheduleFitTodayPanel(delay){
+  clearTimeout(_pcFitTimer);
+  _pcFitTimer = setTimeout(fitTodayPanel, delay||0);
+}
+window.addEventListener('resize', ()=>scheduleFitTodayPanel(120));
+// 枠の大きさが変わったとき（Notionで埋め込み枠を伸縮した時など）にも収め直す
+try{
+  if(typeof ResizeObserver!=='undefined'){
+    let _pcLastBox='';
+    const _pcRO=new ResizeObserver(entries=>{
+      const r=entries[0].contentRect, key=Math.round(r.width)+'x'+Math.round(r.height);
+      if(key===_pcLastBox) return; _pcLastBox=key;
+      scheduleFitTodayPanel(60);
+    });
+    const _pcObs=()=>{ const el=document.getElementById('p-today'); if(el) _pcRO.observe(el); };
+    if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',_pcObs); else _pcObs();
+  }
+}catch(_){}
+try{ document.fonts && document.fonts.ready.then(()=>scheduleFitTodayPanel(0)); }catch(_){}
 
 function _tomorrowPeekData(){
   const tm = addD(td(),1);
@@ -8128,7 +8488,7 @@ function rTodayTomorrow(){
 // ヒーローの横スワイプ：指に1:1で追従し、離した位置／勢いで切り替えるか戻すかを決める
 function _bindTodayPeekSwipe(){
   const panel=document.getElementById('p-today');
-  const hero=panel && panel.querySelector('.hero');
+  const hero=document.querySelector('#nav-hero-slot > .hero') || (panel && panel.querySelector('.hero'));
   if(!hero || hero._peekBound) return;
   hero._peekBound=true;
   let sx=null, sy=null, axis=null, dx=0, t0=0;
@@ -8224,31 +8584,6 @@ function _todayPeekCommit(dir){
     panel.style.opacity='';
     setTimeout(()=>{ panel.style.transition=''; panel._peekAnimating=false; }, 440);
   }, 200);
-}
-
-/* ══ ホワイト＆ゴールド（レアル）モード限定：名言ヒーロー ══
-   今日タブの「単元を追加しましょう」の場所に、マドリディスモの名言をランダムで1つ表示する。
-   再描画のたびに入れ替わるとちらつくので、アプリを開くたびに1回だけ選ぶ。 */
-const REAL_QUOTES = [
-  {who:'ルカ・モドリッチ', text:'小さい？細過ぎる？僕は自分を疑ったことが一度もない。むしろその言葉はモチベーションになる。'},
-  {who:'ルカ・モドリッチ', text:'経験があきらめるなと言っている。'},
-  {who:'クリスティアーノ・ロナウド', text:'苦しみのない栄光などない。'},
-  {who:'クリスティアーノ・ロナウド', text:'世界一でいる為のモチベーションの秘訣は、情熱だよ。'},
-  {who:'アルフレード・ディ・ステファノ', text:'まずは汗をかかないと、ねえ！'},
-  {who:'サンティアゴ・ベルナベウ', text:'レアル・マドリードのユニフォームは白だ。泥、汗、そして血でさえも汚れるかもしれない。しかし、恥では決して！'},
-  {who:'セルヒオ・ラモス', text:'このシャツを着るとき、あなたは頂点に到達したことを知る。これ以上の名誉はない。'},
-  {who:'フアニート', text:'ベルナベウでの90分は、とても長い時間だ。'},
-  {who:'マルセロ・ヴィエイラ', text:'僕はいつだってモチベーションを失わなかったし、笑顔を忘れたことも一度だってないよ'},
-];
-const _realQuoteIdx = Math.floor(Math.random()*REAL_QUOTES.length);
-function realQuoteHeroHtml(){
-  const q = REAL_QUOTES[_realQuoteIdx];
-  const long = q.text.length > 40;
-  return `<div class="hero real-quote-hero">
-    <div class="real-quote-mark" aria-hidden="true">“</div>
-    <div class="hero-msg real-quote-text" style="font-size:${long?15:17}px">${esc(q.text)}</div>
-    <div class="hero-sub real-quote-who">— ${esc(q.who)}</div>
-  </div>`;
 }
 
 /* ══ タグの配置（自由に並べて保存） ════════════════════
@@ -11286,6 +11621,10 @@ function switchTab(btn){
   });
 
   document.getElementById('nav-title').textContent=TABS[id];
+  if(id!=='today'){ // 今日タブ以外ではヘッダーの見出しを通常のタイトルに戻す
+    const _slot=document.getElementById('nav-hero-slot'); if(_slot) _slot.innerHTML='';
+    document.getElementById('nav-title').style.display='';
+  }
   // Hide tag nav button on settings tab (it's accessible from settings panel itself)
   const tagBtn    = document.getElementById('tag-mgr-btn');
   if(tagBtn)    tagBtn.style.display    = id === 'settings' ? 'none' : '';
@@ -12035,7 +12374,7 @@ function todoCardHtml(x, compact){
   let whenChip;
   if(x.longterm){
     const remain = diff(x.deadline||t);
-    const dLabel = fmtShortText(x.deadline||t);
+    const dLabel = compact ? (()=>{const dd=new Date((x.deadline||t)+'T00:00:00');return `${dd.getMonth()+1}/${dd.getDate()}`;})() : fmtShortText(x.deadline||t);
     const remainTxt = remain>0 ? `${dLabel}まで` : remain===0 ? '今日が目安の期限' : `${dLabel}が目安でした`;
     whenChip = `<div class="card-when-chip due">${IC.calendar} ${remainTxt}</div>`;
   } else {
@@ -12543,6 +12882,18 @@ function renderSettings(){
       </div>
     </div>
 
+    <div class="sec">PC・埋め込み</div>
+    <div class="settings-section" style="margin-bottom:12px">
+      <div class="settings-row">
+        <div class="settings-row-icon" style="background:#EEF2FF;color:var(--blue-d)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
+        <div class="settings-row-body">
+          <div class="settings-row-title">PC向け表示</div>
+          <div class="settings-row-sub">今日のタスクを横に並べ、スクロールせず一画面で見渡せます（この端末だけに適用）</div>
+        </div>
+        <button class="settings-switch${isPcDense()?' on':''}" role="switch" aria-checked="${isPcDense()?'true':'false'}" aria-label="PC向け表示" onclick="setPcDense(${isPcDense()?'false':'true'})"></button>
+      </div>
+    </div>
+
     <div class="sec">使い方ガイド</div>
     <div class="settings-section" style="margin-bottom:12px">
       <div class="settings-row" onclick="openGuideSheet('overview')" style="cursor:pointer">
@@ -12871,7 +13222,8 @@ requestPersistentStorage();
 function applyResponsiveLayoutClass(){
   const w = window.innerWidth, h = window.innerHeight;
   const isDesktop = w >= 900;
-  const isLandscapePhone = !isDesktop && w > h && w <= 899 && h <= 520;
+  const pcDense = document.documentElement.classList.contains('pc-dense');
+  const isLandscapePhone = !isDesktop && ((w > h && w <= 899 && h <= 520) || (pcDense && w >= 480));
   document.documentElement.classList.toggle('is-desktop-layout', isDesktop);
   document.documentElement.classList.toggle('is-landscape-phone-layout', isLandscapePhone);
 }
@@ -12880,6 +13232,58 @@ window.addEventListener('resize', applyResponsiveLayoutClass);
 window.addEventListener('orientationchange', applyResponsiveLayoutClass);
 // bfcache（戻る/進む操作でのページ復元）でリサイズイベントが飛ばないことがあるため
 window.addEventListener('pageshow', applyResponsiveLayoutClass);
+
+/* ══ PC向け表示：各タブを横に広く使うレイアウト ══════════════════
+   ・予定タブ：左にカレンダー、右に予定カードのグリッド
+   ・勉強時間タブ：左に総時間・グラフ、右にタグ別内訳と記録
+   ・設定タブ：セクションを2段組みに
+   各描画関数の後で要素を左右の列に振り分ける（描画ロジック自体には手を入れない）。
+   列ごとに独立してスクロールし、再描画してもスクロール位置を保つ。
+   枠が狭いとき（コンテナ幅640px未満）は CSS 側で縦積みに戻る。 */
+function _pcSplitPanel(el, isLeft, savedScroll){
+  const left=document.createElement('div'); left.className='pc-col pc-col-l';
+  const right=document.createElement('div'); right.className='pc-col pc-col-r';
+  [...el.children].forEach(c=>(isLeft(c)?left:right).appendChild(c));
+  const wrap=document.createElement('div'); wrap.className='pc-cols';
+  wrap.append(left,right);
+  el.appendChild(wrap);
+  if(savedScroll && savedScroll.length===2){ left.scrollTop=savedScroll[0]; right.scrollTop=savedScroll[1]; }
+}
+function _pcColScroll(el){
+  return el ? [...el.querySelectorAll(':scope > .pc-cols > .pc-col')].map(c=>c.scrollTop) : [];
+}
+(function(){
+  function wrapRender(name, panelId, post){
+    const orig = window[name]; if(typeof orig!=='function') return;
+    window[name] = function(){
+      const el = document.getElementById(panelId);
+      const saved = _pcColScroll(el);
+      const r = orig.apply(this, arguments);
+      if(el && isPcDense()) post(el, saved);
+      return r;
+    };
+  }
+  wrapRender('rUpcoming','p-upcoming',(el,saved)=>{
+    _pcSplitPanel(el, c=>c.classList.contains('cal-toggle')||c.classList.contains('cal-wrap'), saved);
+  });
+  wrapRender('rStudy','p-study',(el,saved)=>{
+    _pcSplitPanel(el, c=>c.classList.contains('hero')
+      || (c.tagName==='BUTTON' && c.classList.contains('btn-ok'))
+      || c.classList.contains('settings-section')
+      || !!c.querySelector('#study-weektrend-body'), saved);
+  });
+  wrapRender('renderSettings','p-settings',(el)=>{
+    const box=document.createElement('div'); box.className='pc-settings';
+    let group=null;
+    [...el.children].forEach(c=>{
+      if(c.classList.contains('sec') || !group){
+        group=document.createElement('div'); group.className='settings-group'; box.appendChild(group);
+      }
+      group.appendChild(c);
+    });
+    el.appendChild(box);
+  });
+})();
 
 /* ══ Init ══════════════════════════════ */
 (function init(){
