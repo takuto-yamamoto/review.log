@@ -3336,7 +3336,132 @@ html.theme-rm .undo-btn{color:var(--rm-gold-hi)}
 .theme-swatch{width:30px;height:30px;border-radius:50%;border-radius:8px;flex-shrink:0;overflow:hidden;display:flex;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
 .theme-swatch i{flex:1}
 
+/* ══ 埋め込み互換：アプリ内確認ダイアログ ══ */
+.app-confirm{position:fixed;inset:0;z-index:9800;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.45)}
+.app-confirm-box{background:var(--card);border-radius:20px;padding:22px 20px 16px;width:100%;max-width:320px;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+.app-confirm-msg{font-size:14.5px;color:var(--lbl);line-height:1.7;text-align:center;margin-bottom:18px;white-space:pre-wrap}
+.app-confirm-acts{display:flex;gap:10px}
+.app-confirm-acts button{flex:1;border:none;border-radius:12px;padding:13px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;min-height:46px}
+.app-confirm-cancel{background:var(--fill);color:var(--lbl)}
+.app-confirm-ok{background:var(--blue);color:#fff}
+.app-confirm-ok.danger{background:var(--red)}
+/* 埋め込みの高さが低くても、ガイドの吹き出しのボタンが画面外に出て押せなくならないように */
+.ob-bubble{max-height:calc(100% - 24px);overflow-y:auto;-webkit-overflow-scrolling:touch}
+
 </style>
+<script>
+/* ══ 埋め込み（Notion等のiframe）互換レイヤー ══════════════════
+   Notionの埋め込みブロックはサンドボックス化されたiframeで表示されるため、
+   単体で開いたときには問題ない次の機能が「無反応」になることがある。
+   ・confirm()/alert() … ダイアログ許可が無いと即 false が返り、ボタンが効かない
+   ・localStorage      … Cookieブロック設定などで参照自体が例外になり、スクリプト全体が止まる
+   ・ドラッグ操作       … iframeの外でマウスを離すと mouseup が届かず、操作が固まったままになる
+   ・クリップボード/共有 … 権限ポリシーが無いと失敗する
+   ここで先回りして吸収しておく。 */
+window.__IS_EMBEDDED = (function(){ try{ return window.self !== window.top; }catch(_){ return true; } })();
+if(window.__IS_EMBEDDED) document.documentElement.classList.add('is-embedded');
+
+// localStorage が「読むことすら」できない環境だけ、メモリ上の代替に差し替える
+// （書き込みだけ失敗する＝容量不足のケースでは差し替えない。実データが見えなくなるのを防ぐため）
+(function(){
+  try{ window.localStorage.getItem('__probe__'); return; }catch(_){}
+  var mem = {};
+  var shim = {
+    getItem:function(k){ k=String(k); return Object.prototype.hasOwnProperty.call(mem,k) ? mem[k] : null; },
+    setItem:function(k,v){ mem[String(k)] = String(v); },
+    removeItem:function(k){ delete mem[String(k)]; },
+    clear:function(){ mem = {}; },
+    key:function(i){ var ks=Object.keys(mem); return i<ks.length ? ks[i] : null; },
+    get length(){ return Object.keys(mem).length; }
+  };
+  try{ Object.defineProperty(window,'localStorage',{value:shim,configurable:true,writable:true}); }catch(_){}
+  window.__STORAGE_EPHEMERAL = true;
+})();
+
+// iframeの外でマウス／指を離して mouseup・pointerup が届かなかった場合に、
+// 「押したまま」の状態が残ってドラッグ系UIが固まるのを防ぐ
+(function(){
+  var down = false;
+  function release(){
+    if(!down) return;
+    down = false;
+    try{ document.dispatchEvent(new MouseEvent('mouseup',{bubbles:true,cancelable:true,clientX:0,clientY:0})); }catch(_){}
+    try{ if(typeof PointerEvent!=='undefined') document.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,cancelable:true})); }catch(_){}
+  }
+  document.addEventListener('mousedown', function(){ down = true; }, true);
+  document.addEventListener('pointerdown', function(e){ if(e.pointerType==='mouse') down = true; }, true);
+  document.addEventListener('mouseup', function(e){ if(e.isTrusted) down = false; }, true);
+  document.addEventListener('mousemove', function(e){ if(down && e.buttons===0) release(); }, true);
+  window.addEventListener('blur', release);
+  document.addEventListener('visibilitychange', function(){ if(document.hidden) release(); });
+})();
+
+// クリップボード：iframeでは navigator.clipboard が拒否されることがあるので execCommand で代替
+window.copyTextSafe = function(text){
+  function legacy(){
+    try{
+      var ta=document.createElement('textarea');
+      ta.value=text; ta.setAttribute('readonly','');
+      ta.style.cssText='position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+      document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0,text.length);
+      var ok=document.execCommand('copy'); ta.remove(); return ok;
+    }catch(_){ return false; }
+  }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    return navigator.clipboard.writeText(text).then(function(){return true;}, function(){ return legacy(); });
+  }
+  return Promise.resolve(legacy());
+};
+
+// ファイルの書き出し：共有シート → ダウンロード の順に試し、共有が権限で拒否されたら自動でダウンロードへ
+window.saveBlobSafe = function(blob, filename, title, onSuccess, onFail){
+  function download(){
+    try{
+      var url=URL.createObjectURL(blob);
+      var a=document.createElement('a');
+      a.href=url; a.download=filename; a.rel='noopener';
+      document.body.appendChild(a); a.click();
+      setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); }, 1500);
+      onSuccess && onSuccess();
+    }catch(e){ onFail && onFail(e); }
+  }
+  try{
+    if(navigator.share && navigator.canShare){
+      var file=new File([blob], filename, {type:blob.type});
+      if(navigator.canShare({files:[file]})){
+        navigator.share({files:[file], title:title}).then(function(){ onSuccess && onSuccess(); }, function(err){
+          if(err && err.name==='AbortError') return; // ユーザーが閉じただけ
+          download(); // iframeで共有が許可されていない等 → ダウンロードに切り替え
+        });
+        return;
+      }
+    }
+  }catch(_){}
+  download();
+};
+
+// confirm() の代わりに使うアプリ内ダイアログ（iframeでも必ず表示される）
+window.appConfirm = function(message, okLabel, danger){
+  return new Promise(function(resolve){
+    var ov=document.createElement('div');
+    ov.className='app-confirm on';
+    ov.innerHTML='<div class="app-confirm-box" role="alertdialog" aria-modal="true">'
+      +'<div class="app-confirm-msg"></div>'
+      +'<div class="app-confirm-acts"><button type="button" class="app-confirm-cancel">キャンセル</button>'
+      +'<button type="button" class="app-confirm-ok'+(danger?' danger':'')+'"></button></div></div>';
+    ov.querySelector('.app-confirm-msg').textContent=message;
+    ov.querySelector('.app-confirm-ok').textContent=okLabel||'OK';
+    function done(v){ ov.remove(); document.removeEventListener('keydown',onKey,true); resolve(v); }
+    function onKey(e){ if(e.key==='Escape'){ e.preventDefault(); done(false); } }
+    ov.addEventListener('click',function(e){ if(e.target===ov) done(false); });
+    ov.querySelector('.app-confirm-cancel').onclick=function(){ done(false); };
+    ov.querySelector('.app-confirm-ok').onclick=function(){ done(true); };
+    document.addEventListener('keydown',onKey,true);
+    document.body.appendChild(ov);
+    setTimeout(function(){ var b=ov.querySelector('.app-confirm-ok'); if(b) b.focus({preventScroll:true}); },30);
+  });
+};
+</script>
 <script>
 /* 保存済みのカラーテーマを描画前に適用して、起動時のちらつきを防ぐ */
 try{
@@ -4194,7 +4319,8 @@ function _showNextExpiredPlan(){
   if(!_expiredPlanQueue.length) return;
   const p = PLAN.find(x=>x.id===_expiredPlanQueue[0]);
   if(!p){ _expiredPlanQueue.shift(); _showNextExpiredPlan(); return; }
-  const period=`${fmtShort(p.startDate||p.createdDate||td())} 〜 ${fmtShort(p.endDate)}`;
+  // textContent に入れるので、HTMLを含む fmtShort ではなく文字だけの fmtShortText を使う
+  const period=`${fmtShortText(p.startDate||p.createdDate||td())} 〜 ${fmtShortText(p.endDate)}`;
   document.getElementById('expired-plan-name').textContent = planDisplayName(p);
   document.getElementById('expired-plan-period').textContent = `実施期間：${period}`;
   document.getElementById('expired-plan-overlay').classList.add('on');
@@ -4734,7 +4860,9 @@ function planDelete(id){
   const name=planDisplayName(p);
   // このタスクが含まれる「ルール」も、対象タスクをメンバーから除いた形に更新する
   // （残りが1件以下になるルールは丸ごと削除）。削除を元に戻した場合は元の状態に復元する。
-  const prevRules = PLAN_RULES.map(r=>({id:r.id, taskIds:r.taskIds.slice(), createdAt:r.createdAt}));
+  // ルールの種類(type)・数値(param)・曜日(weekdays)も含めて丸ごと退避する
+  // （以前はidとtaskIdsだけを退避していたため、元に戻すとルールの種類が「同じ日にしない」に化けていた）
+  const prevRules = JSON.parse(JSON.stringify(PLAN_RULES));
   const nextRules = PLAN_RULES
     .map(r=>({...r, taskIds:r.taskIds.filter(tid=>tid!==id)}))
     .filter(r=>r.taskIds.length>=2);
@@ -8916,23 +9044,8 @@ function exportStudyLogsCsv(){
       haptic('medium');
     };
 
-    // iOS PWAでは <a download> が無視されるため、共有シートを優先して使う
-    if(navigator.share && navigator.canShare){
-      const file = new File([blob], filename, {type:'text/csv'});
-      if(navigator.canShare({files:[file]})){
-        navigator.share({files:[file], title:'勉強記録'})
-          .then(onSuccess)
-          .catch(err=>{ if(err.name!=='AbortError') toast(IC.alert, '書き出しに失敗しました'); });
-        return;
-      }
-    }
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 500);
-    onSuccess();
+    // 共有シート → 拒否されたらダウンロード（Notion埋め込みなどiframe内でも動くように）
+    saveBlobSafe(blob, filename, '勉強記録', onSuccess, ()=>toast(IC.alert, '書き出しに失敗しました'));
   } catch(e){
     console.error('CSV書き出しに失敗:', e);
     toast(IC.alert, '書き出しに失敗しました');
@@ -9473,8 +9586,19 @@ function requestCloseStudySheet(){
     haptic('medium');
     return;
   }
+  // 外側を誤ってタップしただけで、長く計測した時間が黙って消えてしまわないよう、
+  // 1分以上計測している場合だけ確認する（ネイティブのconfirmは埋め込み環境で使えないためアプリ内ダイアログ）
+  const sec=_timerElapsed + (_timerStart ? Math.floor((Date.now()-_timerStart)/1000) : 0);
+  if(sec>=60){
+    if(_studyCloseAsking) return;
+    _studyCloseAsking=true;
+    appConfirm(`計測中の時間（${fmtMinutesJa(Math.floor(sec/60))}）は記録されません。\n記録せずに閉じますか？`, '記録せずに閉じる', true)
+      .then(ok=>{ _studyCloseAsking=false; if(ok) closeStudySheet(); });
+    return;
+  }
   closeStudySheet();
 }
+let _studyCloseAsking=false;
 
 function _renderStudySheet(){
   const sh=document.getElementById('study-sheet'); if(!sh) return;
@@ -11195,11 +11319,17 @@ function setFabHidden(hidden){
       document.getElementById('sync-sheet')?.classList.contains('on') ||
       document.getElementById('all-logs-sheet')?.classList.contains('on') ||
       document.getElementById('edit-modal')?.classList.contains('on') ||
-      document.getElementById('snooze-pick')?.classList.contains('on');
+      document.getElementById('snooze-pick')?.classList.contains('on') ||
+      document.getElementById('todo-sheet')?.classList.contains('on') ||
+      document.getElementById('plan-modal')?.classList.contains('on') ||
+      document.getElementById('study-sheet')?.classList.contains('on') ||
+      document.getElementById('guide-sheet')?.classList.contains('on') ||
+      document.getElementById('interval-settings-sheet')?.classList.contains('on');
     if(anyOpen) return; // keep hidden
     // Keep hidden on settings tab
     const activeTab = document.querySelector('.tab-btn.on');
-    if(activeTab && (activeTab.dataset.tab === 'settings' || activeTab.dataset.tab === 'study')) return;
+    // 計画タブも画面内に専用の追加ボタンがあるためFABは出さない（switchTabと同じ条件にそろえる）
+    if(activeTab && ['settings','study','plan'].includes(activeTab.dataset.tab)) return;
   }
   const fab=document.querySelector('.float-fab');
   if(fab) fab.classList.toggle('hidden', hidden);
@@ -11528,6 +11658,8 @@ function checkBackupReminder(){
   try {
     const remindDays = getBackupRemindDays();
     if(remindDays <= 0) return; // 通知しない設定
+    // 守るべきデータがまだ無いうちは知らせない（初回起動直後に出るのは不自然なため）
+    if(!U.length && !STUDY_LOGS.length && !PLAN.length && !TODOS.length) return;
     const reminded = localStorage.getItem(BACKUP_REMINDED_KEY);
     if(reminded === td()) return;
     const days = daysSinceBackup();
@@ -11879,10 +12011,17 @@ function toggleTodo(id){
 }
 
 function deleteTodo(id){
+  const idx = TODOS.findIndex(x=>x.id===id); if(idx<0) return;
+  const item = TODOS[idx];
   TODOS = TODOS.filter(x=>x.id!==id);
   saveTodos();
   haptic('medium');
   render();
+  // ゴミ箱ボタンの押し間違いで消えたままにならないよう、他の削除と同じく元に戻せるようにする
+  showUndo(`「${esc(item.text)}」を削除しました`, ()=>{
+    TODOS.splice(Math.min(idx, TODOS.length), 0, item);
+    saveTodos(); render();
+  });
 }
 
 // 今日タブに表示するToDoセクションのHTMLを生成（date===今日のToDoのみ）
@@ -12210,26 +12349,9 @@ function doExport(){
       haptic('medium');
     };
 
-    // iOS PWA: <a download> is silently ignored. Use Web Share API if available.
-    if(navigator.share && navigator.canShare) {
-      const file = new File([blob], filename, {type: 'application/json'});
-      if(navigator.canShare({files:[file]})){
-        navigator.share({files:[file], title:'復習マネージャー バックアップ'})
-          .then(onSuccess)
-          .catch(err => { if(err.name !== 'AbortError') toast(IC.alert, '保存に失敗しました。もう一度お試しください'); });
-        return;
-      }
-    }
-
-    // Desktop / non-iOS: standard blob download
-    const url = URL.createObjectURL(blob);
-    const a   = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 500);
-    onSuccess();
+    // 共有シート → 拒否されたらダウンロード（Notion埋め込みなどiframe内でも動くように）
+    saveBlobSafe(blob, filename, '復習マネージャー バックアップ', onSuccess,
+      ()=>toast(IC.alert, '保存に失敗しました。もう一度お試しください'));
   } catch { toast(IC.alert, '保存に失敗しました。もう一度お試しください'); }
 }
 
@@ -12821,6 +12943,15 @@ window.addEventListener('pageshow', applyResponsiveLayoutClass);
     if(document.visibilityState !== 'visible') return;
     // バックグラウンドから復帰したらタイマー表示を即時同期（計測中・一時停止中どちらも）
     if(_timerStart || _timerElapsed>0){
+      // 開いたまま長時間放置された場合も、起動時の復元と同じく上限（6時間）で一時停止して確認を促す
+      if(_timerStart && (Date.now()-_timerStart)/1000 > _TIMER_RUN_CAP_SEC){
+        _timerElapsed += _TIMER_RUN_CAP_SEC;
+        _timerStart = null;
+        if(_timerInterval){ clearInterval(_timerInterval); _timerInterval=null; }
+        _saveTimerState();
+        if(document.getElementById('study-sheet')?.classList.contains('on')) _restoreTimerUI();
+        toast(IC.alert, '計測が長時間続いていたため一時停止しました。記録前に時間をご確認ください');
+      }
       _updateTimerDisplay();
       // CPUを奪われるなどして記録シートが閉じた状態に戻ってしまっていた場合に備え、
       // シートが開いていなければ自動で開き直す（フルリロードを伴わない復帰でも保険をかける）
@@ -12839,6 +12970,9 @@ window.addEventListener('pageshow', applyResponsiveLayoutClass);
   _reopenActiveStudySheet(); // 計測中だった記録シートも自動で開き直し、経過時間を引き継ぐ
   setTimeout(checkBackupReminder, 800); // slight delay so UI is settled
   setTimeout(checkExpiredPlans, 900); // 起動時に実施期間が終了した計画がないかチェック
+  if(window.__STORAGE_EPHEMERAL){
+    setTimeout(()=>toast(IC.alert, 'この画面ではデータを保存できません。「設定 → 他の端末とつなげる」で同期してください'), 1200);
+  }
 })();
 
 /* ══ PWA: オフラインキャッシュ (Service Worker) ══════════
@@ -12847,7 +12981,7 @@ window.addEventListener('pageshow', applyResponsiveLayoutClass);
    同じフォルダに sw.js を置いてホスティングしてください（file:// で直接
    開いた場合や、sw.js が同じ場所に無い場合はオフライン対応は無効のまま
    通常どおり動作します＝機能自体は壊れません）。 */
-if('serviceWorker' in navigator){
+if('serviceWorker' in navigator && !window.__IS_EMBEDDED){
   navigator.serviceWorker.register('./sw.js', {scope:'./'}).catch(()=>{});
 }
 </script>
@@ -13188,6 +13322,19 @@ if('serviceWorker' in navigator){
     if(p) bindPullToClose(allLogsSheet, p, closeAllLogsSheet, sc);
   }
 
+  // todo-sheet（ToDoの追加・編集）／interval-settings-sheet（復習間隔）
+  // ほかのシートと同じく、上部のバーを下にスワイプして閉じられるようにする（以前は未対応だった）
+  const todoSheet = document.getElementById('todo-sheet');
+  if(todoSheet){
+    const p = todoSheet.querySelector('.sheet-pull');
+    if(p) bindPullToClose(todoSheet, p, closeTodoAddSheet);
+  }
+  const intervalSheet = document.getElementById('interval-settings-sheet');
+  if(intervalSheet){
+    const p = intervalSheet.querySelector('.sheet-pull');
+    if(p) bindPullToClose(intervalSheet, p, closeIntervalSettings);
+  }
+
   // guide-sheet（使い方ガイド）— scrollEl を渡してスクロール中は無効化
   const guideSheet = document.getElementById('guide-sheet');
   if(guideSheet){
@@ -13220,6 +13367,7 @@ const FSYNC_ENABLED = !!(FSYNC_CONFIG.apiKey && FSYNC_CONFIG.apiKey !== "YOUR_AP
 const FSYNC = (() => {
   const CODE_KEY = 'fukushu-sync-code';
   let db = null, docRef = null, ready = false, applyingRemote = false, pushTimer = null;
+  let unsubscribe = null, listenToken = 0; // 現在の購読（コード切替・解除時に必ず止める）
   let pulled = false; // ★重要: クラウドから一度もデータを受信していない間はpush(上書き)を禁止する
                        //   これが無いと、まだ何も受信していない「空の状態」の端末が
                        //   先に書き込んでしまい、他端末の実データを消してしまう事故が起きる
@@ -13370,6 +13518,7 @@ const FSYNC = (() => {
     if(!pulled){ console.warn('FSYNC: クラウドからの初回受信が完了していないためpushを保留します'); return; }
     clearTimeout(pushTimer);
     pushTimer = setTimeout(()=>{
+      if(!docRef || !pulled) return; // 待っている間に連携が解除・切り替えされた
       docRef.set(buildPayload()).catch(e=>{
         console.error('FSYNC push失敗', e);
         if(typeof toast==='function' && typeof IC!=='undefined') toast(IC.alert, '同期に失敗しました');
@@ -13377,17 +13526,25 @@ const FSYNC = (() => {
     }, 1500);
   }
 
+  function stopListening(){
+    listenToken++;
+    if(unsubscribe){ try{ unsubscribe(); }catch(_){} unsubscribe = null; }
+    clearTimeout(pushTimer);
+  }
   function connectTo(code){
+    stopListening(); // 以前のコードの購読を止めないと、そのデータが新しいコード側へ混ざってしまう
     pulled = false;
     setCode(code);
     docRef = db.collection('fukushuSync').doc(code);
+    const myToken = listenToken;
     // ★重要: Firestoreは既定では「データ本体が変わらず、fromCache等のメタデータだけが
     //   変化した」場合にコールバックを発火しない（公式ドキュメントに明記されている挙動）。
     //   つまり { includeMetadataChanges: true } を指定しないと、最初にキャッシュから
     //   古いデータを受け取った後、サーバーからの「確認が取れました」という通知（データ内容が
     //   キャッシュと同じ場合）が来ず、pulled が永遠にfalseのまま＝同期が無言で止まる
     //   事故につながる。これを避けるため明示的に指定する。
-    docRef.onSnapshot({ includeMetadataChanges: true }, snap=>{
+    unsubscribe = docRef.onSnapshot({ includeMetadataChanges: true }, snap=>{
+      if(myToken !== listenToken) return; // 切替・解除済みの古い購読からの通知は無視
       if(snap.metadata.hasPendingWrites) return; // 自分自身の書き込みのエコーは無視
       // ★根本原因の修正：Firestoreはオンライン時でも、まず端末内のローカルキャッシュに
       //   残っている（他端末の更新をまだ反映していない、古いかもしれない）スナップショットを
@@ -13408,49 +13565,107 @@ const FSYNC = (() => {
     }, err=>console.error('FSYNC listen失敗', err));
   }
 
-  async function init(){
-    if(!FSYNC_ENABLED){ ready=false; return; }
+  // 応答が返ってこない（iframe内で通信・認証が詰まる等）ときに、ボタンが
+  // 無反応のまま固まらないよう、一定時間で打ち切ってエラーとして扱う
+  function withTimeout(promise, ms, label){
+    return Promise.race([
+      promise,
+      new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout:'+label)), ms))
+    ]);
+  }
+  let initPromise = null, lastError = '';
+
+  async function _doInit(){
+    if(!FSYNC_ENABLED){ ready=false; lastError='同期機能を読み込めませんでした（通信環境をご確認ください）'; return false; }
     try{
       if(!firebase.apps.length) firebase.initializeApp(FSYNC_CONFIG);
-      await firebase.auth().signInAnonymously();
-      db = firebase.firestore();
-      ready = true;
+      const auth = firebase.auth();
+      // Notion等の埋め込み(iframe)では、ログイン状態の保存先（IndexedDB等）が使えず
+      // 匿名ログインが失敗・停止することがある。その場合は保存しないモードで再試行する。
+      if(window.__IS_EMBEDDED){
+        try{ await auth.setPersistence(firebase.auth.Auth.Persistence.NONE); }catch(_){}
+      }
+      try{
+        await withTimeout(auth.signInAnonymously(), 12000, 'auth');
+      }catch(e1){
+        console.warn('FSYNC: 匿名ログインを保存なしモードで再試行', e1);
+        try{ await auth.setPersistence(firebase.auth.Auth.Persistence.NONE); }catch(_){}
+        await withTimeout(auth.signInAnonymously(), 12000, 'auth-retry');
+      }
+      if(!db){
+        db = firebase.firestore();
+        // iframeや制限のあるネットワークでも通信が詰まらないよう、必要なら自動でロングポーリングに切り替える
+        try{ db.settings({ experimentalAutoDetectLongPolling: true, merge: true }); }catch(_){}
+      }
+      ready = true; lastError = '';
       const code = getCode();
-      if(code) connectTo(code);
+      if(code && !docRef) connectTo(code);
       updateFSyncUI();
-    }catch(e){ console.error('FSYNC init失敗', e); ready=false; }
+      return true;
+    }catch(e){
+      console.error('FSYNC init失敗', e);
+      ready = false;
+      lastError = String(e && e.message || e).startsWith('timeout')
+        ? 'サーバーへの接続がタイムアウトしました'
+        : 'サーバーに接続できませんでした';
+      updateFSyncUI();
+      return false;
+    }
+  }
+  // 何度呼んでも初期化は同時に1つだけ走らせ、失敗していたら次の呼び出しで再試行する
+  function init(){
+    if(ready) return Promise.resolve(true);
+    if(!initPromise) initPromise = _doInit().finally(()=>{ initPromise = null; });
+    return initPromise;
+  }
+  async function ensureReady(){
+    if(ready) return true;
+    return await init();
   }
 
   async function startNew(){
-    if(!ready) return;
-    connectTo(genCode());
-    pulled = true; // 新規発行なので、こちら側のデータをそのまま初期状態としてアップロードして良い
-    await docRef.set(buildPayload());
-    updateFSyncUI();
+    if(!(await ensureReady())) return {ok:false, msg: lastError || 'サーバーに接続できませんでした'};
+    try{
+      connectTo(genCode());
+      pulled = true; // 新規発行なので、こちら側のデータをそのまま初期状態としてアップロードして良い
+      await withTimeout(docRef.set(buildPayload()), 15000, 'set');
+      updateFSyncUI();
+      return {ok:true};
+    }catch(e){
+      console.error(e);
+      docRef = null; pulled = false; setCode('');
+      updateFSyncUI();
+      return {ok:false, msg:'コードの発行に失敗しました。通信環境をご確認ください'};
+    }
   }
 
   async function joinCode(code){
-    if(!ready) return {ok:false, msg:'準備中です。少し待ってからもう一度お試しください'};
     code = code.trim().toUpperCase();
     if(!/^[A-Z0-9]{6}$/.test(code)) return {ok:false, msg:'コードは6文字の英数字です'};
+    if(!(await ensureReady())) return {ok:false, msg: (lastError || 'サーバーに接続できませんでした') + '。もう一度お試しください'};
     try{
-      const snap = await db.collection('fukushuSync').doc(code).get();
+      const snap = await withTimeout(db.collection('fukushuSync').doc(code).get({source:'server'}), 15000, 'get');
       if(!snap.exists) return {ok:false, msg:'そのコードのデータが見つかりません'};
       connectTo(code);
       applyPayload(snap.data());
       pulled = true; // 参加時に明示的に取得済みなのでpushを許可
       return {ok:true};
-    }catch(e){ console.error(e); return {ok:false, msg:'接続に失敗しました。通信環境をご確認ください'}; }
+    }catch(e){
+      console.error(e);
+      const to = String(e && e.message || '').startsWith('timeout');
+      return {ok:false, msg: to ? '接続がタイムアウトしました。通信環境をご確認のうえ、もう一度お試しください' : '接続に失敗しました。通信環境をご確認ください'};
+    }
   }
 
   function disconnect(){
+    stopListening();
     docRef = null;
     pulled = false;
     setCode('');
     updateFSyncUI();
   }
 
-  return { init, schedulePush, startNew, joinCode, disconnect, getCode, get ready(){ return ready; } };
+  return { init, schedulePush, startNew, joinCode, disconnect, getCode, get ready(){ return ready; }, get connecting(){ return !!initPromise; }, get lastError(){ return lastError; } };
 })();
 
 // safeSetItem をラップし、対象データが保存されるたびクラウドへも自動的に反映する
@@ -13527,6 +13742,14 @@ function updateFSyncUI(){
   }
   const code = FSYNC.getCode();
   let html = '';
+  if(!FSYNC.ready){
+    html += FSYNC.lastError && !FSYNC.connecting
+      ? `<div style="display:flex;align-items:center;gap:8px;background:#FFF1F0;color:#C0392B;border-radius:12px;padding:10px 12px;font-size:12.5px;margin-bottom:10px">
+           <span style="flex:1">${esc(FSYNC.lastError)}</span>
+           <button onclick="fsyncRetry()" style="background:#C0392B;color:#fff;border:none;border-radius:9px;padding:7px 12px;font-size:12.5px;font-weight:700;font-family:inherit">再接続</button>
+         </div>`
+      : `<div style="background:var(--fill);color:var(--lbl2);border-radius:12px;padding:10px 12px;font-size:12.5px;margin-bottom:10px">サーバーに接続しています…</div>`;
+  }
   if(code){
     html += `
       <div style="background:var(--fill);border-radius:14px;padding:16px;text-align:center;margin-bottom:10px">
@@ -13553,7 +13776,7 @@ function updateFSyncUI(){
       </div>`;
   } else {
     html += `
-      <div class="backup-row" onclick="fsyncStartNew()">
+      <div class="backup-row" id="fsync-start-row" onclick="fsyncStartNew()">
         <div class="backup-row-icon" style="background:#F5F3FF">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
         </div>
@@ -13570,32 +13793,60 @@ function updateFSyncUI(){
         <input id="fsync-code-inp" type="text" maxlength="6" placeholder="例：A3F9K2" autocomplete="off" autocorrect="off"
           style="flex:1;background:var(--fill);border:1.5px solid var(--sep);border-radius:12px;padding:11px 14px;font-family:'Outfit',monospace;font-size:16px;letter-spacing:2px;text-transform:uppercase;outline:none;color:var(--lbl)"
           oninput="this.value=this.value.toUpperCase()">
-        <button onclick="fsyncJoin()" style="background:var(--plan);color:#fff;border:none;border-radius:12px;padding:0 18px;font-size:14px;font-weight:700;white-space:nowrap">つなげる</button>
+        <button id="fsync-join-btn" onclick="fsyncJoin()" style="background:var(--plan);color:#fff;border:none;border-radius:12px;padding:0 18px;font-size:14px;font-weight:700;white-space:nowrap">つなげる</button>
       </div>
       <div id="fsync-join-msg" style="font-size:12px;color:#C0392B;margin-top:6px"></div>
     </div>`;
+  // 再描画で入力途中のコード・メッセージが消えないように引き継ぐ
+  const _prevInp = document.getElementById('fsync-code-inp');
+  const _prevVal = _prevInp ? _prevInp.value : '';
+  const _prevFocused = _prevInp && document.activeElement === _prevInp;
+  const _prevMsg = document.getElementById('fsync-join-msg');
+  const _prevMsgTxt = _prevMsg ? _prevMsg.textContent : '';
+  const _prevMsgColor = _prevMsg ? _prevMsg.style.color : '';
   el.innerHTML = html;
+  const _newInp = document.getElementById('fsync-code-inp');
+  if(_newInp && _prevVal){ _newInp.value = _prevVal; if(_prevFocused) _newInp.focus({preventScroll:true}); }
+  const _newMsg = document.getElementById('fsync-join-msg');
+  if(_newMsg && _prevMsgTxt){ _newMsg.textContent = _prevMsgTxt; _newMsg.style.color = _prevMsgColor; }
 }
 
-async function fsyncStartNew(){
+let _fsyncBusy = false;
+async function fsyncRetry(){
   haptic();
-  await FSYNC.startNew();
-  toast(IC.checkCircle, '連携コードを発行しました');
+  const p = FSYNC.init();
+  updateFSyncUI();
+  const ok = await p;
+  toast(ok?IC.checkCircle:IC.alert, ok?'サーバーに接続しました':(FSYNC.lastError||'接続できませんでした'));
+}
+async function fsyncStartNew(){
+  if(_fsyncBusy) return;
+  _fsyncBusy = true; haptic();
+  const row = document.getElementById('fsync-start-row');
+  const ttl = row && row.querySelector('.backup-row-ttl');
+  if(row){ row.style.opacity='.6'; row.style.pointerEvents='none'; }
+  if(ttl) ttl.textContent='発行中…';
+  try{
+    const res = await FSYNC.startNew();
+    if(res && res.ok) toast(IC.checkCircle, '連携コードを発行しました');
+    else toast(IC.alert, (res && res.msg) || '発行に失敗しました');
+  } finally {
+    _fsyncBusy = false;
+    updateFSyncUI();
+  }
 }
 function fsyncCopyCode(){
   const code = FSYNC.getCode();
   if(!code) return;
   haptic();
-  if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(code)
-      .then(()=>toast(IC.checkCircle, 'コードをコピーしました'))
-      .catch(()=>toast(IC.alert, 'コピーできませんでした'));
-  } else {
-    toast(IC.alert, 'コピーできませんでした');
-  }
+  copyTextSafe(code).then(ok=>{
+    if(ok) toast(IC.checkCircle, 'コードをコピーしました');
+    else toast(IC.alert, `コピーできませんでした。コード「${esc(code)}」を手入力してください`);
+  });
 }
-function fsyncDisconnectConfirm(){
-  if(confirm('連携を解除しますか？この端末は他の端末と自動で同期しなくなります（データ自体は消えません）')){
+async function fsyncDisconnectConfirm(){
+  const ok = await appConfirm('連携を解除しますか？\nこの端末は他の端末と自動で同期しなくなります（データ自体は消えません）', '解除する', true);
+  if(ok){
     FSYNC.disconnect();
     toast(IC.checkCircle, '連携を解除しました');
   }
@@ -13606,10 +13857,28 @@ async function fsyncJoin(){
   const code = (inp && inp.value || '').trim();
   if(msg) msg.textContent = '';
   if(!code){ if(msg) msg.textContent = 'コードを入力してください'; return; }
-  if(!confirm('このコードのデータに切り替えます。今この端末にあるデータは上書きされます。よろしいですか？')) return;
-  const res = await FSYNC.joinCode(code);
-  if(res.ok){ toast(IC.checkCircle, '連携しました'); }
-  else if(msg) msg.textContent = res.msg;
+  if(!/^[A-Za-z0-9]{6}$/.test(code)){ if(msg) msg.textContent = 'コードは6文字の英数字です'; return; }
+  if(_fsyncBusy) return;
+  if(!(await appConfirm('このコードのデータに切り替えます。\n今この端末にあるデータは上書きされます。よろしいですか？', '切り替える', true))) return;
+  _fsyncBusy = true;
+  const btn = document.getElementById('fsync-join-btn');
+  if(btn){ btn.disabled = true; btn.textContent = '接続中…'; btn.style.opacity = '.6'; }
+  if(msg){ msg.style.color = 'var(--lbl2)'; msg.textContent = 'サーバーに接続しています…'; }
+  try{
+    const res = await FSYNC.joinCode(code);
+    if(res.ok){
+      toast(IC.checkCircle, '連携しました');
+      updateFSyncUI();
+    } else {
+      const m = document.getElementById('fsync-join-msg');
+      if(m){ m.style.color = '#C0392B'; m.textContent = res.msg; }
+      toast(IC.alert, res.msg);
+    }
+  } finally {
+    _fsyncBusy = false;
+    const b = document.getElementById('fsync-join-btn');
+    if(b){ b.disabled = false; b.textContent = 'つなげる'; b.style.opacity = ''; }
+  }
 }
 
 FSYNC.init();
@@ -14048,7 +14317,7 @@ function _finishOnboarding(){
 /* ── Auto-start on first visit ── */
 (function(){
   const done = (()=>{ try{ return localStorage.getItem(OB_KEY); }catch(_){ return null; } })();
-  if(!done && !_isStandalone()){
+  if(!done && !_isStandalone() && !window.__IS_EMBEDDED){
     // Delay slightly so app renders first
     setTimeout(startOnboarding, 600);
   }
