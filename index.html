@@ -3697,8 +3697,8 @@ try{ var _t=localStorage.getItem('fukushu-theme-v1'); /* 未設定ならホワ�
    B5 fix: define proper large/small variants, no string.replace() hacks
 ══════════════════════════════════════════ */
 /* ══ App version ════════════════════════ */
-const APP_VERSION = 'v4.0.0';
-const APP_BUILD   = '2026-10-11';
+const APP_VERSION = 'v4.1.0';
+const APP_BUILD   = '2026-10-24';
 
 const IC = {
   check:      `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
@@ -13790,13 +13790,15 @@ function updateFSyncUI(){
     <div style="margin-top:14px">
       <div style="font-size:13px;color:var(--lbl2);margin-bottom:8px">他の端末で発行したコードを入力してつなげる</div>
       <div style="display:flex;gap:8px">
-        <input id="fsync-code-inp" type="text" maxlength="6" placeholder="例：A3F9K2" autocomplete="off" autocorrect="off"
+        <input id="fsync-code-inp" type="text" maxlength="6" placeholder="例：A3F9K2" autocomplete="off" autocorrect="off" onkeydown="if(event.key==='Enter'){event.preventDefault();fsyncJoin();}"
           style="flex:1;background:var(--fill);border:1.5px solid var(--sep);border-radius:12px;padding:11px 14px;font-family:'Outfit',monospace;font-size:16px;letter-spacing:2px;text-transform:uppercase;outline:none;color:var(--lbl)"
-          oninput="this.value=this.value.toUpperCase()">
+          oninput="this.value=this.value.toUpperCase();_fsyncDisarm()">
         <button id="fsync-join-btn" onclick="fsyncJoin()" style="background:var(--plan);color:#fff;border:none;border-radius:12px;padding:0 18px;font-size:14px;font-weight:700;white-space:nowrap">つなげる</button>
       </div>
       <div id="fsync-join-msg" style="font-size:12px;color:#C0392B;margin-top:6px"></div>
     </div>`;
+  const _st = FSYNC.ready ? (code ? '同期中' : 'サーバー接続済み') : (FSYNC.connecting ? 'サーバーに接続中…' : (FSYNC.lastError ? '未接続' : 'サーバーに接続中…'));
+  html += `<div style="margin-top:16px;font-size:11px;color:var(--lbl3);text-align:center">状態：${_st} ・ ${APP_VERSION}（${APP_BUILD}）</div>`;
   // 再描画で入力途中のコード・メッセージが消えないように引き継ぐ
   const _prevInp = document.getElementById('fsync-code-inp');
   const _prevVal = _prevInp ? _prevInp.value : '';
@@ -13809,6 +13811,7 @@ function updateFSyncUI(){
   if(_newInp && _prevVal){ _newInp.value = _prevVal; if(_prevFocused) _newInp.focus({preventScroll:true}); }
   const _newMsg = document.getElementById('fsync-join-msg');
   if(_newMsg && _prevMsgTxt){ _newMsg.textContent = _prevMsgTxt; _newMsg.style.color = _prevMsgColor; }
+  if(typeof _fsyncJoinArmed!=='undefined' && _fsyncJoinArmed){ const _b=document.getElementById('fsync-join-btn'); if(_b){ _b.textContent='上書きして接続'; _b.style.background='#C0392B'; } }
 }
 
 let _fsyncBusy = false;
@@ -13844,30 +13847,54 @@ function fsyncCopyCode(){
     else toast(IC.alert, `コピーできませんでした。コード「${esc(code)}」を手入力してください`);
   });
 }
-async function fsyncDisconnectConfirm(){
-  const ok = await appConfirm('連携を解除しますか？\nこの端末は他の端末と自動で同期しなくなります（データ自体は消えません）', '解除する', true);
-  if(ok){
+// 埋め込み環境では重ねて表示するダイアログ類が出ない・押せないことがあるため、
+// 確認は「同じボタンをもう一度押す」インライン方式にする（画面の他の部分に依存しない）
+let _fsyncDiscArmedAt = 0;
+function fsyncDisconnectConfirm(){
+  const row = document.querySelector('[onclick="fsyncDisconnectConfirm()"]');
+  if(Date.now() - _fsyncDiscArmedAt < 6000){
+    _fsyncDiscArmedAt = 0;
     FSYNC.disconnect();
     toast(IC.checkCircle, '連携を解除しました');
+    return;
   }
+  _fsyncDiscArmedAt = Date.now();
+  haptic('medium');
+  const ttl = row && row.querySelector('.backup-row-ttl');
+  const sub = row && row.querySelector('.backup-row-sub');
+  if(ttl){ ttl.textContent = 'もう一度タップで解除'; ttl.style.color = '#C0392B'; }
+  if(sub) sub.textContent = 'データは消えません。6秒以内にもう一度タップしてください';
+  setTimeout(()=>{ if(_fsyncDiscArmedAt && Date.now()-_fsyncDiscArmedAt>=6000){ _fsyncDiscArmedAt=0; updateFSyncUI(); } }, 6100);
 }
 async function fsyncJoin(){
   const inp = document.getElementById('fsync-code-inp');
   const msg = document.getElementById('fsync-join-msg');
   const code = (inp && inp.value || '').trim();
-  if(msg) msg.textContent = '';
+  if(msg && !_fsyncJoinArmed) msg.textContent = '';
   if(!code){ if(msg) msg.textContent = 'コードを入力してください'; return; }
   if(!/^[A-Za-z0-9]{6}$/.test(code)){ if(msg) msg.textContent = 'コードは6文字の英数字です'; return; }
   if(_fsyncBusy) return;
-  if(!(await appConfirm('このコードのデータに切り替えます。\n今この端末にあるデータは上書きされます。よろしいですか？', '切り替える', true))) return;
-  _fsyncBusy = true;
   const btn = document.getElementById('fsync-join-btn');
+  // 1回目のタップ：ボタン自体を「上書きして接続」に変えて確認する（ダイアログは使わない）
+  if(!_fsyncJoinArmed){
+    _fsyncJoinArmed = true;
+    haptic('medium');
+    if(btn){ btn.textContent = '上書きして接続'; btn.style.background = '#C0392B'; }
+    if(msg){ msg.style.color = '#C0392B'; msg.textContent = 'この端末のデータは、コードのデータで上書きされます。よければもう一度ボタンを押してください'; }
+    clearTimeout(_fsyncJoinArmTimer);
+    _fsyncJoinArmTimer = setTimeout(_fsyncDisarm, 8000);
+    return;
+  }
+  _fsyncDisarm(true);
+  _fsyncBusy = true;
   if(btn){ btn.disabled = true; btn.textContent = '接続中…'; btn.style.opacity = '.6'; }
   if(msg){ msg.style.color = 'var(--lbl2)'; msg.textContent = 'サーバーに接続しています…'; }
   try{
     const res = await FSYNC.joinCode(code);
     if(res.ok){
       toast(IC.checkCircle, '連携しました');
+      const m0 = document.getElementById('fsync-join-msg'); if(m0) m0.textContent = '';
+      const i0 = document.getElementById('fsync-code-inp'); if(i0) i0.value = '';
       updateFSyncUI();
     } else {
       const m = document.getElementById('fsync-join-msg');
@@ -13877,8 +13904,18 @@ async function fsyncJoin(){
   } finally {
     _fsyncBusy = false;
     const b = document.getElementById('fsync-join-btn');
-    if(b){ b.disabled = false; b.textContent = 'つなげる'; b.style.opacity = ''; }
+    if(b){ b.disabled = false; b.textContent = 'つなげる'; b.style.opacity = ''; b.style.background = ''; }
   }
+}
+let _fsyncJoinArmed = false, _fsyncJoinArmTimer = null;
+function _fsyncDisarm(keepMsg){
+  clearTimeout(_fsyncJoinArmTimer);
+  if(!_fsyncJoinArmed) return;
+  _fsyncJoinArmed = false;
+  const b = document.getElementById('fsync-join-btn');
+  if(b){ b.textContent = 'つなげる'; b.style.background = ''; }
+  const m = document.getElementById('fsync-join-msg');
+  if(m && !keepMsg) m.textContent = '';
 }
 
 FSYNC.init();
