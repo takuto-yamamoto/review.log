@@ -3947,8 +3947,8 @@ try{ var _pc=null; try{ _pc=localStorage.getItem('fukushu-pc-dense-v1'); }catch(
    B5 fix: define proper large/small variants, no string.replace() hacks
 ══════════════════════════════════════════ */
 /* ══ App version ════════════════════════ */
-const APP_VERSION = 'v4.4.2';
-const APP_BUILD   = '2026-10-24';
+const APP_VERSION = 'v4.5.1';
+const APP_BUILD   = '2026-10-25';
 
 const IC = {
   check:      `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
@@ -4441,7 +4441,13 @@ const RULE_TYPE_ICON = {
   together: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l9 5-9 5-9-5 9-5z"/><path d="M3 12l9 5 9-5M3 17l9 5 9-5"/></svg>`,
   streak:   `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c1 3-2 4-2 7a3 3 0 0 0 6 0c1.5 1.5 2 3.5 2 5a6 6 0 0 1-12 0c0-4 2-5 3-8 1 1 1.5 2 1.5 3.5"/></svg>`,
 };
-const PLAN_NAME_MODE_LABEL = { fixed:'毎回同じ', sequence:'数字+カスタム', custom:'完全カスタム' };
+const PLAN_NAME_MODE_LABEL = { fixed:'毎回同じ', sequence:'数字+カスタム', custom:'完全カスタム', rotate:'ローテーション' };
+// ローテーション：入力した表示名を順番に繰り返す（例：A→B→C→A→B…）。空欄の行は無視する
+function planRotateLabelAt(labels, idx){
+  const list=(labels||[]).map(x=>(x||'').trim()).filter(Boolean);
+  if(!list.length) return '';
+  return list[((idx%list.length)+list.length)%list.length];
+}
 // 計画タブの統合リストで、目標／ルーティンをタイプ別アイコンで視覚的に区別するためのグリフ
 // (色は状態(over/due/通常)で分けるため、ここでは形のみを変える)
 const PLAN_TYPE_ICON = {
@@ -4495,6 +4501,10 @@ function planDisplayName(p, idxOverride){
     const start = (p.seqStart!=null && p.seqStart!=='') ? Number(p.seqStart) : 1;
     const unit = p.seqUnit && p.seqUnit.trim() ? p.seqUnit.trim() : '回';
     return `${p.name} ${start+idx}${unit}`;
+  }
+  if(mode==='rotate'){
+    const label = planRotateLabelAt(p.rotateLabels, idx);
+    return label ? `${p.name} ${label}` : p.name;
   }
   if(mode==='custom'){
     const labels = p.customLabels||[];
@@ -5868,7 +5878,7 @@ let _planStep=0;
 function _planDefaultDraft(){
   return {name:'', type:'daily', tags:[], weekdays:[], intervalDays:3, totalCount:10, doneCount:0, deadline:addD(td(),14),
     paceMode:'auto',
-    nameMode:'fixed', seqStart:1, seqUnit:'', customLabels:[''],
+    nameMode:'fixed', seqStart:1, seqUnit:'', customLabels:[''], rotateLabels:['',''],
     startDate:td(), endDate:'', noEnd:true, schedule:[{date:td(), label:''}]};
 }
 function openPlanSheet(editId){
@@ -5887,6 +5897,7 @@ function openPlanSheet(editId){
       deadline:(p.type==='goal' ? p.deadline : p.endDate) || addD(td(),14),
       nameMode:p.nameMode||'fixed', seqStart:(p.seqStart!=null?p.seqStart:1), seqUnit:p.seqUnit||'',
       customLabels:(p.customLabels&&p.customLabels.length)?[...p.customLabels]:[''],
+      rotateLabels:(p.rotateLabels&&p.rotateLabels.length)?[...p.rotateLabels]:['',''],
       startDate:p.startDate||p.createdDate||td(), endDate:p.endDate||'', noEnd:!p.endDate,
       schedule:(p.schedule&&p.schedule.length)?p.schedule.map(r=>({...r})):[{date:p.startDate||td(), label:''}]};
     document.getElementById('plan-modal-ttl').textContent='計画タスクを編集';
@@ -6033,6 +6044,8 @@ function _syncPlanNameFieldsFromDom(){
   if(seqUnitInp) _planDraft.seqUnit=seqUnitInp.value;
   const customInps=document.querySelectorAll('.plan-custom-label-inp');
   if(customInps.length) _planDraft.customLabels=Array.from(customInps).map(i=>i.value);
+  const rotateInps=document.querySelectorAll('.plan-rotate-label-inp');
+  if(rotateInps.length) _planDraft.rotateLabels=Array.from(rotateInps).map(i=>i.value);
 }
 function selectPlanNameMode(m){
   if(!_planDraft) return;
@@ -6058,6 +6071,56 @@ function removePlanCustomLabel(idx){
   arr.splice(idx,1);
   _planDraft.customLabels=arr.length?arr:[''];
   renderPlanModalBody();
+}
+function addPlanRotateLabel(){
+  if(!_planDraft) return;
+  _syncPlanNameFieldsFromDom();
+  _planDraft.rotateLabels=[...(_planDraft.rotateLabels||['']), ''];
+  renderPlanModalBody();
+  setTimeout(()=>{
+    const inps=document.querySelectorAll('.plan-rotate-label-inp');
+    if(inps.length) inps[inps.length-1].focus();
+  },30);
+}
+function removePlanRotateLabel(idx){
+  if(!_planDraft) return;
+  _syncPlanNameFieldsFromDom();
+  const arr=[...(_planDraft.rotateLabels||[''])];
+  arr.splice(idx,1);
+  _planDraft.rotateLabels=arr.length?arr:[''];
+  renderPlanModalBody();
+}
+function movePlanRotateLabel(idx, dir){
+  if(!_planDraft) return;
+  _syncPlanNameFieldsFromDom();
+  const arr=[...(_planDraft.rotateLabels||[''])];
+  const j=idx+dir; if(j<0||j>=arr.length) return;
+  [arr[idx],arr[j]]=[arr[j],arr[idx]];
+  _planDraft.rotateLabels=arr;
+  renderPlanModalBody();
+  haptic();
+}
+// ローテーションの「この先どう回るか」の一覧（現在の回から6回分）
+function _planRotateCycleHtml(labels, startIdx){
+  const list=(labels||[]).map(x=>(x||'').trim()).filter(Boolean);
+  if(!list.length) return `<div class="plan-sec-sub" style="margin:8px 0 0">表示名を1つ以上入力してください</div>`;
+  const chips=[];
+  for(let i=0;i<6;i++){
+    const n=startIdx+i;
+    chips.push(`<span style="display:inline-flex;align-items:center;gap:4px;background:var(--card);border-radius:100px;padding:4px 10px;font-size:12px;color:var(--lbl2)"><b style="color:var(--plan-d);font-family:'Outfit',sans-serif">${n+1}回目</b>${esc(list[n%list.length])}</span>`);
+  }
+  return `<div class="plan-field-label">回り方</div><div style="display:flex;flex-wrap:wrap;gap:6px">${chips.join('')}<span style="font-size:12px;color:var(--lbl3);align-self:center">…</span></div>`;
+}
+function updatePlanRotateCycle(){
+  if(!_planDraft) return;
+  const wrap=document.getElementById('plan-rotate-cycle'); if(!wrap) return;
+  const inps=document.querySelectorAll('.plan-rotate-label-inp');
+  const labels=Array.from(inps).map(i=>i.value);
+  wrap.innerHTML=_planRotateCycleHtml(labels, _planDraftOccurrenceIdx(_planDraft));
+}
+function _planDraftOccurrenceIdx(d){
+  const editP=_planEditId?PLAN.find(x=>x.id===_planEditId):null;
+  return d.type==='goal' ? (d.doneCount||0) : (editP ? (editP.occurrenceCount||0) : 0);
 }
 // ══ 個別日程（schedule型）: 日付＋内容の行を管理 ══
 // 「計画」の中に日付がバラバラな複数のToDo的な項目（例：9/3に2024年国語、9/14に2020年数学）を
@@ -6114,6 +6177,11 @@ function updatePlanPreview(){
     const raw=customInps[idx]?customInps[idx].value:'';
     const label=raw&&raw.trim()?raw.trim():`${idx+1}回目`;
     preview=`${base} ${label}`;
+  } else if(mode==='rotate'){
+    const rotInps=document.querySelectorAll('.plan-rotate-label-inp');
+    const label=planRotateLabelAt(Array.from(rotInps).map(i=>i.value), idx);
+    preview=label?`${base} ${label}`:base;
+    updatePlanRotateCycle();
   }
   el.textContent=preview;
 }
@@ -6216,6 +6284,9 @@ function _planComputePreviewName(d){
     const start = (d.seqStart!==''&&d.seqStart!=null) ? Number(d.seqStart) : 1;
     const unit = (d.seqUnit&&d.seqUnit.trim()) ? d.seqUnit.trim() : '回';
     return `${base} ${start+idx}${unit}`;
+  } else if(d.nameMode==='rotate'){
+    const label = planRotateLabelAt(d.rotateLabels, idx);
+    return label ? `${base} ${label}` : base;
   } else if(d.nameMode==='custom'){
     const labels = d.customLabels||[];
     const raw = labels[idx];
@@ -6410,6 +6481,21 @@ function _planStepNameModeHtml(d){
         </div>`).join('')}
       </div>
       <button type="button" class="plan-custom-add" onclick="addPlanCustomLabel()" style="margin-bottom:0">＋ 行を追加</button>`;
+  } else if(d.nameMode==='rotate'){
+    const labels=(d.rotateLabels&&d.rotateLabels.length)?d.rotateLabels:[''];
+    nameModeExtraHtml=`<div class="plan-field-label" style="margin-top:0">順番に回す表示名</div>
+      <div class="plan-sec-sub" style="margin:-2px 0 10px">上から順に使い、最後まで行ったら最初に戻ります</div>
+      <div id="plan-rotate-list">
+        ${labels.map((lbl,i)=>`
+        <div class="plan-custom-row">
+          <span class="plan-custom-idx" style="width:22px;text-align:center;font-weight:700;color:var(--plan-d)">${String.fromCharCode(65+(i%26))}</span>
+          <input class="plan-rotate-label-inp edit-modal-inp" type="text" placeholder="例：${['長文','文法','単語','リスニング'][i%4]}" maxlength="20" autocomplete="off" autocorrect="off" value="${esc(lbl)}" oninput="updatePlanPreview()">
+          <button type="button" class="plan-custom-del" style="color:var(--lbl2);${i===0?'opacity:.3':''}" onclick="movePlanRotateLabel(${i},-1)" ${i===0?'disabled':''} aria-label="上へ">▲</button>
+          ${labels.length>1?`<button type="button" class="plan-custom-del" onclick="removePlanRotateLabel(${i})" aria-label="削除">${IC.trash}</button>`:''}
+        </div>`).join('')}
+      </div>
+      <button type="button" class="plan-custom-add" onclick="addPlanRotateLabel()" style="margin-bottom:6px">＋ 追加</button>
+      <div id="plan-rotate-cycle">${_planRotateCycleHtml(labels, _planDraftOccurrenceIdx(d))}</div>`;
   }
   return `
     <div class="plan-sec-sub" style="margin-top:-6px">${d.type==='daily'?'毎日':'実施'}のたびに名前を変えたい場合はここで設定できます</div>
@@ -6417,6 +6503,7 @@ function _planStepNameModeHtml(d){
       <button class="${d.nameMode==='fixed'?'on':''}" onclick="selectPlanNameMode('fixed')">毎回同じ</button>
       <button class="${d.nameMode==='sequence'?'on':''}" onclick="selectPlanNameMode('sequence')">連番</button>
       <button class="${d.nameMode==='custom'?'on':''}" onclick="selectPlanNameMode('custom')">個別入力</button>
+      <button class="${d.nameMode==='rotate'?'on':''}" onclick="selectPlanNameMode('rotate')">ローテーション</button>
     </div>
     ${nameModeExtraHtml?`<div class="plan-sub-card" style="margin-bottom:10px">${nameModeExtraHtml}</div>`:''}
     <div class="plan-name-preview-box" id="plan-name-preview-wrap">表示例：<b id="plan-name-preview">${esc(previewName)}</b></div>`;
@@ -6557,6 +6644,9 @@ function planWizardNext(){
     }
   } else if(stepKey==='nameMode'){
     _syncPlanNameFieldsFromDom();
+    if(_planDraft.nameMode==='rotate' && !planRotateLabelAt(_planDraft.rotateLabels,0)){
+      toast(IC.alertSm,'ローテーションする表示名を1つ以上入力してください'); haptic('medium'); return;
+    }
   }
   if(_planDraft.nameMode==='custom') syncPlanCustomLabelCountToPeriod();
   haptic();
@@ -6641,7 +6731,12 @@ function savePlanTask(){
   }
   const tags=[...d.tags];
   const t=td();
-  const nameFields={nameMode:d.nameMode||'fixed', seqStart:d.seqStart, seqUnit:d.seqUnit, customLabels:d.customLabels};
+  if(d.nameMode==='rotate' && d.type!=='schedule' && !planRotateLabelAt(d.rotateLabels,0)){
+    if(!_planEditId){ _planStep=PLAN_WIZARD_STEPS.indexOf('nameMode'); renderPlanModalBody(); }
+    toast(IC.alertSm,'ローテーションする表示名を1つ以上入力してください'); haptic('medium'); return;
+  }
+  const nameFields={nameMode:d.nameMode||'fixed', seqStart:d.seqStart, seqUnit:d.seqUnit, customLabels:d.customLabels,
+    rotateLabels:(d.rotateLabels||[]).map(x=>(x||'').trim()).filter(Boolean)};
   const startVal=d.startDate||t;
   const isGoalType=d.type==='goal';
   const noEndVal=isGoalType?false:(d.noEnd!==false);
@@ -6660,6 +6755,7 @@ function savePlanTask(){
     if(d.type!=='goal') p.endDate=endVal||null;
     if(nameFields.nameMode==='sequence'){ p.seqStart=nameFields.seqStart; p.seqUnit=nameFields.seqUnit; }
     if(nameFields.nameMode==='custom'){ p.customLabels=nameFields.customLabels; }
+    if(nameFields.nameMode==='rotate'){ p.rotateLabels=nameFields.rotateLabels; }
     if(d.type==='weekday'){
       p.weekdays=[...d.weekdays];
       const base = startVal>t ? startVal : t;
@@ -6691,6 +6787,7 @@ function savePlanTask(){
   if(d.type!=='goal') task.endDate=endVal||null;
   if(nameFields.nameMode==='sequence'){ task.seqStart=nameFields.seqStart; task.seqUnit=nameFields.seqUnit; }
   if(nameFields.nameMode==='custom'){ task.customLabels=nameFields.customLabels; }
+  if(nameFields.nameMode==='rotate'){ task.rotateLabels=nameFields.rotateLabels; }
   const base = startVal>t ? startVal : t; // 開始日が未来ならそこを起点に次回日を計算
   if(d.type==='daily'){
     // 何もなし（毎日タスク）
@@ -12449,6 +12546,8 @@ function todoFilterListHtml(){
   const t = td();
   const sorted = [...TODOS].sort((a,b)=>{
     if(a.done!==b.done) return a.done?1:-1;
+    // 完了済み同士は、完了した時刻が新しいものを上にする（完了時刻が無い古いデータは作成日時で代用）
+    if(a.done && b.done) return (b.completedAt||b.createdAt||0)-(a.completedAt||a.createdAt||0);
     // 長期タスクはグループが分断されないよう、通常のToDoとは別枠にまとめて隣接させる
     // （x.date は作成日で固定のため、そのまま日付順に混ぜるとグループが飛び飛びになってしまう）
     const aLt=!!a.longterm, bLt=!!b.longterm;
