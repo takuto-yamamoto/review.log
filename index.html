@@ -1011,6 +1011,8 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
   box-shadow:var(--shadow-lg);
 }
 .sheet.on{transform:translateY(0);-webkit-transform:translateY(0)}
+/* 閉じているシートの影が画面下端からにじみ出ないように */
+.sheet:not(.on){box-shadow:none}
 .sheet-pull{
   display:block;width:100%;height:33px;flex-shrink:0;
   position:relative;cursor:grab;-webkit-tap-highlight-color:transparent;
@@ -3359,7 +3361,7 @@ html.pc-dense #p-today{
   padding:8px calc(12px + var(--safe-right)) 8px calc(12px + var(--safe-left)) !important;
 }
 html.pc-dense #p-today.pc-fit-scroll{overflow-y:auto}
-html.pc-dense #p-today > *{zoom:var(--pc-zoom,1)}
+html.pc-dense #p-today > *{zoom:var(--pc-zoom,var(--ui-zoom,1))}
 html.pc-dense #p-today .backup-reminder{padding:8px 12px;margin-bottom:6px}
 html.pc-dense #p-today .hero{padding:9px 14px !important;margin-bottom:8px}
 html.pc-dense #p-today .hero-msg{font-size:15px !important;line-height:1.3}
@@ -3578,6 +3580,106 @@ html.pc-dense .undo-bar{max-width:520px;margin:0 auto}
 .theme-swatch{width:30px;height:30px;border-radius:50%;border-radius:8px;flex-shrink:0;overflow:hidden;display:flex;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
 .theme-swatch i{flex:1}
 
+
+/* ══════════════════════════════════════════════════════════════
+   仕事モード（html.work-mode）
+   復習カード・勉強時間の機能を隠し、ToDo・計画だけのシンプルな構成にする。
+   ══════════════════════════════════════════════════════════════ */
+html.work-mode #tab-study,
+html.work-mode .nav-rec-btn{display:none !important}
+.float-fab .fab-ic-plus{display:none}
+html.work-mode .float-fab .fab-ic-study{display:none}
+html.work-mode .float-fab .fab-ic-plus{display:block}
+
+/* ══ 今日タブ：タグ別ボード ══════════════════════════════════
+   タグごとに1枚のカードを作り、2列（広い画面ではそれ以上）に詰めて並べる。
+   CSSの段組み（columns）で、高さの違うカードも隙間なく敷き詰める。 */
+.tagboard{display:flex;gap:10px;align-items:flex-start;margin-bottom:6px}
+.tb-col{flex:1 1 0;min-width:0;display:flex;flex-direction:column}
+.tb-group{
+  background:var(--card);border-radius:18px;border:var(--card-bd);box-shadow:var(--shadow-sm);
+  padding:12px 12px 8px;margin:0 0 10px;
+}
+.tb-head{display:flex;align-items:center;gap:8px;min-height:30px}
+.tb-head-dot{
+  width:13px;height:13px;border-radius:50%;flex-shrink:0;background:var(--tc);
+  box-shadow:0 0 0 4px rgba(120,120,128,.12);
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--tc) 18%,transparent);margin-left:3px
+}
+.tb-head-name{flex:1;min-width:0;font-size:16px;font-weight:800;color:var(--lbl);letter-spacing:-.2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-head-count{font-family:'Outfit',sans-serif;font-size:12px;font-weight:700;color:var(--lbl3);flex-shrink:0}
+.tb-add{
+  width:28px;height:28px;border-radius:9px;border:none;background:transparent;color:var(--icon-muted);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;margin-right:-4px;padding:0
+}
+.tb-add:active{background:var(--fill)}
+.tb-div{height:1px;background:var(--sep);margin:8px 0 4px}
+.tb-item{display:flex;align-items:flex-start;gap:4px;transition:opacity .25s,transform .25s}
+.tb-item.done{opacity:.35;transform:translateX(6px)}
+.tb-check{
+  flex-shrink:0;width:30px;height:30px;margin:0 0 0 -4px;padding:0;border:none;background:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;color:#fff
+}
+.tb-check::before{
+  content:'';width:15px;height:15px;border-radius:50%;box-sizing:border-box;
+  border:2px solid var(--tc);background:transparent;transition:background .15s,transform .15s
+}
+.tb-check:active::before{transform:scale(.85)}
+.tb-item.done .tb-check::before{background:var(--tc)}
+.tb-body{flex:1;min-width:0;padding:5px 0 6px;cursor:pointer;border-radius:8px}
+.tb-body:active{background:var(--fill)}
+.tb-name{font-size:14.5px;line-height:1.4;color:var(--lbl);word-break:break-word;overflow-wrap:anywhere}
+.tb-meta{font-size:11px;color:var(--lbl3);margin-top:1px;font-weight:600}
+.tb-meta.over{color:var(--red)}
+.tb-empty{font-size:13px;color:var(--lbl3);padding:6px 2px 8px}
+@media (hover:hover){ .tb-body:hover{background:var(--fill)} .tb-add:hover{background:var(--fill)} }
+html.theme-p5 .tb-group{border-radius:4px;border:1px solid rgba(255,255,255,.16)}
+/* PC向け表示：枠の広さに合わせて列数を自動で増やす */
+html.pc-dense #p-today .tagboard{gap:8px}
+html.pc-dense #p-today .tb-group{padding:10px 10px 6px;margin-bottom:8px;border-radius:14px}
+html.pc-dense #p-today .tb-head-name{font-size:14.5px}
+html.pc-dense #p-today .tb-name{font-size:13.5px}
+html.pc-dense #p-today .tb-body{padding:3px 4px 4px}
+html.pc-dense #p-today .tb-check{height:26px}
+.layout-toggle-btn{position:relative}
+#todo-longterm-quick-seg .seg-btn{white-space:nowrap;padding-left:2px;padding-right:2px;font-size:13.5px}
+
+
+/* ══ 文字の大きさ（html.ui-l / html.ui-xl） ═════════════════════
+   画面の中身を丸ごと拡大する（文字だけでなく、ボタンや丸のタップ範囲も一緒に大きくなる）。
+   各領域の「中身」に zoom をかけるので、外枠の位置やシートの開閉位置は変わらない。 */
+html{--ui-zoom:1}
+html.ui-l{--ui-zoom:1.15}
+html.ui-xl{--ui-zoom:1.3}
+.panel > *, .nav-inner,
+.sheet-body > *, .sheet-footer, .tag-mgr-body > *, .backup-body > *, .guide-body > *,
+.dense-sheet-head, .dense-sheet-scroll > *, .all-logs-header, .all-logs-filter, .all-logs-body > *,
+.snooze-pick-box > *, .edit-modal-box > *, .expired-plan-box > *, .app-confirm-box, .tle-panel > *{zoom:var(--ui-zoom)}
+html.pc-dense .pc-cols{height:calc(100% / var(--ui-zoom))}
+html.ui-l .tab-lbl{font-size:12.5px}
+html.ui-xl .tab-lbl{font-size:13.5px}
+html.ui-l .toast, html.ui-l .undo-bar-msg{font-size:16px}
+html.ui-xl .toast, html.ui-xl .undo-bar-msg{font-size:17.5px}
+html.ui-l .undo-btn{font-size:15.5px}
+html.ui-xl .undo-btn{font-size:17px}
+/* 大きい文字のときは、狭いナビでは日付を省いて見出しとボタンを優先する */
+@media (max-width:430px){ html.ui-xl .nav-date{display:none} }
+/* PCのサイドバー（左のメニュー）の文字も大きくする */
+@media (min-width:900px){ html.ui-l .tab-lbl{font-size:15px} html.ui-xl .tab-lbl{font-size:16.5px}
+  html.ui-l .sidebar-brand-name{font-size:16.5px} html.ui-xl .sidebar-brand-name{font-size:18px} }
+html.is-desktop-layout.ui-l .tab-lbl{font-size:15px} html.is-desktop-layout.ui-xl .tab-lbl{font-size:16.5px}
+html.is-desktop-layout.ui-l .sidebar-brand-name{font-size:16.5px} html.is-desktop-layout.ui-xl .sidebar-brand-name{font-size:18px}
+/* 設定：文字の大きさの選択ボタン */
+.ui-size-seg{display:flex;gap:8px;padding:0 16px 14px}
+.ui-size-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  padding:10px 4px;border-radius:12px;border:1.5px solid var(--sep);background:var(--card);
+  color:var(--lbl2);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer
+}
+.ui-size-btn b{font-weight:800;color:var(--lbl);line-height:1}
+.ui-size-btn.on{border-color:var(--blue);background:var(--blue-bg);color:var(--lbl)}
+
 /* ══ 埋め込み互換：アプリ内確認ダイアログ ══ */
 .app-confirm{position:fixed;inset:0;z-index:9800;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.45)}
 .app-confirm-box{background:var(--card);border-radius:20px;padding:22px 20px 16px;width:100%;max-width:320px;box-shadow:0 8px 32px rgba(0,0,0,.2)}
@@ -3713,6 +3815,14 @@ try{
 try{ var _t=localStorage.getItem('fukushu-theme-v1'); /* 未設定ならホワイト＆ゴールドを既定にする */
   if(_t!=='default' && _t!=='p5'){ document.documentElement.classList.add('theme-rm'); document.querySelector('meta[name="theme-color"]').setAttribute('content','#FFFFFF'); }
   else if(_t==='p5'){ document.documentElement.classList.add('theme-p5'); document.querySelector('meta[name="theme-color"]').setAttribute('content','#131215'); } }catch(_){}
+/* 文字の大きさも描画前に反映（端末の設定 → なければURLの ?text=l / ?text=xl） */
+try{ var _ts=null; try{ _ts=localStorage.getItem('fukushu-text-size-v1'); }catch(_){}
+  if(!_ts){ var _tq=new URLSearchParams(location.search).get('text'); if(_tq==='l'||_tq==='xl') _ts=_tq; }
+  if(_ts==='l') document.documentElement.classList.add('ui-l'); else if(_ts==='xl') document.documentElement.classList.add('ui-xl'); }catch(_){}
+/* 仕事モードも描画前に反映（端末の設定 → なければURLの ?work=1） */
+try{ var _wm=null; try{ _wm=localStorage.getItem('fukushu-work-mode-v1'); }catch(_){}
+  if(_wm!=='1' && _wm!=='0'){ _wm=(new URLSearchParams(location.search).get('work')==='1')?'1':'0'; }
+  if(_wm==='1') document.documentElement.classList.add('work-mode'); }catch(_){}
 /* PC向け表示も描画前に反映（端末の設定 → なければURLの ?pc=1 / #pc） */
 try{ var _pc=null; try{ _pc=localStorage.getItem('fukushu-pc-dense-v1'); }catch(_){}
   if(_pc!=='1' && _pc!=='0'){ var _q=new URLSearchParams(location.search).get('pc'); _pc=(_q==='1'||/(^#|&)pc(=1)?(&|$)/.test(location.hash))?'1':'0'; }
@@ -3793,8 +3903,9 @@ try{ var _pc=null; try{ _pc=localStorage.getItem('fukushu-pc-dense-v1'); }catch(
 </div>
 
 <!-- Floating add button (always visible, above tab bar) -->
-<button class="float-fab" onclick="openFabSheet()" aria-label="勉強時間を記録">
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M9 2h6"/><path d="M17.5 4.5l1.5-1.5"/></svg>
+<button class="float-fab" onclick="openFabSheet()" aria-label="追加">
+  <svg class="fab-ic-plus" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  <svg class="fab-ic-study" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M9 2h6"/><path d="M17.5 4.5l1.5-1.5"/></svg>
 </button>
 
 <!-- Overlay -->
@@ -3947,8 +4058,8 @@ try{ var _pc=null; try{ _pc=localStorage.getItem('fukushu-pc-dense-v1'); }catch(
    B5 fix: define proper large/small variants, no string.replace() hacks
 ══════════════════════════════════════════ */
 /* ══ App version ════════════════════════ */
-const APP_VERSION = 'v4.5.1';
-const APP_BUILD   = '2026-10-25';
+const APP_VERSION = 'v4.7.0';
+const APP_BUILD   = '2026-10-27';
 
 const IC = {
   check:      `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
@@ -4610,7 +4721,7 @@ function expiredPlanDelete(){
   haptic('medium');
   if(p){
     const name=planDisplayName(p);
-    showUndo(`「${esc(name)}」を削除しました`, ()=>{
+    showUndo(`「${name}」を削除しました`, ()=>{
       PLAN.splice(Math.min(idx, PLAN.length), 0, p);
       savePlan(); render();
     });
@@ -5129,7 +5240,7 @@ function planDelete(id){
   const rulesChanged = nextRules.length!==PLAN_RULES.length || nextRules.some((r,i)=>r.taskIds.length!==PLAN_RULES[i]?.taskIds.length);
   if(rulesChanged){ PLAN_RULES = nextRules; savePlanRules(); }
   PLAN=PLAN.filter(x=>x.id!==id); savePlan(); render(); haptic();
-  showUndo(`「${esc(name)}」を削除しました`, ()=>{
+  showUndo(`「${name}」を削除しました`, ()=>{
     PLAN.splice(Math.min(idx, PLAN.length), 0, p);
     if(rulesChanged){ PLAN_RULES = prevRules; savePlanRules(); }
     savePlan(); render();
@@ -6937,7 +7048,7 @@ function deleteCategory(id){
   TAGS.forEach(t=>{ if(t.categoryId===id) delete t.categoryId; });
   saveCategories(); saveTags(); _tagsMutated=true;
   renderTagMgr(); haptic();
-  showUndo(`「${esc(cat.name)}」を削除しました`, ()=>{
+  showUndo(`「${cat.name}」を削除しました`, ()=>{
     CATEGORIES.splice(Math.min(idx, CATEGORIES.length), 0, cat);
     affectedTagIds.forEach(tid=>{ const t=TAGS.find(x=>x.id===tid); if(t) t.categoryId=id; });
     saveCategories(); saveTags(); _tagsMutated=true;
@@ -7316,7 +7427,7 @@ function deleteTag(id){
   renderSheetTagSel();
   renderEditTagSel();
   haptic();
-  showUndo(`「${esc(tag.name)}」を削除しました`, ()=>{
+  showUndo(`「${tag.name}」を削除しました`, ()=>{
     TAGS.splice(Math.min(idx, TAGS.length), 0, tag);
     affectedUnitIds.forEach(uid=>{
       const u=U.find(x=>x.id===uid);
@@ -7778,7 +7889,7 @@ function del(id){
   haptic();
   shrinkOut('w-'+id,()=>{
     U=U.filter(x=>x.id!==id); save(); render();
-    showUndo(`「${esc(unit.name)}」を削除しました`, ()=>{
+    showUndo(`「${unit.name}」を削除しました`, ()=>{
       if(unit.done){
         // Completed units go back to the done list (append)
         U.push(unit);
@@ -7906,8 +8017,8 @@ let _undoTimer = null;
 let _undoProgTimer = null;
 const UNDO_SEC = 5;
 
-function showUndo(msg, restoreFn){
-  _undoStack={restore:restoreFn};
+function showUndo(msg, restoreFn, undoneMsg){
+  _undoStack={restore:restoreFn, undoneMsg};
   clearTimeout(_undoTimer); clearTimeout(_undoProgTimer);
   document.getElementById('undo-msg').textContent=msg;
   const bar=document.getElementById('undo-bar');
@@ -7927,13 +8038,13 @@ function undoDelete(){
   // Fix3: clear progress timer so it doesn't fire after undo
   clearTimeout(_undoTimer);
   clearTimeout(_undoProgTimer);
-  const {restore}=_undoStack; _undoStack=null;
+  const {restore, undoneMsg}=_undoStack; _undoStack=null;
   // Hide progress bar immediately
   const prog=document.getElementById('undo-prog');
   if(prog){ prog.style.transition='none'; prog.style.width='0%'; }
   document.getElementById('undo-bar').classList.remove('on');
   restore();
-  toast(IC.checkCircle,'削除を取り消しました');
+  toast(IC.checkCircle, undoneMsg || '削除を取り消しました');
   haptic('medium');
 }
 
@@ -8065,7 +8176,8 @@ function render(){
   saveScroll();
 
   const t=td();
-  const active=U.filter(u=>!u.done).sort((a,b)=>a.nextDate.localeCompare(b.nextDate));
+  const wm=isWorkMode();
+  const active= wm ? [] : U.filter(u=>!u.done).sort((a,b)=>a.nextDate.localeCompare(b.nextDate));
   const todayL=active.filter(u=>u.nextDate<=t);
   const upL   =active;
   const doneL =U.filter(u=>u.done).sort((a,b)=>(b.completedAt||0)-(a.completedAt||0));
@@ -8075,7 +8187,8 @@ function render(){
 
   // 今日タブのバッジに「復習」「計画タスク」の件数をまとめて表示（計画タブ側には出さない）
   const tb=document.getElementById('tbadge');
-  const totalBadge = todayL.length + getDuePlanList().length;
+  const totalBadge = todayL.length + getDuePlanList().length
+    + TODOS.filter(x=>!x.done && !x.longterm && x.date && x.date<=t).length;
   if(totalBadge>0){ tb.textContent=totalBadge; tb.classList.remove('h'); }
   else tb.classList.add('h');
 
@@ -8087,7 +8200,7 @@ function render(){
   // 他のタブはswitchTab()側でタブ切替時に組み立てられるため、内容が古いまま
   // 表示されることはない。
   const activeTab = document.querySelector('.tab-btn.on')?.dataset?.tab || 'today';
-  if(activeTab==='today')    rToday(todayL, active.length > 0, doneL);
+  if(activeTab==='today')    rToday(todayL, wm ? (TODOS.some(x=>!x.done)||PLAN.some(p=>!p.done)) : active.length > 0, doneL);
   if(activeTab==='upcoming' && isPcDense()){ _calInit(); _calOpen = true; } // PC向け表示ではカレンダーを常に開いておく
   if(activeTab==='upcoming') rUpcoming(upL);
   if(activeTab==='plan')     rPlan();
@@ -8104,6 +8217,7 @@ function render(){
 /* ── Today panel ── */
 function _rTodayMain(list, hasActive, allDone){
   const el=document.getElementById('p-today');
+  const listAll = list; // タグ絞り込み前の一覧（タグ別ボードは絞り込みを使わない）
   const bannerHtml = backupBannerHtml();
   const compact = isTodayGridLayout() || isPcDense();
 
@@ -8145,7 +8259,7 @@ function _rTodayMain(list, hasActive, allDone){
   function duePlanSecHtml(){
     if(!duePlan.length) return '';
     const header = `<div class="sec${todoCardsHtml?'':' sec-first'}" style="color:var(--plan-d)">${IC.calendar}計画タスク · ${duePlan.length}件</div>`;
-    return header + duePlan.map(p=>planCardHtml(p,{todayMode:true, compact})).join('');
+    return header + duePlan.map(p=>planCardHtml(p,{todayMode:!isWorkMode(), compact})).join('');
   }
 
   // ルールの競合を避けるために前倒しで済ませておくことを提案する計画タスク
@@ -8154,7 +8268,7 @@ function _rTodayMain(list, hasActive, allDone){
     if(!forwardPushPlan.length) return '';
     const header = `<div class="sec" style="color:#B45309">${IC.zapSm}前倒し提案 · ${forwardPushPlan.length}件</div>`;
     return header + forwardPushPlan.map(({plan,conflictWith,conflictDate})=>
-      planCardHtml(plan,{todayMode:true, compact, forwardPush:true, conflictWith, conflictDate})
+      planCardHtml(plan,{todayMode:!isWorkMode(), compact, forwardPush:true, conflictWith, conflictDate})
     ).join('');
   }
 
@@ -8260,11 +8374,17 @@ function _rTodayMain(list, hasActive, allDone){
   // ブロックが縦に並ぶだけなので、CSSの互換性はそのまま維持される。
   const wrap = h => (compact && h) ? `<div class="today-grid">${h}</div>` : h;
 
+  // タグ別ボード表示：タグごとのカードにまとめて一覧する（絞り込みバーは不要なので出さない）
+  if(getTodayLayout()==='board'){
+    el.innerHTML = bannerHtml + _todayBoardHtml(isWorkMode()?[]:listAll, duePlanAll) + todayDoneAccHtml();
+    return;
+  }
+
   if(!list.length){
     // Different state: tasks exist but all done today vs truly empty app
     if(duePlan.length || forwardPushPlan.length){
       // 復習は無いが計画タスク・前倒し提案がある場合はそれを表示
-      const msg = hasActive ? '今日の復習は完了しました！' : '今日の計画タスクがあります';
+      const msg = isWorkMode() ? '今日のタスクがあります' : (hasActive ? '今日の復習は完了しました！' : '今日の計画タスクがあります');
       el.innerHTML=bannerHtml+`
         <div class="hero">
           <div class="hero-msg">${msg}</div>
@@ -8292,8 +8412,8 @@ function _rTodayMain(list, hasActive, allDone){
     } else {
       el.innerHTML=bannerHtml+`
         <div class="hero">
-          <div class="hero-msg">単元を追加しましょう</div>
-          <div class="hero-sub" style="margin-top:6px">「予定」タブから最初の単元を登録できます</div>
+          <div class="hero-msg">${isWorkMode()?'ToDoを追加しましょう':'単元を追加しましょう'}</div>
+          <div class="hero-sub" style="margin-top:6px">${isWorkMode()?'右上の「＋ToDo」から登録できます':'「予定」タブから最初の単元を登録できます'}</div>
         </div>`+todayTagFilterBar+wrap(todoCardsHtml+longtermTodoCardsHtml)+`
         <div class="empty">
           <div class="empty-icon">${IC.calendarLg}</div>
@@ -8365,6 +8485,7 @@ function rToday(list, hasActive, allDone){
   if(nt) nt.textContent = _todayPeek ? '明日のタスク' : TABS.today;
   _pcMoveHeroToNav();
   _bindTodayPeekSwipe();
+  layoutTagBoard();
   fitTodayPanel();
 }
 
@@ -8429,7 +8550,9 @@ function fitTodayPanel(){
   p.classList.remove('pc-fit-scroll');
   p.scrollTop = 0;
   const fits = () => p.scrollHeight <= p.clientHeight + 1;
-  const steps = [[0,1],[1,1],[2,1], ...PC_FIT_ZOOMS.map(z=>[2,z])];
+  // 文字を大きくしているときは、収めるために縮小はせず（せっかくの拡大が戻ってしまうため）、
+  // 補足情報を隠しても入らなければスクロールにする
+  const steps = getUiZoom()>1 ? [[0,1],[1,1],[2,1]] : [[0,1],[1,1],[2,1], ...PC_FIT_ZOOMS.map(z=>[2,z])];
   let textFitFor = null;
   for(const [fit, zoom] of steps){
     if(fit) p.setAttribute('data-fit', fit); else p.removeAttribute('data-fit');
@@ -8476,7 +8599,7 @@ try{ document.fonts && document.fonts.ready.then(()=>scheduleFitTodayPanel(0)); 
 
 function _tomorrowPeekData(){
   const tm = addD(td(),1);
-  const reviews = U.filter(u=>!u.done && u.nextDate===tm);
+  const reviews = isWorkMode() ? [] : U.filter(u=>!u.done && u.nextDate===tm);
   const plans = [];
   PLAN.forEach(p=>{
     if(p.done) return;
@@ -8499,7 +8622,7 @@ function _tomorrowPeekData(){
   const todos = TODOS.filter(x=>!x.done && !x.longterm && x.date===tm)
     .sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
   const longterm = TODOS.filter(x=>!x.done && x.longterm)
-    .sort((a,b)=>(a.deadline||'').localeCompare(b.deadline||''));
+    .sort((a,b)=>(a.deadline||'9999').localeCompare(b.deadline||'9999'));
   return {tm, reviews, plans, todos, longterm};
 }
 
@@ -8577,7 +8700,7 @@ function rTodayTomorrow(){
   if(d.longterm.length){
     body+=sec('var(--teal-d)', IC.target, '長期タスク',
       d.longterm.map(x=>_peekRowHtml(IC.target,'rgba(13,148,136,.12)','var(--teal-d)',x.text,
-        `${fmtShortText(x.deadline||d.tm)}まで`,x.tags)), first);
+        x.deadline ? `${fmtShortText(x.deadline)}まで` : '期限なし',x.tags)), first);
   }
   el.innerHTML = html + `<div class="today-peek">${body}</div>`;
 }
@@ -8977,6 +9100,19 @@ function rUpcoming(list){
   </div>` : '';
 
   const barHtml=calHtml+tagFilterHtml;
+
+  if(isWorkMode()){
+    const addTodoCta = `<button class="plan-add-cta" onclick="openTodoAddSheet()">
+      <span class="plan-add-cta-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+      <span class="plan-add-cta-txt">
+        <span class="plan-add-cta-ttl">ToDoを追加する</span>
+        <span class="plan-add-cta-sub">期限なしの長期タスクも登録できます</span>
+      </span>
+    </button>`;
+    el.innerHTML = calHtml + addTodoCta + todoFilterListHtml();
+    if(_calOpen) _calAttachSwipe();
+    return;
+  }
 
   if(todoActive){
     el.innerHTML=barHtml+todoFilterListHtml();
@@ -10610,7 +10746,7 @@ function _calEventMap(opts){
     if(!map[d]) map[d] = { count: 0, overdue: false, colors: [], planColors: [], todoColors: [] };
     return map[d];
   }
-  U.filter(u => !u.done).forEach(u => {
+  U.filter(u => !u.done && !isWorkMode()).forEach(u => {
     let d = u.nextDate;
     if(!d) return;
     const isOverdueItem = d < today;
@@ -10650,10 +10786,10 @@ function _calEventMap(opts){
   // ToDo: 日付が設定されている未完了のToDoをカレンダーに表示
   // （includeTodos:false のときはcountに加算しない＝スマート分散の混雑度計算から除外）
   TODOS.filter(x=>!x.done).forEach(x=>{
-    let d = x.date;
+    const d = _todoCalDay(x);
     if(!d) return;
-    const isOverdueItem = d < today;
-    if(isOverdueItem) d = today;
+    // 長期タスクは「遅延」の概念を持たないので、期限を過ぎても赤（期限超過）にはしない
+    const isOverdueItem = !x.longterm && x.date < today;
     const cell = ensure(d);
     if(includeTodos) cell.count++;
     if(isOverdueItem) cell.overdue = true;
@@ -11092,7 +11228,7 @@ function _calShiftBtnsHtml(dateStr, id, kind){
     const destIsToday = dest === today;
     const destCount = U.filter(u => !u.done && (destIsToday ? u.nextDate <= dest : u.nextDate === dest)).length
       + PLAN.filter(p => !p.done && p.type!=='daily' && (_planOccursOn(p, dest) || (destIsToday && planIsOverdue(p)))).length
-      + TODOS.filter(x => !x.done && (destIsToday ? x.date <= dest : x.date === dest)).length;
+      + TODOS.filter(x => !x.done && _todoCalDay(x) === dest).length;
     const warn = destCount >= _calDenseThreshold() ? `${IC.alertSm}` : '';
     const label = (d > 0 ? '+' : '') + d + '日' + warn;
     const fn = kind==='plan' ? `denseShiftPlan('${id}','${dest}')` : kind==='todo' ? `denseShiftTodo('${id}','${dest}')` : `denseShiftUnit('${id}','${dest}')`;
@@ -11106,16 +11242,16 @@ function _calDayItemsHtml(dateStr){
   // 「今日」の日付をタップした場合は、期限超過（過去日）のタスクも合流させる。
   // 今日タブでは期限超過のタスクもすでに今日の一覧に合流して表示されているため、
   // カレンダー側だけ昨日・一昨日の日付に取り残されていると数が合わなくなっていた。
-  const reviewCands = U.filter(u => !u.done && (isToday ? u.nextDate <= dateStr : u.nextDate === dateStr));
+  const reviewCands = isWorkMode() ? [] : U.filter(u => !u.done && (isToday ? u.nextDate <= dateStr : u.nextDate === dateStr));
   // 毎日タスクは常に「今日」の日付にのみマッチする（planCalDateがtd()を返すため）ので、
   // ここでは除外せず一覧に含める。除外するとカレンダーの丸ピップ（_calEventMap）には
   // 数えられているのに、日付をタップした一覧には出てこないという不整合が起きていた。
   const planCands = PLAN.filter(p => !p.done && (_planOccursOn(p, dateStr) || (isToday && planIsOverdue(p))));
-  const todoCands = TODOS.filter(x => !x.done && (isToday ? x.date <= dateStr : x.date === dateStr));
+  const todoCands = TODOS.filter(x => !x.done && _todoCalDay(x) === dateStr);
   const rows = [
     ...reviewCands.map(u => ({ id: u.id, kind: 'review', name: u.name, label: STEPS[u.step] || `${u.step}回目`, color: 'var(--blue)', origDueDate: u.origDueDate })),
     ...planCands.map(p => ({ id: p.id, kind: 'plan', name: planDisplayName(p), label: p.type==='goal' ? '目標の期限' : PLAN_TYPE_LABEL[p.type], color: '#7C3AED', origDueDate: p.origDueDate, isDaily: p.type==='daily' })),
-    ...todoCands.map(x => ({ id: x.id, kind: 'todo', name: x.text, label: 'ToDo', color: '#F59E0B', origDueDate: x.origDueDate })),
+    ...todoCands.map(x => ({ id: x.id, kind: 'todo', name: x.text, label: x.longterm ? '長期の期限' : 'ToDo', color: '#F59E0B', origDueDate: x.longterm ? null : x.origDueDate })),
   ];
   if(!rows.length){
     return `<div class="cal-day-empty">この日に予定はありません</div>`;
@@ -11193,7 +11329,7 @@ function _spreadIntensityMult(intensity){
    結果として、3回目以降の復習のみを動かす。 */
 function _smartSpreadCandidates(){
   const t = td();
-  const units = U.filter(u => !u.done && u.step >= 2 && u.nextDate <= t)
+  const units = U.filter(u => !isWorkMode() && !u.done && u.step >= 2 && u.nextDate <= t)
     .sort((a,b) => a.nextDate.localeCompare(b.nextDate));
   return { units, todos: [] };
 }
@@ -11333,12 +11469,12 @@ function _renderDenseSheet(){
   const today = td();
   const isToday = dateStr === today;
   // 「今日」を開いた場合は、期限超過（過去日）のタスクも合流させる（_calDayItemsHtmlと同様）。
-  const reviewCands = U.filter(u => !u.done && (isToday ? u.nextDate <= dateStr : u.nextDate === dateStr));
+  const reviewCands = isWorkMode() ? [] : U.filter(u => !u.done && (isToday ? u.nextDate <= dateStr : u.nextDate === dateStr));
   // 毎日タスクは「特定の1日に移動する」という概念がないため、ずらす操作の対象からは除外するが、
   // 一覧そのものには含める（除外すると、この日をタップしたのに毎日タスクが表示されないという
   // 不整合が起きていた）。
   const planCands = PLAN.filter(p => !p.done && (_planOccursOn(p, dateStr) || (isToday && planIsOverdue(p))));
-  const todoCands = TODOS.filter(x => !x.done && (isToday ? x.date <= dateStr : x.date === dateStr));
+  const todoCands = TODOS.filter(x => !x.done && _todoCalDay(x) === dateStr);
   const allCount = reviewCands.length + planCands.length + todoCands.length;
 
   // ヘッダー
@@ -11392,7 +11528,7 @@ function _renderDenseSheet(){
       <div class="dense-row-top">
         <div class="dense-row-name">${esc(x.text)}</div>
         ${snoozeBadge}
-        <div class="dense-row-step" style="color:#B45309">ToDo</div>
+        <div class="dense-row-step" style="color:#B45309">${x.longterm?'長期の期限':'ToDo'}</div>
       </div>
       <div class="dense-row-btns">${shiftBtns(x.id,'todo')}</div>
     </div>`;
@@ -11404,8 +11540,11 @@ function _renderDenseSheet(){
 function denseShiftTodo(id, destDate){
   const x = TODOS.find(t => t.id === id);
   if(!x) return;
-  if(!x.origDueDate) x.origDueDate = x.date;
-  x.date = destDate;
+  if(x.longterm){ x.deadline = destDate; }
+  else {
+    if(!x.origDueDate) x.origDueDate = x.date;
+    x.date = destDate;
+  }
   saveTodos();
   haptic('medium');
   toast(IC.check, esc(x.text) + ' を ' + fmtShortText(destDate) + ' へ移動しました');
@@ -11454,7 +11593,7 @@ function _denseShiftRowOut(id){
       const _isToday = _denseDate === td();
       const remaining = U.filter(u => !u.done && (_isToday ? u.nextDate <= _denseDate : u.nextDate === _denseDate)).length
         + PLAN.filter(p => !p.done && p.type!=='daily' && (_planOccursOn(p, _denseDate) || (_isToday && planIsOverdue(p)))).length
-        + TODOS.filter(x => !x.done && (_isToday ? x.date <= _denseDate : x.date === _denseDate)).length;
+        + TODOS.filter(x => !x.done && _todoCalDay(x) === _denseDate).length;
       if(remaining === 0){
         closeDenseSheet();
         _renderCalGrid();
@@ -11493,7 +11632,7 @@ function calJumpToDate(dateStr){
   // 「今日」をタップした場合は、今日タブに合流している期限超過分もあわせて対象にする
   const _jumpIsToday = dateStr === td();
   const reviewTargets = U.filter(u => !u.done && (_jumpIsToday ? u.nextDate <= dateStr : u.nextDate === dateStr));
-  const todoTargets = TODOS.filter(x => !x.done && (_jumpIsToday ? x.date <= dateStr : x.date === dateStr));
+  const todoTargets = TODOS.filter(x => !x.done && _todoCalDay(x) === dateStr);
   const planTargets = PLAN.filter(p => !p.done && p.type!=='daily' && (_planOccursOn(p, dateStr) || (_jumpIsToday && planIsOverdue(p))));
   const todayTargets = [...reviewTargets, ...todoTargets];
   const destTabName = todayTargets.length ? 'today' : (planTargets.length ? 'plan' : 'today');
@@ -11774,6 +11913,7 @@ function setFabHidden(hidden){
 /* ══ Bottom sheet ══════════════════════ */
 
 function openFabSheet(){
+  if(isWorkMode()){ openTodoAddSheet(); return; }
   const activeTab=document.querySelector('.tab-btn.on')?.dataset?.tab;
   if(activeTab==='plan'){ openPlanSheet(); return; }
   openNewStudySheet();
@@ -11894,11 +12034,21 @@ if(window.visualViewport){
     _lastKbH = -1;
   }
 
+  // キーボードで隠れないよう持ち上げる対象のシート（文字入力があるもの）
+  const KB_SHEETS = ['sheet','todo-sheet','edit-log-sheet','study-sheet'];
+  let _kbSheetId = null;
   function _syncSheetToKeyboard(){
     if(_vpRaf) cancelAnimationFrame(_vpRaf);
     _vpRaf = requestAnimationFrame(()=>{
-      const sh = document.getElementById('sheet');
-      if(!sh.classList.contains('on')) return;
+      // 閉じたシートに持ち上げた位置が残っていたら戻す
+      KB_SHEETS.forEach(id=>{
+        const el=document.getElementById(id);
+        if(el && !el.classList.contains('on') && el.style.bottom) _resetSheetKeyboardStyle(el);
+      });
+      const openId = KB_SHEETS.find(id=>document.getElementById(id)?.classList.contains('on'));
+      if(!openId) return;
+      const sh = document.getElementById(openId);
+      if(openId !== _kbSheetId){ _kbSheetId = openId; _lastKbH = -1; }
 
       const vpH  = window.visualViewport.height;
       const vpT  = window.visualViewport.offsetTop;
@@ -11920,9 +12070,9 @@ if(window.visualViewport){
         // 入力欄が隠れていたらスクロールして見えるようにする
         // シートがまだ開いているときのみ実行（閉鎖後のfireを防ぐ）
         setTimeout(()=>{
-          const s2 = document.getElementById('sheet');
-          if(!s2 || !s2.classList.contains('on')) return;
-          const inp = document.getElementById('inp');
+          if(!sh.classList.contains('on')) return;
+          const a = document.activeElement;
+          const inp = (a && sh.contains(a) && /INPUT|TEXTAREA/.test(a.tagName)) ? a : (openId==='sheet' ? document.getElementById('inp') : null);
           if(inp) inp.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
         }, 60);
       } else {
@@ -11940,14 +12090,14 @@ if(window.visualViewport){
   // 持ち上がった位置に「残ってしまう」ことがあるため、入力欄のフォーカスが
   // 外れたタイミングでも念のため元の位置に戻す。
   document.addEventListener('focusout', e=>{
-    if(e.target && e.target.id === 'inp'){
-      setTimeout(()=>{
-        const sh = document.getElementById('sheet');
-        if(!sh || !sh.classList.contains('on')) return;
-        if(document.activeElement && document.activeElement.id === 'inp') return; // 再フォーカス済みなら何もしない
-        _resetSheetKeyboardStyle(sh);
-      }, 250);
-    }
+    const sh = e.target && e.target.closest ? KB_SHEETS.map(id=>document.getElementById(id)).find(el=>el && el.contains(e.target)) : null;
+    if(!sh || !/INPUT|TEXTAREA/.test(e.target.tagName)) return;
+    setTimeout(()=>{
+      if(!sh.classList.contains('on')) return;
+      const a = document.activeElement;
+      if(a && sh.contains(a) && /INPUT|TEXTAREA/.test(a.tagName)) return; // 同じシート内の別の入力欄へ移っただけ
+      _resetSheetKeyboardStyle(sh);
+    }, 250);
   });
 }
 
@@ -11994,14 +12144,17 @@ function changeBackupRemindDays(v){
 /* ══ 今日タブのレイアウト設定（1列 / 2列） ══
    'grid' = 2カラム表示（一覧性重視）/ 'list' = 従来の1カラム表示 */
 const TODAY_LAYOUT_KEY = 'fukushu-today-layout-v1';
-function isTodayGridLayout(){
-  try {
-    return localStorage.getItem(TODAY_LAYOUT_KEY) !== 'list'; // 未設定時は2列をデフォルトに
-  } catch { return true; }
+// 'board' = タグ別ボード（タグごとのカードに分けて2列で一覧）
+function getTodayLayout(){
+  let v=null;
+  try { v = localStorage.getItem(TODAY_LAYOUT_KEY); } catch {}
+  if(v==='list' || v==='board' || v==='grid') return v;
+  return isWorkMode() ? 'board' : 'grid'; // 未設定時：通常は2列、仕事モードはタグ別
 }
+function isTodayGridLayout(){ return getTodayLayout()==='grid'; }
 function setTodayLayout(mode){
-  if(mode!=='grid' && mode!=='list') return;
-  if(isTodayGridLayout() === (mode==='grid')) return;
+  if(mode!=='grid' && mode!=='list' && mode!=='board') return;
+  if(getTodayLayout()===mode) return;
   try { localStorage.setItem(TODAY_LAYOUT_KEY, mode); } catch {}
   haptic('light');
   renderSettings();
@@ -12127,7 +12280,7 @@ function backupBannerHtml(){
     <div class="backup-reminder-icon" style="display:flex;align-items:center;justify-content:center">${IC.save}</div>
     <div class="backup-reminder-body">
       <div class="backup-reminder-ttl">データのバックアップをしよう！</div>
-      <div class="backup-reminder-sub">${daysText}。タップして復習記録を保存しましょう。</div>
+      <div class="backup-reminder-sub">${daysText}。タップして${isWorkMode()?'データ':'復習記録'}を保存しましょう。</div>
     </div>
     <button class="backup-reminder-close" onclick="event.stopPropagation();dismissBackupReminder()" aria-label="閉じる" style="display:flex;align-items:center;justify-content:center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
   </div>`;
@@ -12151,6 +12304,14 @@ let _todoEditId = null; // null = 追加モード, idあり = 編集モード
 
 // 'custom' の場合は日付入力欄の値を返す（未入力ならnull）
 // 'longterm'（長期タスク）は「今日から毎日表示する」ので基準日は常に今日
+// カレンダー上でToDoを置く日付（過去日は「今日」にまとめる）
+// 長期タスクは作成日ではなく期限の日に置き、期限なしはカレンダーに出さない
+function _todoCalDay(x){
+  const t=td();
+  const d = x.longterm ? (x.deadline||null) : (x.date||null);
+  if(!d) return null;
+  return d < t ? t : d;
+}
 function _todoDateFromMode(mode){
   if(mode==='tomorrow') return addD(td(),1);
   if(mode==='longterm') return td();
@@ -12162,7 +12323,12 @@ function _todoDateFromMode(mode){
   return td();
 }
 // 長期タスクの「いつまでに終わらせたいか」の目安日（クイック選択 or 個別指定）
+function _todoLongtermNoDeadline(){
+  const b=document.querySelector('#todo-longterm-quick-seg .seg-btn.on');
+  return !!(b && b.dataset.days==='none');
+}
 function _todoLongtermDeadlineValue(){
+  if(_todoLongtermNoDeadline()) return null;
   const inp=document.getElementById('todo-longterm-deadline-inp');
   const v=inp?.value||'';
   return v||null;
@@ -12172,6 +12338,7 @@ function _updateTodoSegNote(){
   const note = document.getElementById('todo-seg-note');
   if(!note) return;
   if(_todoDateMode==='longterm'){
+    if(_todoLongtermNoDeadline()){ note.textContent='期限を決めずに、終わるまで毎日「今日」タブに表示されます'; return; }
     const dl = _todoLongtermDeadlineValue();
     note.textContent = dl
       ? `今日から毎日「今日」タブに表示され、${fmtShortText(dl)}が目安の期限になります（期限を過ぎても「遅延」とは表示されません）`
@@ -12203,7 +12370,7 @@ function selectTodoDateSeg(btn){
     // 長期タスクに切り替えた直後、クイック選択が何も選ばれていなければ「1週間後」を初期値にする
     const seg=document.getElementById('todo-longterm-quick-seg');
     if(seg && !seg.querySelector('.seg-btn.on')){
-      const wk=seg.querySelector('[data-days="7"]');
+      const wk=seg.querySelector(isWorkMode()?'[data-days="none"]':'[data-days="7"]');
       if(wk) selectTodoLongtermQuick(wk);
     }
   }
@@ -12215,7 +12382,9 @@ function selectTodoLongtermQuick(btn){
   document.querySelectorAll('#todo-longterm-quick-seg .seg-btn').forEach(b=>b.classList.toggle('on',b===btn));
   const deadlineInp=document.getElementById('todo-longterm-deadline-inp');
   const days=btn.dataset.days;
-  if(days===''){
+  if(days==='none'){
+    if(deadlineInp){ deadlineInp.style.display='none'; deadlineInp.value=''; }
+  } else if(days===''){
     if(deadlineInp){
       deadlineInp.style.display='block'; deadlineInp.min=td();
       if(!deadlineInp.value) deadlineInp.value=addD(td(),7);
@@ -12278,21 +12447,24 @@ function renderTodoTagSel(){
     </div>`;
 }
 
-function openTodoAddSheet(){
+function openTodoAddSheet(presetTagId){
+  const wm=isWorkMode();
   _todoEditId=null;
-  _todoDateMode='today';
-  _todoDraftTags=[];
+  _todoDateMode= wm ? 'longterm' : 'today';
+  _todoDraftTags= (presetTagId && TAGS.some(t=>t.id===presetTagId)) ? [presetTagId] : [];
   _todoTagAddOpen=false;
-  document.querySelectorAll('#todo-date-seg .seg-btn').forEach(b=>b.classList.toggle('on',b.dataset.val==='today'));
+  document.querySelectorAll('#todo-date-seg .seg-btn').forEach(b=>b.classList.toggle('on',b.dataset.val===_todoDateMode));
   document.getElementById('todo-inp').value='';
   const customInp=document.getElementById('todo-date-custom-inp');
   if(customInp){ customInp.value=''; customInp.min=td(); customInp.style.display='none'; }
-  const ltWrap=document.getElementById('todo-longterm-wrap'); if(ltWrap) ltWrap.style.display='none';
+  const ltWrap=document.getElementById('todo-longterm-wrap'); if(ltWrap) ltWrap.style.display= wm ? 'block' : 'none';
   const ltDeadlineInp=document.getElementById('todo-longterm-deadline-inp');
-  if(ltDeadlineInp){ ltDeadlineInp.value=''; ltDeadlineInp.min=td(); ltDeadlineInp.style.display='none'; }
-  document.querySelectorAll('#todo-longterm-quick-seg .seg-btn').forEach(b=>b.classList.toggle('on',b.dataset.days==='7'));
+  if(ltDeadlineInp){ ltDeadlineInp.value= wm ? '' : addD(td(),7); ltDeadlineInp.min=td(); ltDeadlineInp.style.display='none'; }
+  const _ltDef = wm ? 'none' : '7';
+  document.querySelectorAll('#todo-longterm-quick-seg .seg-btn').forEach(b=>b.classList.toggle('on',b.dataset.days===_ltDef));
   renderTodoTagSel();
   const ttl=document.getElementById('todo-sheet-ttl'); if(ttl) ttl.textContent='ToDoを追加する';
+  const delBtn=document.getElementById('todo-sheet-del'); if(delBtn) delBtn.style.display='none';
   const btn=document.getElementById('todo-sheet-btn'); if(btn) btn.textContent='追加する';
   document.getElementById('todo-overlay').classList.add('on');
   document.getElementById('todo-sheet').classList.add('on');
@@ -12335,7 +12507,10 @@ function openTodoEditSheet(id){
   const ltWrap=document.getElementById('todo-longterm-wrap');
   const ltDeadlineInp=document.getElementById('todo-longterm-deadline-inp');
   if(ltWrap) ltWrap.style.display = mode==='longterm' ? 'block' : 'none';
-  if(mode==='longterm'){
+  if(mode==='longterm' && !x.deadline){
+    document.querySelectorAll('#todo-longterm-quick-seg .seg-btn').forEach(b=>b.classList.toggle('on',b.dataset.days==='none'));
+    if(ltDeadlineInp){ ltDeadlineInp.min=td(); ltDeadlineInp.value=''; ltDeadlineInp.style.display='none'; }
+  } else if(mode==='longterm'){
     const deadline = x.deadline || addD(td(),7);
     const daysAway = diff(deadline);
     const presetBtn = document.querySelector(`#todo-longterm-quick-seg [data-days="${daysAway}"]`);
@@ -12352,6 +12527,7 @@ function openTodoEditSheet(id){
   }
   renderTodoTagSel();
   const ttl=document.getElementById('todo-sheet-ttl'); if(ttl) ttl.textContent='ToDoを編集する';
+  const delBtn=document.getElementById('todo-sheet-del'); if(delBtn) delBtn.style.display='block';
   const btn=document.getElementById('todo-sheet-btn'); if(btn) btn.textContent='保存する';
   document.getElementById('todo-overlay').classList.add('on');
   document.getElementById('todo-sheet').classList.add('on');
@@ -12364,6 +12540,12 @@ function openTodoEditSheet(id){
   haptic();
 }
 
+// 編集中のToDoを削除する（「元に戻す」で取り消せる）
+function deleteTodoFromSheet(){
+  const id=_todoEditId; if(!id) return;
+  closeTodoAddSheet();
+  deleteTodo(id);
+}
 function closeTodoAddSheet(){
   const sh=document.getElementById('todo-sheet');
   document.getElementById('todo-overlay').classList.remove('on');
@@ -12387,6 +12569,7 @@ function addTodo(){
   }
   const isLongterm = _todoDateMode==='longterm';
   let date=_todoDateFromMode(_todoDateMode);
+  const rawDate=date;
   if(!date){
     toast(IC.alert, isLongterm ? '期限を選択してください' : '日付を選択してください');
     haptic('medium'); return;
@@ -12394,20 +12577,23 @@ function addTodo(){
   let deadline=null;
   if(isLongterm){
     deadline=_todoLongtermDeadlineValue();
-    if(!deadline){
+    if(!deadline && !_todoLongtermNoDeadline()){
       toast(IC.alert,'期限を選択してください');
       haptic('medium'); return;
     }
     // 「明日までに」なども入力できるよう、期限自体は今日より前でなければ許容する
-    if(deadline<td()) deadline=td();
+    if(deadline && deadline<td()) deadline=td();
   }
   // input要素のmin属性はUIの目安に過ぎず、手入力等で回避され得るため保存時にも再検証する
   if(date<td()) date=td();
   if(_todoEditId){
     const x=TODOS.find(t=>t.id===_todoEditId);
     if(!x){ closeTodoAddSheet(); return; }
-    x.text=text; x.date=date; x.tags=[..._todoDraftTags];
-    if(isLongterm){ x.longterm=true; x.deadline=deadline; }
+    // 期限超過のToDoの名前だけ直した場合などは、元の日付（超過状態）をそのまま残す
+    x.text=text; x.tags=[..._todoDraftTags];
+    if(isLongterm){ if(!x.longterm) x.date=date; }
+    else x.date = (rawDate && rawDate===x.date) ? x.date : date;
+    if(isLongterm){ x.longterm=true; if(deadline) x.deadline=deadline; else delete x.deadline; }
     else { delete x.longterm; delete x.deadline; }
     saveTodos();
     closeTodoAddSheet();
@@ -12417,13 +12603,13 @@ function addTodo(){
     return;
   }
   const task={id:Date.now().toString(), text, date, done:false, half:false, elapsedMs:0, timerStart:null, tags:[..._todoDraftTags], createdAt:Date.now()};
-  if(isLongterm){ task.longterm=true; task.deadline=deadline; }
+  if(isLongterm){ task.longterm=true; if(deadline) task.deadline=deadline; }
   TODOS.unshift(task);
   saveTodos();
   inp.value='';
   closeTodoAddSheet();
   render();
-  const suffix = isLongterm ? `（${fmtShortText(deadline)}までに）` : (date!==td() ? `（${fmtShortText(date)}）` : '');
+  const suffix = isLongterm ? (deadline ? `（${fmtShortText(deadline)}までに）` : '（期限なし）') : (date!==td() ? `（${fmtShortText(date)}）` : '');
   setTimeout(()=>toast(IC.checkCircle, 'ToDoを追加'+suffix), 340);
   haptic('medium');
 }
@@ -12454,10 +12640,237 @@ function deleteTodo(id){
   haptic('medium');
   render();
   // ゴミ箱ボタンの押し間違いで消えたままにならないよう、他の削除と同じく元に戻せるようにする
-  showUndo(`「${esc(item.text)}」を削除しました`, ()=>{
+  showUndo(`「${item.text}」を削除しました`, ()=>{
     TODOS.splice(Math.min(idx, TODOS.length), 0, item);
     saveTodos(); render();
   });
+}
+
+
+/* ══ 文字の大きさ ═════════════════════════════════════════
+   'n'=標準 / 'l'=大 / 'xl'=特大。端末ごとの設定（同期しない）。 */
+const UI_SIZE_KEY = 'fukushu-text-size-v1';
+const UI_SIZES = { n:{label:'標準', zoom:1, glyph:15}, l:{label:'大', zoom:1.15, glyph:19}, xl:{label:'特大', zoom:1.3, glyph:23} };
+function getUiSize(){
+  const r=document.documentElement;
+  return r.classList.contains('ui-xl') ? 'xl' : r.classList.contains('ui-l') ? 'l' : 'n';
+}
+function getUiZoom(){ return UI_SIZES[getUiSize()].zoom; }
+function setUiSize(v){
+  if(!UI_SIZES[v] || getUiSize()===v) return;
+  try{ localStorage.setItem(UI_SIZE_KEY, v); }catch(_){}
+  const r=document.documentElement;
+  r.classList.toggle('ui-l', v==='l');
+  r.classList.toggle('ui-xl', v==='xl');
+  haptic('medium');
+  renderSettings();
+  render();
+  toast(IC.checkCircle, `文字の大きさを「${UI_SIZES[v].label}」にしました`);
+}
+function uiSizeSegHtml(){
+  const cur=getUiSize();
+  return Object.entries(UI_SIZES).map(([k,v])=>`
+    <button class="ui-size-btn${cur===k?' on':''}" onclick="setUiSize('${k}')" aria-pressed="${cur===k}" aria-label="文字の大きさ：${v.label}">
+      <b style="font-size:${v.glyph}px">あ</b>${v.label}
+    </button>`).join('');
+}
+
+/* ══ 仕事モード ══════════════════════════════════════════
+   復習カード・勉強時間の機能を隠し、ToDo（主に長期タスク）と計画だけで使うモード。
+   設定は端末ごと（同期しない）。URLに ?work=1 を付けて開いた場合も既定でONになる。
+   データ自体は一切消さないので、OFFに戻せば元どおり使える。 */
+const WORK_MODE_KEY = 'fukushu-work-mode-v1';
+function isWorkMode(){ return document.documentElement.classList.contains('work-mode'); }
+function setWorkMode(on){
+  try{ localStorage.setItem(WORK_MODE_KEY, on?'1':'0'); }catch(_){}
+  document.documentElement.classList.toggle('work-mode', on);
+  // ONにしたときは、今日タブを見やすいタグ別ボードに切り替える（あとから設定で変更可）
+  try{
+    if(on){
+      const prev=localStorage.getItem(TODAY_LAYOUT_KEY);
+      localStorage.setItem('fukushu-layout-before-work-v1', prev||'');
+      localStorage.setItem(TODAY_LAYOUT_KEY, 'board');
+    } else {
+      const prev=localStorage.getItem('fukushu-layout-before-work-v1');
+      if(prev!==null){
+        if(prev) localStorage.setItem(TODAY_LAYOUT_KEY, prev); else localStorage.removeItem(TODAY_LAYOUT_KEY);
+        localStorage.removeItem('fukushu-layout-before-work-v1');
+      }
+    }
+  }catch(_){}
+  const cur=document.querySelector('.tab-btn.on');
+  if(on && cur && cur.dataset.tab==='study') switchTab(document.querySelector('[data-tab="today"]'));
+  haptic('medium');
+  renderSettings();
+  render();
+  toast(IC.checkCircle, on ? '仕事モードにしました' : '通常モードに戻しました');
+}
+
+// ToDoをタイマーを通さずにその場で完了にする（仕事モード用）
+function completeTodoQuick(id){
+  const x=TODOS.find(t=>t.id===id); if(!x || x.done) return;
+  const prevHalf=x.half, prevOrig=x.origDueDate;
+  x.done=true; x.half=false; x.completedAt=Date.now(); x.timerStart=null;
+  delete x.origDueDate;
+  bumpStreak();
+  saveTodos();
+  haptic('medium');
+  render();
+  showUndo(`「${x.text}」を完了しました`, ()=>{
+    x.done=false; delete x.completedAt;
+    x.half=prevHalf; if(prevOrig) x.origDueDate=prevOrig;
+    saveTodos(); render();
+  }, '完了を取り消しました');
+}
+
+/* ══ 今日タブ：タグ別ボード ═════════════════════════════
+   今日やること（ToDo・長期タスク・計画タスク・復習）をタグごとのカードにまとめる。
+   複数のタグが付いたタスクは、それぞれのタグのカードに表示する。 */
+function _tbMD(d){ const dd=new Date(d+'T00:00:00'); return `${dd.getMonth()+1}/${dd.getDate()}`; }
+function _tbItems(list, duePlan){
+  const t=td(), items=[];
+  TODOS.forEach(x=>{
+    if(x.done) return;
+    if(!x.longterm && !(x.date && x.date<=t)) return;
+    let meta='', cls='';
+    if(x.longterm){
+      if(x.deadline){
+        const r=diff(x.deadline);
+        meta = r>0 ? `〜${_tbMD(x.deadline)}` : r===0 ? '今日まで' : `${_tbMD(x.deadline)}が目安`;
+      }
+    } else if(x.date<t){ meta=`${Math.abs(diff(x.date))}日超過`; cls='over'; }
+    if(x.half) meta = meta ? `${meta}・途中まで` : '途中まで';
+    items.push({kind:'todo', id:x.id, name:x.text, tags:x.tags||[], meta, cls,
+      key:(x.longterm ? '1'+(x.deadline||'9999') : '0'+x.date)+(x.createdAt||'')});
+  });
+  duePlan.forEach(p=>{
+    const cardId = p.__scheduleItemIdx!=null ? `${p.id}::${p.__scheduleItemIdx}` : p.id;
+    let meta, cls='';
+    if(p.type==='goal'){ meta=`目標 ${p.doneCount||0}/${p.totalCount}`; if(planGoalIsOverdue(p)) cls='over'; }
+    else if(planIsOverdue(p)){ meta=`${Math.abs(diff(p.nextDate))}日超過`; cls='over'; }
+    else meta = PLAN_TYPE_LABEL[p.type]||'計画';
+    items.push({kind:'plan', id:cardId, name:planDisplayName(p), tags:p.tags||[], meta, cls,
+      key:'0'+(p.type==='goal'?(p.deadline||t):(p.nextDate||t))});
+  });
+  list.forEach(u=>{
+    const d=diff(u.nextDate);
+    items.push({kind:'review', id:u.id, name:u.name, tags:u.tags||[],
+      meta: d<0 ? `復習・${Math.abs(d)}日超過` : `復習 ${STEPS[u.step]||''}`, cls: d<0?'over':'', key:'0'+u.nextDate});
+  });
+  items.sort((a,b)=>a.key.localeCompare(b.key));
+  return items;
+}
+function _tbGroupHtml(tag, items){
+  const color = tag ? tag.color : '#9CA3AF';
+  const name = tag ? esc(tag.name) : 'タグなし';
+  const addBtn = `<button class="tb-add" onclick="openTodoAddSheet(${tag?`'${tag.id}'`:''})" aria-label="${name}にToDoを追加"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>`;
+  const rows = items.length ? items.map(it=>`
+    <div class="tb-item">
+      <button class="tb-check" onclick="tbComplete(this,'${it.kind}','${it.id}')" aria-label="${esc(it.name)}を完了"></button>
+      <div class="tb-body" onclick="tbOpen('${it.kind}','${it.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" role="button" tabindex="0">
+        <div class="tb-name">${esc(it.name)}</div>
+        ${it.meta?`<div class="tb-meta ${it.cls}">${it.meta}</div>`:''}
+      </div>
+    </div>`).join('') : `<div class="tb-empty">タスクなし</div>`;
+  return `<div class="tb-group" style="--tc:${color}">
+    <div class="tb-head">
+      <span class="tb-head-dot"></span>
+      <span class="tb-head-name">${name}</span>
+      ${items.length?`<span class="tb-head-count">${items.length}</span>`:''}
+      ${addBtn}
+    </div>
+    <div class="tb-div"></div>
+    ${rows}
+  </div>`;
+}
+function _todayBoardHtml(list, duePlan){
+  const items=_tbItems(list, duePlan);
+  const wm=isWorkMode();
+  const tagIds=new Set(TAGS.map(t=>t.id));
+  const groups=[];
+  TAGS.forEach(tg=>{
+    const its=items.filter(it=>it.tags.includes(tg.id));
+    // 仕事モードではタスクの無いタグも「タスクなし」として並べ、タグ一覧として使えるようにする
+    if(its.length || wm) groups.push(_tbGroupHtml(tg, its));
+  });
+  const untagged=items.filter(it=>!it.tags.some(id=>tagIds.has(id)));
+  if(untagged.length) groups.push(_tbGroupHtml(null, untagged));
+
+  const total=items.length;
+  const overN=items.filter(it=>it.cls==='over').length;
+  const hero = total
+    ? `<div class="hero"><div class="hero-msg">${total} 件のタスクがあります</div>${overN?`<div class="hero-sub" style="margin-top:6px">うち ${overN} 件が期限超過</div>`:''}</div>`
+    : `<div class="hero all-done"><div class="hero-msg">今日のタスクはありません</div><div class="hero-sub" style="margin-top:6px">お疲れさまでした！</div></div>`;
+  if(!groups.length){
+    return hero + `<div class="empty">
+      <div class="empty-icon">${IC.listCheck}</div>
+      <h3>ToDoを追加しましょう</h3>
+      <p>右上の「＋ToDo」から追加できます<br>タグを付けると、タグごとにまとまって表示されます</p>
+    </div>`;
+  }
+  return hero + `<div class="tagboard"><div class="tb-col">${groups.join('')}</div></div>`;
+}
+// 表示幅から列数を決め、各カードの実際の高さを測って一番低い列に順番に積む。
+// （CSSの段組みだとカードが少ないとき片側に寄ってしまうため、自前で振り分ける）
+function _tbColumnCount(w){
+  if(isPcDense()) return Math.max(2, Math.floor((w+8)/208));
+  if(w>=600) return 3;
+  // 文字を「特大」にしたスマホでは、2列だと単語の途中で折り返して読みにくいので1列にする
+  return w<300 ? 1 : 2;
+}
+function layoutTagBoard(){
+  const board=document.querySelector('#p-today .tagboard'); if(!board) return;
+  const groups=[...board.querySelectorAll('.tb-group')];
+  groups.forEach((g,i)=>{ if(g.dataset.order==null) g.dataset.order=i; });
+  groups.sort((a,b)=>a.dataset.order-b.dataset.order);
+  const n=Math.max(1, Math.min(_tbColumnCount(board.clientWidth||360), groups.length||1));
+  if(board.dataset.cols==String(n) && board.dataset.laid==='1') return;
+  board.innerHTML='';
+  const cols=[]; for(let i=0;i<n;i++){ const c=document.createElement('div'); c.className='tb-col'; board.appendChild(c); cols.push(c); }
+  // まず1列目に全部入れて、列幅のもとで各カードの高さを測る
+  groups.forEach(g=>cols[0].appendChild(g));
+  const hs=groups.map(g=>g.offsetHeight);
+  const totals=new Array(n).fill(0);
+  groups.forEach((g,i)=>{
+    let k=0; for(let j=1;j<n;j++) if(totals[j]<totals[k]-1) k=j;
+    cols[k].appendChild(g); totals[k]+=hs[i]+10;
+  });
+  board.dataset.cols=String(n); board.dataset.laid='1';
+}
+let _tbResizeTimer=null;
+try{ document.fonts && document.fonts.ready.then(()=>{ const b=document.querySelector('#p-today .tagboard'); if(b){ b.dataset.laid='0'; layoutTagBoard(); } }); }catch(_){}
+window.addEventListener('resize', ()=>{
+  clearTimeout(_tbResizeTimer);
+  _tbResizeTimer=setTimeout(()=>{
+    const b=document.querySelector('#p-today .tagboard'); if(!b) return;
+    b.dataset.laid='0'; layoutTagBoard();
+    if(typeof scheduleFitTodayPanel==='function') scheduleFitTodayPanel(0);
+  }, 120);
+});
+function tbComplete(btn, kind, id){
+  const row0=btn.closest('.tb-item');
+  if(row0 && row0.classList.contains('done')) return;
+  const wm=isWorkMode();
+  if(kind==='review'){ openStudyTimer(id); return; }
+  if(!wm){
+    if(kind==='todo') openStudyTimerForTodo(id); else openStudyTimerForPlan(id);
+    return;
+  }
+  const row=btn.closest('.tb-item'); if(row) row.classList.add('done');
+  haptic('medium');
+  setTimeout(()=>{
+    if(kind==='todo'){ completeTodoQuick(id); return; }
+    const {planId, itemIdx}=_parsePlanCardId(id);
+    const p=PLAN.find(x=>x.id===planId);
+    const name = p ? ((p.type==='schedule' && itemIdx!=null) ? planDisplayName(p,(p.schedule||[])[itemIdx]) : planDisplayName(p)) : '';
+    planComplete(id);
+    if(p) showUndo(`「${name}」を完了しました`, ()=>undoPlanCompleteFromDone(id), '完了を取り消しました');
+  }, 260);
+}
+function tbOpen(kind, id){
+  if(kind==='todo') openTodoEditSheet(id);
+  else if(kind==='plan') openPlanDetailSheet(_parsePlanCardId(id).planId);
+  else openEdit(id);
 }
 
 // 今日タブに表示するToDoセクションのHTMLを生成（date===今日のToDoのみ）
@@ -12469,7 +12882,9 @@ function todoCardHtml(x, compact){
   // 「◯日超過」という赤字の遅延表示は、この手のタスクにはそぐわないため出さない。
   const over = !x.longterm && x.date && x.date < t;
   let whenChip;
-  if(x.longterm){
+  if(x.longterm && !x.deadline){
+    whenChip = `<div class="card-when-chip">${IC.target} 期限なし</div>`;
+  } else if(x.longterm){
     const remain = diff(x.deadline||t);
     const dLabel = compact ? (()=>{const dd=new Date((x.deadline||t)+'T00:00:00');return `${dd.getMonth()+1}/${dd.getDate()}`;})() : fmtShortText(x.deadline||t);
     const remainTxt = remain>0 ? `${dLabel}まで` : remain===0 ? '今日が目安の期限' : `${dLabel}が目安でした`;
@@ -12497,7 +12912,9 @@ function todoCardHtml(x, compact){
       </div>
       ${x.longterm ? '' : snoozeNoteHtml(x.origDueDate, x.date)}
       <div class="acts">
-        <button class="btn-ok" onclick="openStudyTimerForTodo('${x.id}')">${IC.timerSm} ${okLabel}</button>
+        ${isWorkMode()
+          ? `<button class="btn-ok" onclick="completeTodoQuick('${x.id}')">${IC.check} 完了にする</button>`
+          : `<button class="btn-ok" onclick="openStudyTimerForTodo('${x.id}')">${IC.timerSm} ${okLabel}</button>`}
         ${snoozeBtn}
       </div>
     </div>
@@ -12526,7 +12943,7 @@ function renderTodoSectionHtml(compact, tagId){
 // 先に目に入れてもらい、長期タスクは「余裕があれば」の位置に自然に下げる狙い。
 function renderLongtermTodoSectionHtml(compact, tagId){
   let list = TODOS.filter(x=>x.longterm && !x.done)
-    .sort((a,b)=>(a.deadline||'').localeCompare(b.deadline||'')||(a.createdAt||0)-(b.createdAt||0));
+    .sort((a,b)=>(a.deadline||'9999').localeCompare(b.deadline||'9999')||(a.createdAt||0)-(b.createdAt||0));
   if(tagId) list = list.filter(x=>(x.tags||[]).includes(tagId));
   if(!list.length) return '';
   const header = `<div class="sec" style="color:var(--teal-d)">${IC.target}長期タスク · ${list.length}件</div>`;
@@ -12553,7 +12970,7 @@ function todoFilterListHtml(){
     const aLt=!!a.longterm, bLt=!!b.longterm;
     if(aLt!==bLt) return aLt?1:-1;
     if(aLt){
-      const da=a.deadline||'', db=b.deadline||'';
+      const da=a.deadline||'9999', db=b.deadline||'9999';
       if(da!==db) return da.localeCompare(db);
       return (a.createdAt||0)-(b.createdAt||0);
     }
@@ -12584,11 +13001,13 @@ function todoFilterListHtml(){
 }
 
 function todoAllRowHtml(x){
-  const dateLbl = x.longterm ? `${fmtShortText(x.deadline||x.date)}まで` : (x.date ? fmtShortText(x.date) : '');
+  const dateLbl = x.longterm ? (x.deadline ? `${fmtShortText(x.deadline)}まで` : '期限なし') : (x.date ? fmtShortText(x.date) : '');
   const tagsHtml = (x.tags&&x.tags.length) ? `<div class="card-tags-row" style="margin-top:3px">${x.tags.map(tid=>tagHtml(tid)).join('')}</div>` : '';
   const leadBtn = x.done
     ? `<button class="todo-all-check on" onclick="toggleTodo('${x.id}')" aria-label="未完了に戻す">${IC.check}</button>`
-    : `<button class="todo-all-timer" onclick="openStudyTimerForTodo('${x.id}')" aria-label="時間を記録して完了">${IC.timerSm}</button>`;
+    : isWorkMode()
+      ? `<button class="todo-all-check" onclick="completeTodoQuick('${x.id}')" aria-label="完了にする"></button>`
+      : `<button class="todo-all-timer" onclick="openStudyTimerForTodo('${x.id}')" aria-label="時間を記録して完了">${IC.timerSm}</button>`;
   return `<div class="todo-all-row" id="todo-all-row-${x.id}">
     ${leadBtn}
     <div class="todo-all-body">
@@ -12659,7 +13078,7 @@ const GUIDE_SECTIONS = [
     <p>アプリ全体の設定をまとめた画面です。</p>
     <ul>
       <li><b>アイコン</b>：アプリのアイコン画像を変更できます。</li>
-      <li><b>表示</b>：今日タブのレイアウトを1列／2列に切り替えられます。</li>
+      <li><b>表示</b>：今日タブのレイアウトを1列／2列／タグ別（タグごとのカードにまとめて表示）に切り替えられます。</li><li><b>仕事モード</b>：復習・勉強時間の機能を隠し、ToDoと計画だけのシンプルな画面にできます。</li>
       <li><b>データ管理</b>：バックアップの保存・復元、タグの追加・編集・削除ができます。機種変更やアプリの不具合に備えて、定期的なバックアップをおすすめします。</li>
       <li><b>開発者向け</b>：復習の間隔（1日後→7日後→…）を細かくカスタマイズできます（上級者向け）。</li>
       <li>この使い方ガイドも、いつでもここから開けます。</li>
@@ -12930,7 +13349,27 @@ function renderSettings(){
   const el = document.getElementById('p-settings'); if(!el) return;
 
   el.innerHTML = `
-    <div class="sec sec-first">アイコン</div>
+    <div class="sec sec-first">モード</div>
+    <div class="settings-section" style="margin-bottom:12px">
+      <div class="settings-row">
+        <div class="settings-row-icon" style="background:#FFF4E9;color:#EA580C"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/></svg></div>
+        <div class="settings-row-body">
+          <div class="settings-row-title">仕事モード</div>
+          <div class="settings-row-sub">復習・勉強時間の機能を隠し、ToDoと計画だけのシンプルな画面にします（この端末だけに適用。データは消えません）</div>
+        </div>
+        <button class="settings-switch${isWorkMode()?' on':''}" role="switch" aria-checked="${isWorkMode()?'true':'false'}" aria-label="仕事モード" onclick="setWorkMode(${isWorkMode()?'false':'true'})"></button>
+      </div>
+      <div class="settings-row" style="border-bottom:none;padding-bottom:10px">
+        <div class="settings-row-icon" style="background:#EEF2FF;color:var(--blue-d);font-weight:800;font-size:17px">あ</div>
+        <div class="settings-row-body">
+          <div class="settings-row-title">文字の大きさ</div>
+          <div class="settings-row-sub">画面全体を大きく表示します（この端末だけに適用）</div>
+        </div>
+      </div>
+      <div class="ui-size-seg" role="group" aria-label="文字の大きさ">${uiSizeSegHtml()}</div>
+    </div>
+
+    <div class="sec">アイコン</div>
     <div class="settings-section" style="margin-bottom:12px">
       <div class="settings-row" style="cursor:pointer" onclick="document.getElementById('icon-file-input').click()">
         <div class="settings-row-icon" style="overflow:hidden;padding:0">
@@ -12960,14 +13399,17 @@ function renderSettings(){
         <div class="settings-row-icon" style="background:#EEF2FF;color:var(--blue-d)">${IC.spread}</div>
         <div class="settings-row-body">
           <div class="settings-row-title">今日タブのレイアウト</div>
-          <div class="settings-row-sub">カードを1列 or 2列で表示します</div>
+          <div class="settings-row-sub">1列・2列・タグ別から選べます</div>
         </div>
         <div class="layout-toggle" role="group" aria-label="今日タブのレイアウト">
-          <button class="layout-toggle-btn${isTodayGridLayout()?'':' on'}" onclick="setTodayLayout('list')" aria-label="1列で表示" aria-pressed="${isTodayGridLayout()?'false':'true'}">
+          <button class="layout-toggle-btn${getTodayLayout()==='list'?' on':''}" onclick="setTodayLayout('list')" aria-label="1列で表示" aria-pressed="${getTodayLayout()==='list'}">
             <svg width="18" height="14" viewBox="0 0 18 14" fill="none"><rect x="0" y="0" width="18" height="6" rx="1.8" fill="currentColor"/><rect x="0" y="8" width="18" height="6" rx="1.8" fill="currentColor"/></svg>
           </button>
-          <button class="layout-toggle-btn${isTodayGridLayout()?' on':''}" onclick="setTodayLayout('grid')" aria-label="2列で表示" aria-pressed="${isTodayGridLayout()?'true':'false'}">
+          <button class="layout-toggle-btn${getTodayLayout()==='grid'?' on':''}" onclick="setTodayLayout('grid')" aria-label="2列で表示" aria-pressed="${getTodayLayout()==='grid'}">
             <svg width="18" height="14" viewBox="0 0 18 14" fill="none"><rect x="0" y="0" width="8" height="14" rx="1.8" fill="currentColor"/><rect x="10" y="0" width="8" height="14" rx="1.8" fill="currentColor"/></svg>
+          </button>
+          <button class="layout-toggle-btn${getTodayLayout()==='board'?' on':''}" onclick="setTodayLayout('board')" aria-label="タグ別に表示" aria-pressed="${getTodayLayout()==='board'}">
+            <svg width="18" height="16" viewBox="0 0 18 16" fill="none"><rect x="0" y="0" width="8" height="9" rx="1.8" fill="currentColor"/><rect x="0" y="11" width="8" height="5" rx="1.8" fill="currentColor"/><rect x="10" y="0" width="8" height="5" rx="1.8" fill="currentColor"/><rect x="10" y="7" width="8" height="9" rx="1.8" fill="currentColor"/></svg>
           </button>
         </div>
       </div>
@@ -12975,7 +13417,7 @@ function renderSettings(){
         <div class="settings-row-icon" style="background:#F5F3FF;color:var(--plan-d)">${IC.tag}</div>
         <div class="settings-row-body">
           <div class="settings-row-title">今日タブのタグ絞り込み</div>
-          <div class="settings-row-sub">予定タブと同じタグチップで、今日のタスクを絞り込めます</div>
+          <div class="settings-row-sub">${getTodayLayout()==='board'?'1列・2列表示のときに使えます（タグ別表示では不要です）':'予定タブと同じタグチップで、今日のタスクを絞り込めます'}</div>
         </div>
         <button class="settings-switch${todayTagFilterEnabled()?' on':''}" role="switch" aria-checked="${todayTagFilterEnabled()?'true':'false'}" aria-label="今日タブのタグ絞り込み" onclick="setTodayTagFilterEnabled(${todayTagFilterEnabled()?'false':'true'})"></button>
       </div>
@@ -13047,7 +13489,7 @@ function renderSettings(){
       </div>
     </div>
 
-    <div class="sec">開発者向け</div>
+    ${isWorkMode()?'':`<div class="sec">開発者向け</div>
     <div class="settings-section" style="margin-bottom:12px">
       <div class="settings-row" onclick="openIntervalSettings()" style="cursor:pointer">
         <div class="settings-row-icon" style="background:#FEF3C7;color:#B45309">${IC.gear}</div>
@@ -13057,7 +13499,7 @@ function renderSettings(){
         </div>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--icon-muted)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
-    </div>
+    </div>`}
 
     <div class="sec">アプリについて</div>
     <div class="settings-section">
@@ -13655,16 +14097,18 @@ if('serviceWorker' in navigator && !window.__IS_EMBEDDED){
         いつまでに終わらせたい？
       </div>
       <div class="seg" id="todo-longterm-quick-seg">
-        <button class="seg-btn" data-days="3" onclick="selectTodoLongtermQuick(this)">3日後</button>
-        <button class="seg-btn on" data-days="7" onclick="selectTodoLongtermQuick(this)">1週間後</button>
-        <button class="seg-btn" data-days="14" onclick="selectTodoLongtermQuick(this)">2週間後</button>
-        <button class="seg-btn" data-days="" onclick="selectTodoLongtermQuick(this)">日付指定</button>
+        <button class="seg-btn" data-days="none" onclick="selectTodoLongtermQuick(this)">期限なし</button>
+        <button class="seg-btn" data-days="3" onclick="selectTodoLongtermQuick(this)">3日</button>
+        <button class="seg-btn on" data-days="7" onclick="selectTodoLongtermQuick(this)">1週間</button>
+        <button class="seg-btn" data-days="14" onclick="selectTodoLongtermQuick(this)">2週間</button>
+        <button class="seg-btn" data-days="" onclick="selectTodoLongtermQuick(this)">日付</button>
       </div>
       <input type="date" id="todo-longterm-deadline-inp" style="display:none;margin-top:10px;width:100%;background:var(--fill);border:1.5px solid var(--sep);border-radius:12px;padding:12px 14px;font-family:inherit;font-size:16px;color:var(--lbl);outline:none" oninput="_updateTodoSegNote()">
     </div>
     <div class="todo-seg-note" id="todo-seg-note"></div>
     <div id="todo-tag-sel-wrap"></div>
     <button class="sheet-ok" id="todo-sheet-btn" onclick="addTodo()">追加する</button>
+    <button id="todo-sheet-del" onclick="deleteTodoFromSheet()" style="display:none;width:100%;margin-top:8px;background:none;border:none;padding:13px;font-family:inherit;font-size:15px;font-weight:600;color:var(--red);cursor:pointer;border-radius:12px">このToDoを削除</button>
   </div>
 </div>
 
@@ -13870,6 +14314,7 @@ const FSYNC_ENABLED = !!(FSYNC_CONFIG.apiKey && FSYNC_CONFIG.apiKey !== "YOUR_AP
 const FSYNC = (() => {
   const CODE_KEY = 'fukushu-sync-code';
   let db = null, docRef = null, ready = false, applyingRemote = false, pushTimer = null;
+  let inApply = false, pendingPush = false; // 受信処理中の保存は送らないが、直後の利用者の操作は後で必ず送る
   let unsubscribe = null, listenToken = 0; // 現在の購読（コード切替・解除時に必ず止める）
   let pulled = false; // ★重要: クラウドから一度もデータを受信していない間はpush(上書き)を禁止する
                        //   これが無いと、まだ何も受信していない「空の状態」の端末が
@@ -13914,6 +14359,7 @@ const FSYNC = (() => {
   function applyPayload(data){
     if(!data) return;
     applyingRemote = true;
+    inApply = true;
     let _needsReconverge = false;
     try{
       if(Array.isArray(data.units)){
@@ -14006,8 +14452,10 @@ const FSYNC = (() => {
       if(typeof _updateNavIcon === 'function') _updateNavIcon();
       updateFSyncUI();
     } finally {
+      inApply = false;
       setTimeout(()=>{
         applyingRemote = false;
+        if(pendingPush){ pendingPush = false; _needsReconverge = true; }
         // units/todos/plan/studyLogs のいずれかのマージでローカル固有の差分（追加・削除）が
         // 残っていた場合は、全端末を同じ集合へ収束させるためこちらの結果を1回だけ送り返す。
         // 収束後はマージ差分が消える(_needsReconverge=false)ためpushループにはならない。
@@ -14017,7 +14465,8 @@ const FSYNC = (() => {
   }
 
   function schedulePush(){
-    if(!ready || applyingRemote || !docRef) return;
+    if(applyingRemote){ if(!inApply) pendingPush = true; return; }
+    if(!ready || !docRef) return;
     if(!pulled){ console.warn('FSYNC: クラウドからの初回受信が完了していないためpushを保留します'); return; }
     clearTimeout(pushTimer);
     pushTimer = setTimeout(()=>{
@@ -14314,7 +14763,7 @@ function updateFSyncUI(){
   if(_newInp && _prevVal){ _newInp.value = _prevVal; if(_prevFocused) _newInp.focus({preventScroll:true}); }
   const _newMsg = document.getElementById('fsync-join-msg');
   if(_newMsg && _prevMsgTxt){ _newMsg.textContent = _prevMsgTxt; _newMsg.style.color = _prevMsgColor; }
-  if(typeof _fsyncJoinArmed!=='undefined' && _fsyncJoinArmed){ const _b=document.getElementById('fsync-join-btn'); if(_b){ _b.textContent='上書きして接続'; _b.style.background='#C0392B'; } }
+  if(typeof _fsyncJoinArmed!=='undefined' && _fsyncJoinArmed){ const _b=document.getElementById('fsync-join-btn'); if(_b){ _b.textContent='まとめて接続'; _b.style.background='var(--plan)'; } }
 }
 
 let _fsyncBusy = false;
@@ -14378,12 +14827,12 @@ async function fsyncJoin(){
   if(!/^[A-Za-z0-9]{6}$/.test(code)){ if(msg) msg.textContent = 'コードは6文字の英数字です'; return; }
   if(_fsyncBusy) return;
   const btn = document.getElementById('fsync-join-btn');
-  // 1回目のタップ：ボタン自体を「上書きして接続」に変えて確認する（ダイアログは使わない）
+  // 1回目のタップ：ボタン自体を「まとめて接続」に変えて確認する（ダイアログは使わない）
   if(!_fsyncJoinArmed){
     _fsyncJoinArmed = true;
     haptic('medium');
-    if(btn){ btn.textContent = '上書きして接続'; btn.style.background = '#C0392B'; }
-    if(msg){ msg.style.color = '#C0392B'; msg.textContent = 'この端末のデータは、コードのデータで上書きされます。よければもう一度ボタンを押してください'; }
+    if(btn){ btn.textContent = 'まとめて接続'; btn.style.background = 'var(--plan)'; }
+    if(msg){ msg.style.color = 'var(--plan-d)'; msg.textContent = 'この端末のデータと、コードのデータを1つにまとめます（どちらのタスクも消えません）。よければもう一度ボタンを押してください'; }
     clearTimeout(_fsyncJoinArmTimer);
     _fsyncJoinArmTimer = setTimeout(_fsyncDisarm, 8000);
     return;
@@ -14616,7 +15065,21 @@ const OB_STEPS = [
 let _obStep = 0;
 let _obActive = false;
 
+// 仕事モードでは復習・勉強時間の説明は不要なので、ToDo中心の内容に差し替える
+function _obApplyWorkMode(){
+  if(!isWorkMode()) return;
+  const w=OB_STEPS.find(s=>s.type==='welcome');
+  if(w){ w.emoji=`${IC.listCheck}`; w.title='やることを、タグごとにすっきり管理';
+    w.body='ToDoにタグを付けると、「今日」タブにタグごとのカードでまとめて表示されます。<br><br>・期限が決まっていないタスクも「期限なし」で登録できる<br>・左の丸をタップするだけで完了<br>・PCとスマホで同じデータを使える（設定 → 他の端末とつなげる）'; }
+  const fab=OB_STEPS.find(s=>s.target==='.float-fab');
+  if(fab){ fab.emoji=`${IC.listCheck}`; fab.title='ToDoを追加する'; fab.body='このボタンからToDoを追加します。<br>タグを選ぶと、そのタグのカードに表示されます。'; }
+  const tdy=OB_STEPS.find(s=>s.target==='[data-tab="today"]');
+  if(tdy){ tdy.body='今日やることがタグごとに表示されます。<br>左の <strong>丸</strong> で完了、文字をタップすると編集できます。'; }
+  const up=OB_STEPS.find(s=>s.target==='[data-tab="upcoming"]');
+  if(up){ up.body='カレンダーと、すべてのToDoの一覧を確認できます。'; }
+}
 function startOnboarding(){
+  _obApplyWorkMode();
   _obStep = 0;
   _obActive = true;
   document.getElementById('ob-overlay').classList.add('on');
