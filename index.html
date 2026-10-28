@@ -416,6 +416,9 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 /* カード本体を正方形に揃える。行ごとにバラバラの高さにならないよう、
    縦横比を固定して常に同じ大きさの正方形として並べる */
 .today-grid .cw{aspect-ratio:1/1}
+/* PCなど広い画面（PC向け表示オフ）では、2列のまま正方形を巨大化させず、
+   スマホと同じくらいの大きさのカードを横に何枚も並べる */
+html.is-desktop-layout:not(.pc-dense) .today-grid{grid-template-columns:repeat(auto-fill,minmax(calc(180px * var(--ui-zoom,1)),1fr))}
 .today-grid .card{
   padding:12px 11px 11px;
   border-radius:14px;
@@ -2642,16 +2645,16 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
   /* --app-w と --tab-h を上書きするだけで、これらの変数を参照している
      トースト・シート・FABなどの位置計算（bottom:calc(var(--tab-h)...)）も
      個別に直さず自動的に「下タブバーが無い前提」の配置に揃う */
-  :root{ --app-w:1120px; --tab-h:0px; }
-  html{ background:#E4E7EE; }
-  body{
+  :root:where(:not(.phone-view)){ --app-w:1120px; --tab-h:0px; }
+  html:where(:not(.phone-view)){ background:#E4E7EE; }
+  :where(html:not(.phone-view)) body{
     box-shadow:0 1px 0 rgba(0,0,0,.04),0 30px 70px -30px rgba(15,15,20,.35),0 0 0 1px rgba(0,0,0,.07);
   }
 
-  #app{ flex-direction:row; }
+  :where(html:not(.phone-view)) #app{ flex-direction:row; }
 
   /* .tab-bar（本来は下タブバー）を左サイドバーとして振る舞わせる */
-  .tab-bar{
+  :where(html:not(.phone-view)) .tab-bar{
     order:-1; /* main-colより先＝左側に配置 */
     flex-direction:column;align-items:stretch;justify-content:flex-start;
     width:240px;height:auto;align-self:stretch;
@@ -2659,26 +2662,25 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
     gap:3px;
     border-top:none;border-right:.5px solid var(--sep);
   }
-  .sidebar-brand{ display:flex; }
-  .tab-btn{
+  :where(html:not(.phone-view)) .sidebar-brand{ display:flex; }
+  :where(html:not(.phone-view)) .tab-btn{
     flex:0 0 auto;flex-direction:row;justify-content:flex-start;gap:13px;
     padding:11px 14px;border-radius:12px;min-height:46px;
     transition:background .12s,color .15s;
   }
-  .tab-btn:not(.on):hover{ background:var(--fill); }
-  .tab-btn::before{ left:0;top:0;width:100%;height:100%;border-radius:12px;transform:scale(1); }
-  .tab-btn.on::before{ transform:scale(1); }
-  .tab-btn svg{ width:21px;height:21px;flex-shrink:0; }
-  .tab-btn.on svg{ transform:none; }
-  .tab-lbl{ font-size:13.5px;font-weight:700; }
-  .tbadge{ position:static;margin-left:auto; }
+  :where(html:not(.phone-view)) .tab-btn:not(.on):hover{ background:var(--fill); }
+  :where(html:not(.phone-view)) .tab-btn::before{ left:0;top:0;width:100%;height:100%;border-radius:12px;transform:scale(1); }
+  :where(html:not(.phone-view)) .tab-btn.on::before{ transform:scale(1); }
+  :where(html:not(.phone-view)) .tab-btn svg{ width:21px;height:21px;flex-shrink:0; }
+  :where(html:not(.phone-view)) .tab-btn.on svg{ transform:none; }
+  :where(html:not(.phone-view)) .tab-lbl{ font-size:13.5px;font-weight:700; }
+  :where(html:not(.phone-view)) .tbadge{ position:static;margin-left:auto; }
 
   /* コンテンツ側：下タブバー分の余白がもう要らないので通常の余白に戻し、
      読みやすい幅に制限して中央寄せする（サイドバーの分、素の全幅だと間延びするため） */
-  .nav-inner{ padding:16px 28px;max-width:760px;margin:0 auto; }
-  .panels{ max-width:760px;margin:0 auto;width:100%; }
-  .panel{ padding-bottom:calc(32px + var(--safe-bottom)); }
-}
+  :where(html:not(.phone-view)) .nav-inner{ padding:16px 28px;max-width:760px;margin:0 auto; }
+  :where(html:not(.phone-view)) .panels{ max-width:760px;margin:0 auto;width:100%; }
+  :where(html:not(.phone-view)) .panel{ padding-bottom:calc(32px + var(--safe-bottom)); }}
 
 /* ══════════════════════════════════════════════════════════════
    スマホの横画面（幅900px未満・高さの低いランドスケープ）
@@ -2822,7 +2824,7 @@ html.theme-p5 .tab-btn::before{background:var(--p5-red);border-radius:4px;transf
 html.theme-p5 .tab-btn.on::before{transform:translateX(-50%) skewX(-12deg) scale(1)}
 html.theme-p5 .tab-btn.on .tab-lbl{font-style:italic;font-weight:800}
 html.theme-p5.is-desktop-layout .tab-btn::before{transform:skewX(-8deg) scale(1)}
-@media (min-width:900px){ html.theme-p5 .tab-btn::before{transform:skewX(-8deg) scale(1)} }
+@media (min-width:900px){ html.theme-p5:where(:not(.phone-view)) .tab-btn::before{transform:skewX(-8deg) scale(1)}}
 
 /* ── 見出し・ヒーロー ── */
 html.theme-p5 .sec{font-style:italic;color:var(--lbl2)}
@@ -3093,7 +3095,7 @@ html.theme-p5 .tab-btn.on{color:#fff}
 html.theme-p5 .tab-btn.on svg{color:var(--p5-red-hi)}
 html.theme-p5 .tab-btn.on .tab-lbl{font-style:normal;font-weight:800}
 html.theme-p5.is-desktop-layout .tab-btn::before{border-bottom:none;border-left:3px solid #fff;transform:none !important;background:rgba(255,255,255,.06) !important}
-@media (min-width:900px){ html.theme-p5 .tab-btn::before{border-bottom:none;border-left:3px solid #fff;transform:none !important;background:rgba(255,255,255,.06) !important} }
+@media (min-width:900px){ html.theme-p5:where(:not(.phone-view)) .tab-btn::before{border-bottom:none;border-left:3px solid #fff;transform:none !important;background:rgba(255,255,255,.06) !important}}
 
 /* ヒーロー：赤一色の板に、白い斜線を1本だけ通す（控えめなカット） */
 html.theme-p5 .hero:not([style*="background"]),html.theme-p5 .achiev-hero,html.theme-p5 .settings-hero,
@@ -3666,10 +3668,15 @@ html.ui-xl .undo-btn{font-size:17px}
 /* 大きい文字のときは、狭いナビでは日付を省いて見出しとボタンを優先する */
 @media (max-width:430px){ html.ui-xl .nav-date{display:none} }
 /* PCのサイドバー（左のメニュー）の文字も大きくする */
-@media (min-width:900px){ html.ui-l .tab-lbl{font-size:15px} html.ui-xl .tab-lbl{font-size:16.5px}
-  html.ui-l .sidebar-brand-name{font-size:16.5px} html.ui-xl .sidebar-brand-name{font-size:18px} }
+@media (min-width:900px){ html.ui-l:where(:not(.phone-view)) .tab-lbl{font-size:15px} html.ui-xl:where(:not(.phone-view)) .tab-lbl{font-size:16.5px}
+  html.ui-l:where(:not(.phone-view)) .sidebar-brand-name{font-size:16.5px} html.ui-xl:where(:not(.phone-view)) .sidebar-brand-name{font-size:18px}}
 html.is-desktop-layout.ui-l .tab-lbl{font-size:15px} html.is-desktop-layout.ui-xl .tab-lbl{font-size:16.5px}
 html.is-desktop-layout.ui-l .sidebar-brand-name{font-size:16.5px} html.is-desktop-layout.ui-xl .sidebar-brand-name{font-size:18px}
+/* URLで固定されている設定 */
+.settings-lock-note{display:inline-flex;align-items:center;gap:4px;margin-top:5px;padding:3px 8px;border-radius:7px;
+  background:var(--fill);color:var(--lbl2);font-size:11.5px;font-weight:700}
+.settings-lock-note svg{width:12px;height:12px}
+.ui-size-seg.locked .ui-size-btn:not(.on){opacity:.4}
 /* 設定：文字の大きさの選択ボタン */
 .ui-size-seg{display:flex;gap:8px;padding:0 16px 14px}
 .ui-size-btn{
@@ -3680,6 +3687,14 @@ html.is-desktop-layout.ui-l .sidebar-brand-name{font-size:16.5px} html.is-deskto
 .ui-size-btn b{font-weight:800;color:var(--lbl);line-height:1}
 .ui-size-btn.on{border-color:var(--blue);background:var(--blue-bg);color:var(--lbl)}
 
+/* ══ スマホ表示モード（html.phone-view） ══════════════════════
+   PCの広い画面でも、スマホと同じ幅・下タブバーのレイアウトで中央に表示する。 */
+@media (min-width:560px){
+  html.phone-view{background:#E4E7EE}
+  html.phone-view body{box-shadow:0 1px 0 rgba(0,0,0,.04),0 30px 70px -30px rgba(15,15,20,.35),0 0 0 1px rgba(0,0,0,.07)}
+  html.phone-view.theme-p5{background:#050505}
+  html.phone-view.theme-rm{background:#DCD8CC}
+}
 /* ══ 埋め込み互換：アプリ内確認ダイアログ ══ */
 .app-confirm{position:fixed;inset:0;z-index:9800;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.45)}
 .app-confirm-box{background:var(--card);border-radius:20px;padding:22px 20px 16px;width:100%;max-width:320px;box-shadow:0 8px 32px rgba(0,0,0,.2)}
@@ -3816,16 +3831,24 @@ try{ var _t=localStorage.getItem('fukushu-theme-v1'); /* 未設定ならホワ�
   if(_t!=='default' && _t!=='p5'){ document.documentElement.classList.add('theme-rm'); document.querySelector('meta[name="theme-color"]').setAttribute('content','#FFFFFF'); }
   else if(_t==='p5'){ document.documentElement.classList.add('theme-p5'); document.querySelector('meta[name="theme-color"]').setAttribute('content','#131215'); } }catch(_){}
 /* 文字の大きさも描画前に反映（端末の設定 → なければURLの ?text=l / ?text=xl） */
-try{ var _ts=null; try{ _ts=localStorage.getItem('fukushu-text-size-v1'); }catch(_){}
-  if(!_ts){ var _tq=new URLSearchParams(location.search).get('text'); if(_tq==='l'||_tq==='xl') _ts=_tq; }
+try{ var _ts=null, _tq=new URLSearchParams(location.search).get('text');
+  if(_tq==='n'||_tq==='l'||_tq==='xl') _ts=_tq; // URLで指定されていれば固定（端末の設定より優先）
+  else { try{ _ts=localStorage.getItem('fukushu-text-size-v1'); }catch(_){} }
   if(_ts==='l') document.documentElement.classList.add('ui-l'); else if(_ts==='xl') document.documentElement.classList.add('ui-xl'); }catch(_){}
 /* 仕事モードも描画前に反映（端末の設定 → なければURLの ?work=1） */
-try{ var _wm=null; try{ _wm=localStorage.getItem('fukushu-work-mode-v1'); }catch(_){}
-  if(_wm!=='1' && _wm!=='0'){ _wm=(new URLSearchParams(location.search).get('work')==='1')?'1':'0'; }
+try{ var _wm=null, _wq=new URLSearchParams(location.search).get('work');
+  if(_wq==='1'||_wq==='0') _wm=_wq; // URLで指定されていれば固定
+  else { try{ _wm=localStorage.getItem('fukushu-work-mode-v1'); }catch(_){} }
   if(_wm==='1') document.documentElement.classList.add('work-mode'); }catch(_){}
 /* PC向け表示も描画前に反映（端末の設定 → なければURLの ?pc=1 / #pc） */
-try{ var _pc=null; try{ _pc=localStorage.getItem('fukushu-pc-dense-v1'); }catch(_){}
-  if(_pc!=='1' && _pc!=='0'){ var _q=new URLSearchParams(location.search).get('pc'); _pc=(_q==='1'||/(^#|&)pc(=1)?(&|$)/.test(location.hash))?'1':'0'; }
+try{ var _pc=null, _q=new URLSearchParams(location.search).get('pc');
+  if(_q==='1'||_q==='0') _pc=_q; // URLで指定されていれば固定
+  else if(/(^#|&)pc(=1)?(&|$)/.test(location.hash)) _pc='1';
+  else { try{ _pc=localStorage.getItem('fukushu-pc-dense-v1'); }catch(_){} }
+  var _pv=null, _vq=new URLSearchParams(location.search).get('view');
+  if(_vq==='phone') _pv='1'; else if(_vq==='wide') _pv='0';
+  else { try{ _pv=localStorage.getItem('fukushu-phone-view-v1'); }catch(_){} }
+  if(_pv==='1'){ document.documentElement.classList.add('phone-view'); _pc='0'; }
   if(_pc==='1') document.documentElement.classList.add('pc-dense'); }catch(_){}
 </script>
 <!-- クラウド同期（PC/スマホ間でのデータ共有）用SDK。読み込みに失敗してもアプリ本体の動作には影響しない -->
@@ -4058,7 +4081,7 @@ try{ var _pc=null; try{ _pc=localStorage.getItem('fukushu-pc-dense-v1'); }catch(
    B5 fix: define proper large/small variants, no string.replace() hacks
 ══════════════════════════════════════════ */
 /* ══ App version ════════════════════════ */
-const APP_VERSION = 'v4.7.0';
+const APP_VERSION = 'v4.8.0';
 const APP_BUILD   = '2026-10-27';
 
 const IC = {
@@ -8510,6 +8533,24 @@ function _pcMoveHeroToNav(){
    の順に詰めていく。最小まで縮めても入らないほど多い日だけ、
    タスクが隠れてしまわないようスクロールを許可する。 */
 const PC_DENSE_KEY = 'fukushu-pc-dense-v1';
+/* URLで固定された設定（?pc= / ?text= / ?work=）。固定中は設定画面から変更できない */
+function urlLocked(name){
+  try{
+    const q=new URLSearchParams(location.search).get(name);
+    if(name==='pc'){
+      if(q==='1'||q==='0') return q;
+      if(/(^#|&)pc(=1)?(&|$)/.test(location.hash)) return '1';
+      return null;
+    }
+    if(name==='text') return (q==='n'||q==='l'||q==='xl') ? q : null;
+    if(name==='work') return (q==='1'||q==='0') ? q : null;
+    if(name==='layout') return (q==='list'||q==='grid'||q==='board') ? q : null;
+    if(name==='view') return (q==='phone'||q==='wide') ? q : null;
+  }catch(_){}
+  return null;
+}
+function _lockedToast(){ toast(IC.alert, 'このページのURLで固定されているため、ここでは変更できません'); haptic('medium'); }
+function lockedNoteHtml(){ return `<div class="settings-lock-note">${IC.lock||''}このページのURLで固定されています</div>`; }
 function _pcDenseUrlDefault(){
   try{
     const q = new URLSearchParams(location.search).get('pc');
@@ -8518,7 +8559,29 @@ function _pcDenseUrlDefault(){
   }catch(_){}
   return false;
 }
+/* PCでの表示：'wide'（サイドバー）/ 'dense'（PC向け・一画面）/ 'phone'（スマホと同じ） */
+const PHONE_VIEW_KEY='fukushu-phone-view-v1';
+let _pcViewQuiet=false; // 3択から切り替えたときは、こちらでまとめてお知らせを出す
+function isPhoneView(){ return document.documentElement.classList.contains('phone-view'); }
+function getPcViewMode(){ return isPhoneView() ? 'phone' : (isPcDense() ? 'dense' : 'wide'); }
+function pcViewLocked(){ return !!(urlLocked('view') || urlLocked('pc')); }
+function setPcViewMode(mode){
+  if(pcViewLocked()){ _lockedToast(); renderSettings(); return; }
+  if(getPcViewMode()===mode) return;
+  try{ localStorage.setItem(PHONE_VIEW_KEY, mode==='phone'?'1':'0'); }catch(_){}
+  document.documentElement.classList.toggle('phone-view', mode==='phone');
+  const msg={wide:'PCでの表示を「標準」にしました',dense:'PCでの表示を「一画面」にしました',phone:'PCでもスマホと同じ画面で表示します'}[mode];
+  _pcViewQuiet=true;
+  try{
+    if(mode==='dense') setPcDense(true);
+    else if(isPcDense()) setPcDense(false); // setPcDense側で再描画まで行う
+    else { applyResponsiveLayoutClass(); haptic('light'); renderSettings(); render(); }
+  } finally { _pcViewQuiet=false; }
+  toast(IC.checkCircle, msg);
+}
 function isPcDense(){
+  if(isPhoneView()) return false;
+  const _lk=urlLocked('pc'); if(_lk) return _lk==='1';
   try{
     const v = localStorage.getItem(PC_DENSE_KEY);
     if(v==='1') return true;
@@ -8527,6 +8590,11 @@ function isPcDense(){
   return _pcDenseUrlDefault();
 }
 function setPcDense(on){
+  if(urlLocked('pc')){ _lockedToast(); renderSettings(); return; }
+  if(on && isPhoneView()){
+    try{ localStorage.setItem(PHONE_VIEW_KEY,'0'); }catch(_){}
+    document.documentElement.classList.remove('phone-view');
+  }
   try{ localStorage.setItem(PC_DENSE_KEY, on?'1':'0'); }catch(_){}
   document.documentElement.classList.toggle('pc-dense', on);
   applyResponsiveLayoutClass();
@@ -8537,7 +8605,7 @@ function setPcDense(on){
     const p=document.getElementById('p-today');
     if(p){ p.removeAttribute('data-fit'); p.style.removeProperty('--pc-zoom'); p.classList.remove('pc-fit-scroll'); }
   }
-  toast(IC.checkCircle, on ? 'PC向け表示にしました' : 'スマホ向け表示に戻しました');
+  if(!_pcViewQuiet) toast(IC.checkCircle, on ? 'PC向け表示にしました' : 'スマホ向け表示に戻しました');
 }
 const PC_FIT_ZOOMS = [0.94, 0.88, 0.82, 0.76, 0.7, 0.64, 0.58];
 function fitTodayPanel(){
@@ -12146,6 +12214,7 @@ function changeBackupRemindDays(v){
 const TODAY_LAYOUT_KEY = 'fukushu-today-layout-v1';
 // 'board' = タグ別ボード（タグごとのカードに分けて2列で一覧）
 function getTodayLayout(){
+  const _lk=urlLocked('layout'); if(_lk) return _lk;
   let v=null;
   try { v = localStorage.getItem(TODAY_LAYOUT_KEY); } catch {}
   if(v==='list' || v==='board' || v==='grid') return v;
@@ -12154,6 +12223,7 @@ function getTodayLayout(){
 function isTodayGridLayout(){ return getTodayLayout()==='grid'; }
 function setTodayLayout(mode){
   if(mode!=='grid' && mode!=='list' && mode!=='board') return;
+  if(urlLocked('layout')){ _lockedToast(); return; }
   if(getTodayLayout()===mode) return;
   try { localStorage.setItem(TODAY_LAYOUT_KEY, mode); } catch {}
   haptic('light');
@@ -12657,6 +12727,7 @@ function getUiSize(){
 }
 function getUiZoom(){ return UI_SIZES[getUiSize()].zoom; }
 function setUiSize(v){
+  if(urlLocked('text')){ _lockedToast(); return; }
   if(!UI_SIZES[v] || getUiSize()===v) return;
   try{ localStorage.setItem(UI_SIZE_KEY, v); }catch(_){}
   const r=document.documentElement;
@@ -12682,6 +12753,7 @@ function uiSizeSegHtml(){
 const WORK_MODE_KEY = 'fukushu-work-mode-v1';
 function isWorkMode(){ return document.documentElement.classList.contains('work-mode'); }
 function setWorkMode(on){
+  if(urlLocked('work')){ _lockedToast(); renderSettings(); return; }
   try{ localStorage.setItem(WORK_MODE_KEY, on?'1':'0'); }catch(_){}
   document.documentElement.classList.toggle('work-mode', on);
   // ONにしたときは、今日タブを見やすいタグ別ボードに切り替える（あとから設定で変更可）
@@ -13356,6 +13428,7 @@ function renderSettings(){
         <div class="settings-row-body">
           <div class="settings-row-title">仕事モード</div>
           <div class="settings-row-sub">復習・勉強時間の機能を隠し、ToDoと計画だけのシンプルな画面にします（この端末だけに適用。データは消えません）</div>
+          ${urlLocked('work')?lockedNoteHtml():''}
         </div>
         <button class="settings-switch${isWorkMode()?' on':''}" role="switch" aria-checked="${isWorkMode()?'true':'false'}" aria-label="仕事モード" onclick="setWorkMode(${isWorkMode()?'false':'true'})"></button>
       </div>
@@ -13364,9 +13437,10 @@ function renderSettings(){
         <div class="settings-row-body">
           <div class="settings-row-title">文字の大きさ</div>
           <div class="settings-row-sub">画面全体を大きく表示します（この端末だけに適用）</div>
+          ${urlLocked('text')?lockedNoteHtml():''}
         </div>
       </div>
-      <div class="ui-size-seg" role="group" aria-label="文字の大きさ">${uiSizeSegHtml()}</div>
+      <div class="ui-size-seg${urlLocked('text')?' locked':''}" role="group" aria-label="文字の大きさ">${uiSizeSegHtml()}</div>
     </div>
 
     <div class="sec">アイコン</div>
@@ -13400,6 +13474,7 @@ function renderSettings(){
         <div class="settings-row-body">
           <div class="settings-row-title">今日タブのレイアウト</div>
           <div class="settings-row-sub">1列・2列・タグ別から選べます</div>
+          ${urlLocked('layout')?lockedNoteHtml():''}
         </div>
         <div class="layout-toggle" role="group" aria-label="今日タブのレイアウト">
           <button class="layout-toggle-btn${getTodayLayout()==='list'?' on':''}" onclick="setTodayLayout('list')" aria-label="1列で表示" aria-pressed="${getTodayLayout()==='list'}">
@@ -13428,10 +13503,16 @@ function renderSettings(){
       <div class="settings-row">
         <div class="settings-row-icon" style="background:#EEF2FF;color:var(--blue-d)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
         <div class="settings-row-body">
-          <div class="settings-row-title">PC向け表示</div>
-          <div class="settings-row-sub">今日のタスクを横に並べ、スクロールせず一画面で見渡せます（この端末だけに適用）</div>
+          <div class="settings-row-title">PCでの表示</div>
+          <div class="settings-row-sub">${({wide:'左にメニュー、中央にカードを並べます',dense:'今日のタスクを横に並べ、スクロールせず一画面で見渡せます',phone:'PCでもスマホと同じ画面・カードの並べ方で表示します'})[getPcViewMode()]}（この端末だけに適用）</div>
+          ${pcViewLocked()?lockedNoteHtml():''}
         </div>
-        <button class="settings-switch${isPcDense()?' on':''}" role="switch" aria-checked="${isPcDense()?'true':'false'}" aria-label="PC向け表示" onclick="setPcDense(${isPcDense()?'false':'true'})"></button>
+      </div>
+      <div class="ui-size-seg${pcViewLocked()?' locked':''}" role="group" aria-label="PCでの表示">
+        ${[['wide','標準','<svg width="22" height="16" viewBox="0 0 22 16" fill="none"><rect x="0.5" y="0.5" width="21" height="15" rx="2.5" stroke="currentColor"/><rect x="2" y="2" width="5" height="12" rx="1" fill="currentColor"/><rect x="9" y="3" width="10" height="4" rx="1" fill="currentColor" opacity=".5"/><rect x="9" y="9" width="10" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>'],
+           ['dense','一画面','<svg width="22" height="16" viewBox="0 0 22 16" fill="none"><rect x="0.5" y="0.5" width="21" height="15" rx="2.5" stroke="currentColor"/><rect x="2" y="2" width="5.3" height="5" rx="1" fill="currentColor" opacity=".6"/><rect x="8.4" y="2" width="5.3" height="5" rx="1" fill="currentColor" opacity=".6"/><rect x="14.8" y="2" width="5.3" height="5" rx="1" fill="currentColor" opacity=".6"/><rect x="2" y="9" width="5.3" height="5" rx="1" fill="currentColor" opacity=".6"/><rect x="8.4" y="9" width="5.3" height="5" rx="1" fill="currentColor" opacity=".6"/></svg>'],
+           ['phone','スマホと同じ','<svg width="12" height="18" viewBox="0 0 12 18" fill="none"><rect x="0.5" y="0.5" width="11" height="17" rx="2.5" stroke="currentColor"/><rect x="2.2" y="3" width="3.4" height="4" rx=".8" fill="currentColor" opacity=".6"/><rect x="6.4" y="3" width="3.4" height="4" rx=".8" fill="currentColor" opacity=".6"/><rect x="2.2" y="8.5" width="3.4" height="4" rx=".8" fill="currentColor" opacity=".6"/></svg>']]
+          .map(([k,l,ic])=>`<button class="ui-size-btn${getPcViewMode()===k?' on':''}" onclick="setPcViewMode('${k}')" aria-pressed="${getPcViewMode()===k}">${ic}${l}</button>`).join('')}
       </div>
     </div>
 
@@ -13762,7 +13843,8 @@ requestPersistentStorage();
    .is-desktop-layout / .is-landscape-phone-layout を参照）。 */
 function applyResponsiveLayoutClass(){
   const w = window.innerWidth, h = window.innerHeight;
-  const isDesktop = w >= 900;
+  const phoneView = document.documentElement.classList.contains('phone-view');
+  const isDesktop = w >= 900 && !phoneView; // スマホ表示モードでは、広い画面でもスマホと同じ縦長レイアウト
   const pcDense = document.documentElement.classList.contains('pc-dense');
   const isLandscapePhone = !isDesktop && ((w > h && w <= 899 && h <= 520) || (pcDense && w >= 480));
   document.documentElement.classList.toggle('is-desktop-layout', isDesktop);
