@@ -3697,6 +3697,16 @@ html.is-desktop-layout.ui-l .sidebar-brand-name{font-size:16.5px} html.is-deskto
   html.phone-view.theme-p5{background:#050505}
   html.phone-view.theme-rm{background:#DCD8CC}
 }
+/* ══ 埋め込み表示（html.in-embed） ═══════════════════════════
+   Notionの埋め込みでは、マウスを乗せると右上にNotionのツールバー（コメント・表示切替など）が
+   重なって出てくるため、右上の「記録」「＋ToDo」ボタンが押せなくなる。
+   埋め込み中はボタンを左側へ移し、右上はツールバー用に空けておく。 */
+html.in-embed .nav-row{justify-content:flex-start;gap:0;padding-right:min(270px,32vw)}
+html.in-embed .nav-row > div:first-child{flex:0 1 auto;min-width:0;margin-right:0}
+html.in-embed .nav-hero-slot{flex:0 1 auto !important}
+html.in-embed .nav-title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html.in-embed .nav-actions{flex-shrink:0;gap:8px !important;margin-left:18px;padding-left:18px;border-left:1px solid var(--sep);align-self:center}
+html.in-embed .nav-actions .nav-date{order:-1;margin-right:4px}
 /* ══ 埋め込み互換：アプリ内確認ダイアログ ══ */
 .app-confirm{position:fixed;inset:0;z-index:9800;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.45)}
 .app-confirm-box{background:var(--card);border-radius:20px;padding:22px 20px 16px;width:100%;max-width:320px;box-shadow:0 8px 32px rgba(0,0,0,.2)}
@@ -3832,6 +3842,11 @@ try{
 try{ var _t=localStorage.getItem('fukushu-theme-v1'); /* 未設定ならホワイト＆ゴールドを既定にする */
   if(_t!=='default' && _t!=='p5'){ document.documentElement.classList.add('theme-rm'); document.querySelector('meta[name="theme-color"]').setAttribute('content','#FFFFFF'); }
   else if(_t==='p5'){ document.documentElement.classList.add('theme-p5'); document.querySelector('meta[name="theme-color"]').setAttribute('content','#131215'); } }catch(_){}
+/* Notionなどに埋め込まれて表示されているか（?embed=1 / ?embed=0 で強制も可） */
+try{ var _eq=new URLSearchParams(location.search).get('embed'), _em=false;
+  if(_eq==='1') _em=true; else if(_eq==='0') _em=false;
+  else { try{ _em = window.self !== window.top; }catch(_){ _em = true; } }
+  if(_em) document.documentElement.classList.add('in-embed'); }catch(_){}
 /* 文字の大きさも描画前に反映（端末の設定 → なければURLの ?text=l / ?text=xl） */
 try{ var _ts=null, _tq=new URLSearchParams(location.search).get('text');
   if(_tq==='n'||_tq==='l'||_tq==='xl') _ts=_tq; // URLで指定されていれば固定（端末の設定より優先）
@@ -3873,7 +3888,7 @@ try{ var _pc=null, _q=new URLSearchParams(location.search).get('pc');
           <div class="nav-title" id="nav-title">今日のタスク</div>
           <div class="nav-hero-slot" id="nav-hero-slot"></div>
         </div>
-        <div style="display:flex;align-items:center;gap:10px">
+        <div class="nav-actions" style="display:flex;align-items:center;gap:10px">
           <button onclick="openNewStudySheet()" class="nav-rec-btn" aria-label="勉強時間を記録">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M9 2h6"/></svg>記録
           </button>
@@ -4083,7 +4098,7 @@ try{ var _pc=null, _q=new URLSearchParams(location.search).get('pc');
    B5 fix: define proper large/small variants, no string.replace() hacks
 ══════════════════════════════════════════ */
 /* ══ App version ════════════════════════ */
-const APP_VERSION = 'v4.8.1';
+const APP_VERSION = 'v4.8.3';
 const APP_BUILD   = '2026-10-27';
 
 const IC = {
@@ -12870,19 +12885,15 @@ function _todayBoardHtml(list, duePlan){
   const untagged=items.filter(it=>!it.tags.some(id=>tagIds.has(id)));
   if(untagged.length) groups.push(_tbGroupHtml(null, untagged));
 
-  const total=items.length;
-  const overN=items.filter(it=>it.cls==='over').length;
-  const hero = total
-    ? `<div class="hero"><div class="hero-msg">${total} 件のタスクがあります</div>${overN?`<div class="hero-sub" style="margin-top:6px">うち ${overN} 件が期限超過</div>`:''}</div>`
-    : `<div class="hero all-done"><div class="hero-msg">今日のタスクはありません</div><div class="hero-sub" style="margin-top:6px">お疲れさまでした！</div></div>`;
+  // タグ別表示は「一覧そのもの」を主役にするため、件数の見出し（ヒーロー）は出さない
   if(!groups.length){
-    return hero + `<div class="empty">
+    return `<div class="empty">
       <div class="empty-icon">${IC.listCheck}</div>
       <h3>ToDoを追加しましょう</h3>
-      <p>右上の「＋ToDo」から追加できます<br>タグを付けると、タグごとにまとまって表示されます</p>
+      <p>「＋ToDo」から追加できます<br>タグを付けると、タグごとにまとまって表示されます</p>
     </div>`;
   }
-  return hero + `<div class="tagboard">${groups.join('')}</div>`;
+  return `<div class="tagboard">${groups.join('')}</div>`;
 }
 // 表示幅から列数を決める。カードはタグの順に左上から横へ並べ、同じ行のカードは高さをそろえる。
 function _tbColumnCount(w){
