@@ -3596,17 +3596,19 @@ html.work-mode .float-fab .fab-ic-plus{display:block}
 /* ══ 今日タブ：タグ別ボード ══════════════════════════════════
    タグごとに1枚のカードを作り、2列（広い画面ではそれ以上）に詰めて並べる。
    CSSの段組み（columns）で、高さの違うカードも隙間なく敷き詰める。 */
-.tagboard{display:flex;gap:10px;align-items:flex-start;margin-bottom:6px}
-.tb-col{flex:1 1 0;min-width:0;display:flex;flex-direction:column}
+.tagboard{
+  display:grid;grid-template-columns:repeat(var(--tb-cols,2),minmax(0,1fr));
+  gap:10px;align-items:stretch;margin-bottom:6px
+}
+/* 同じ行のカードは高さをそろえる（短いカードは下に余白ができ、上端・下端が一直線に並ぶ） */
 .tb-group{
   background:var(--card);border-radius:18px;border:var(--card-bd);box-shadow:var(--shadow-sm);
-  padding:12px 12px 8px;margin:0 0 10px;
+  padding:12px 12px 8px;margin:0;min-width:0;
 }
 .tb-head{display:flex;align-items:center;gap:8px;min-height:30px}
 .tb-head-dot{
   width:13px;height:13px;border-radius:50%;flex-shrink:0;background:var(--tc);
-  box-shadow:0 0 0 4px rgba(120,120,128,.12);
-  box-shadow:0 0 0 4px color-mix(in srgb,var(--tc) 18%,transparent);margin-left:3px
+  margin-left:2px
 }
 .tb-head-name{flex:1;min-width:0;font-size:16px;font-weight:800;color:var(--lbl);letter-spacing:-.2px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -3639,7 +3641,7 @@ html.work-mode .float-fab .fab-ic-plus{display:block}
 html.theme-p5 .tb-group{border-radius:4px;border:1px solid rgba(255,255,255,.16)}
 /* PC向け表示：枠の広さに合わせて列数を自動で増やす */
 html.pc-dense #p-today .tagboard{gap:8px}
-html.pc-dense #p-today .tb-group{padding:10px 10px 6px;margin-bottom:8px;border-radius:14px}
+html.pc-dense #p-today .tb-group{padding:10px 10px 6px;border-radius:14px}
 html.pc-dense #p-today .tb-head-name{font-size:14.5px}
 html.pc-dense #p-today .tb-name{font-size:13.5px}
 html.pc-dense #p-today .tb-body{padding:3px 4px 4px}
@@ -4081,7 +4083,7 @@ try{ var _pc=null, _q=new URLSearchParams(location.search).get('pc');
    B5 fix: define proper large/small variants, no string.replace() hacks
 ══════════════════════════════════════════ */
 /* ══ App version ════════════════════════ */
-const APP_VERSION = 'v4.8.0';
+const APP_VERSION = 'v4.8.1';
 const APP_BUILD   = '2026-10-27';
 
 const IC = {
@@ -12880,10 +12882,9 @@ function _todayBoardHtml(list, duePlan){
       <p>右上の「＋ToDo」から追加できます<br>タグを付けると、タグごとにまとまって表示されます</p>
     </div>`;
   }
-  return hero + `<div class="tagboard"><div class="tb-col">${groups.join('')}</div></div>`;
+  return hero + `<div class="tagboard">${groups.join('')}</div>`;
 }
-// 表示幅から列数を決め、各カードの実際の高さを測って一番低い列に順番に積む。
-// （CSSの段組みだとカードが少ないとき片側に寄ってしまうため、自前で振り分ける）
+// 表示幅から列数を決める。カードはタグの順に左上から横へ並べ、同じ行のカードは高さをそろえる。
 function _tbColumnCount(w){
   if(isPcDense()) return Math.max(2, Math.floor((w+8)/208));
   if(w>=600) return 3;
@@ -12892,21 +12893,9 @@ function _tbColumnCount(w){
 }
 function layoutTagBoard(){
   const board=document.querySelector('#p-today .tagboard'); if(!board) return;
-  const groups=[...board.querySelectorAll('.tb-group')];
-  groups.forEach((g,i)=>{ if(g.dataset.order==null) g.dataset.order=i; });
-  groups.sort((a,b)=>a.dataset.order-b.dataset.order);
-  const n=Math.max(1, Math.min(_tbColumnCount(board.clientWidth||360), groups.length||1));
-  if(board.dataset.cols==String(n) && board.dataset.laid==='1') return;
-  board.innerHTML='';
-  const cols=[]; for(let i=0;i<n;i++){ const c=document.createElement('div'); c.className='tb-col'; board.appendChild(c); cols.push(c); }
-  // まず1列目に全部入れて、列幅のもとで各カードの高さを測る
-  groups.forEach(g=>cols[0].appendChild(g));
-  const hs=groups.map(g=>g.offsetHeight);
-  const totals=new Array(n).fill(0);
-  groups.forEach((g,i)=>{
-    let k=0; for(let j=1;j<n;j++) if(totals[j]<totals[k]-1) k=j;
-    cols[k].appendChild(g); totals[k]+=hs[i]+10;
-  });
+  // カードが1枚だけでも列幅は変えない（1枚が横いっぱいに広がると、他の日と見た目がそろわないため）
+  const n=Math.max(1, _tbColumnCount(board.clientWidth||360));
+  board.style.setProperty('--tb-cols', n);
   board.dataset.cols=String(n); board.dataset.laid='1';
 }
 let _tbResizeTimer=null;
