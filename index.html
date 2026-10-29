@@ -16,6 +16,8 @@
      apple-mobile-web-app-* だけではSafari以外でPWAとして正しく認識されない。
      href は起動時にJSでBlob URLを生成し差し込む（アイコン変更にも追従させるため）。 -->
 <link rel="manifest" id="app-manifest-link">
+<!-- iPhone/iPadの「ホーム画面に追加」で使われるアイコン（180×180のPNG）。仕事モードや設定のアイコン画像に合わせてJSで差し替える -->
+<link rel="apple-touch-icon" id="app-touch-icon" href="data:image/png;base64,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">
 <link rel="icon" id="app-favicon-link" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%232563EB'/%3E%3Ctext x='50' y='68' font-size='56' text-anchor='middle'%3E%F0%9F%93%9A%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3856,7 +3858,10 @@ try{ var _ts=null, _tq=new URLSearchParams(location.search).get('text');
 try{ var _wm=null, _wq=new URLSearchParams(location.search).get('work');
   if(_wq==='1'||_wq==='0') _wm=_wq; // URLで指定されていれば固定
   else { try{ _wm=localStorage.getItem('fukushu-work-mode-v1'); }catch(_){} }
-  if(_wm==='1') document.documentElement.classList.add('work-mode'); }catch(_){}
+  window.__ICON_WORK='data:image/png;base64,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';
+  if(_wm==='1'){ document.documentElement.classList.add('work-mode');
+    var _wmIconLink=document.getElementById('app-touch-icon'); if(_wmIconLink) _wmIconLink.href=window.__ICON_WORK;
+    var _wmTitleMeta=document.querySelector('meta[name="apple-mobile-web-app-title"]'); if(_wmTitleMeta) _wmTitleMeta.content='タスク'; } }catch(_){}
 /* PC向け表示も描画前に反映（端末の設定 → なければURLの ?pc=1 / #pc） */
 try{ var _pc=null, _q=new URLSearchParams(location.search).get('pc');
   if(_q==='1'||_q==='0') _pc=_q; // URLで指定されていれば固定
@@ -4098,7 +4103,7 @@ try{ var _pc=null, _q=new URLSearchParams(location.search).get('pc');
    B5 fix: define proper large/small variants, no string.replace() hacks
 ══════════════════════════════════════════ */
 /* ══ App version ════════════════════════ */
-const APP_VERSION = 'v4.8.3';
+const APP_VERSION = 'v4.8.4';
 const APP_BUILD   = '2026-10-27';
 
 const IC = {
@@ -6987,7 +6992,44 @@ function _updateNavIcon(){
     el.innerHTML=`<span style="display:flex;color:var(--blue-d)">${IC.book}</span>`;
     el.style.background='var(--blue-bg)'; el.style.border='2px solid var(--blue-bd)';
   }
+  _updateHomeScreenIcon();
+}
+
+/* ══ ホーム画面アイコン ══════════════════════════════════
+   iPhoneは <link rel="apple-touch-icon"> の画像をホーム画面に使う（manifestのアイコンは使わない）。
+   設定でアイコン画像を登録していれば、それを180×180の正方形PNGに整えて使う。
+   未登録なら、通常モードは「本」、仕事モードは「チェックリスト」の既定アイコン。 */
+const DEFAULT_TOUCH_ICON = (document.getElementById('app-touch-icon')||{}).href || '';
+let _homeIconPng = null; // 現在のホーム画面用PNG（data URL）
+let _homeIconSeq = 0;
+function _defaultHomeIcon(){ return (isWorkMode() && window.__ICON_WORK) ? window.__ICON_WORK : DEFAULT_TOUCH_ICON; }
+function _applyHomeIcon(png){
+  _homeIconPng = png;
+  const link=document.getElementById('app-touch-icon'); if(link && png) link.href=png;
+  const title=document.querySelector('meta[name="apple-mobile-web-app-title"]');
+  if(title) title.content = isWorkMode() ? 'タスク' : '復習マネ';
   _updateWebAppManifest();
+}
+function _updateHomeScreenIcon(){
+  const seq=++_homeIconSeq;
+  if(!APP_ICON){ _applyHomeIcon(_defaultHomeIcon()); return; }
+  // 登録画像を中央で正方形に切り抜き、180×180のPNGにする（縦長・横長の写真でも歪まない）
+  const img=new Image();
+  img.onload=()=>{
+    if(seq!==_homeIconSeq) return;
+    try{
+      const c=document.createElement('canvas'); c.width=c.height=180;
+      const g=c.getContext('2d');
+      const side=Math.min(img.naturalWidth, img.naturalHeight)||1;
+      const sx=(img.naturalWidth-side)/2, sy=(img.naturalHeight-side)/2;
+      g.fillStyle='#ffffff'; g.fillRect(0,0,180,180); // 透過部分はiPhoneで黒くなるので白で下地を敷く
+      g.imageSmoothingQuality='high';
+      g.drawImage(img, sx, sy, side, side, 0, 0, 180, 180);
+      _applyHomeIcon(c.toDataURL('image/png'));
+    }catch(_){ _applyHomeIcon(_defaultHomeIcon()); }
+  };
+  img.onerror=()=>{ if(seq===_homeIconSeq) _applyHomeIcon(_defaultHomeIcon()); };
+  img.src=APP_ICON;
 }
 
 /* ══ PWA: Web App Manifest を実行時に組み立ててBlob URLで差し込む ══
@@ -7001,18 +7043,18 @@ let _manifestBlobUrl = null;
 const DEFAULT_ICON_SVG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%232563EB'/%3E%3Ctext x='50' y='68' font-size='56' text-anchor='middle'%3E%F0%9F%93%9A%3C/text%3E%3C/svg%3E";
 function _updateWebAppManifest(){
   try{
-    const iconSrc = APP_ICON || DEFAULT_ICON_SVG;
+    const iconSrc = _homeIconPng || DEFAULT_ICON_SVG;
     const manifest = {
-      name: '復習マネージャー',
-      short_name: '復習マネ',
+      name: isWorkMode() ? 'タスク' : '復習マネージャー',
+      short_name: isWorkMode() ? 'タスク' : '復習マネ',
       start_url: './',
       scope: './',
       display: 'standalone',
       background_color: '#F2F4F9',
       theme_color: '#F2F2F7',
       icons: [
-        { src: iconSrc, sizes: '192x192', type: APP_ICON ? 'image/png' : 'image/svg+xml', purpose: 'any maskable' },
-        { src: iconSrc, sizes: '512x512', type: APP_ICON ? 'image/png' : 'image/svg+xml', purpose: 'any maskable' }
+        { src: iconSrc, sizes: '180x180', type: _homeIconPng ? 'image/png' : 'image/svg+xml', purpose: 'any' },
+        { src: iconSrc, sizes: '192x192', type: _homeIconPng ? 'image/png' : 'image/svg+xml', purpose: 'any' }
       ]
     };
     const blob = new Blob([JSON.stringify(manifest)], {type:'application/manifest+json'});
@@ -12787,6 +12829,7 @@ function setWorkMode(on){
       }
     }
   }catch(_){}
+  _updateHomeScreenIcon();
   const cur=document.querySelector('.tab-btn.on');
   if(on && cur && cur.dataset.tab==='study') switchTab(document.querySelector('[data-tab="today"]'));
   haptic('medium');
@@ -13451,7 +13494,7 @@ function renderSettings(){
         </div>
         <div class="settings-row-body">
           <div class="settings-row-title">アプリアイコン</div>
-          <div class="settings-row-sub">画像をアップロードして設定</div>
+          <div class="settings-row-sub">画像をアップロードして設定（ホーム画面のアイコンにも使われます）</div>
         </div>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--icon-muted)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
