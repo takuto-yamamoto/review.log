@@ -3649,7 +3649,6 @@ html.pc-dense #p-today .tb-name{font-size:13.5px}
 html.pc-dense #p-today .tb-body{padding:3px 4px 4px}
 html.pc-dense #p-today .tb-check{height:26px}
 .layout-toggle-btn{position:relative}
-#todo-longterm-quick-seg .seg-btn{white-space:nowrap;padding-left:2px;padding-right:2px;font-size:13.5px}
 
 
 /* ══ 文字の大きさ（html.ui-l / html.ui-xl） ═════════════════════
@@ -4290,13 +4289,29 @@ function createSyncTracker(tombKey){
   };
 }
 // ローカル配列とリモート配列を id 単位でマージする（version = updatedAt || createdAt || 0）
+// キーの順番に左右されない文字列化（同時刻の編集をどの端末でも同じ側に決めるため）
+function _canonJson(v){
+  if(Array.isArray(v)) return '['+v.map(_canonJson).join(',')+']';
+  if(v && typeof v==='object') return '{'+Object.keys(v).sort().filter(k=>v[k]!==undefined).map(k=>JSON.stringify(k)+':'+_canonJson(v[k])).join(',')+'}';
+  return JSON.stringify(v===undefined?null:v);
+}
+function _hashStr(str){ let h=2166136261; for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); } return (h>>>0).toString(36); }
+// 版が同じで中身が違う場合（2台が同じ瞬間に同じタスクを編集した等）は、
+// どの端末でも必ず同じ方を選ぶ（片方の端末だけ違う内容のまま残るのを防ぐ）
+function _pickNewer(prev, o, version){
+  const vo=version(o), vp=version(prev);
+  if(vo!==vp) return vo>vp ? o : prev;
+  if(prev===o) return prev;
+  const co=_canonJson(o), cp=_canonJson(prev);
+  return co>cp ? o : prev;
+}
 function _mergeArrayById(localArr, remoteArr, tomb){
   const version = (o) => (o && (o.updatedAt || o.createdAt)) || 0;
   const byId = new Map();
   const consider = (o) => {
     if(!o || typeof o !== 'object' || o.id == null) return;
     const prev = byId.get(o.id);
-    if(!prev || version(o) > version(prev)) byId.set(o.id, o);
+    byId.set(o.id, prev ? _pickNewer(prev, o, version) : o);
   };
   (localArr || []).forEach(consider);
   (remoteArr || []).forEach(consider);
@@ -4399,7 +4414,7 @@ function _mergeStudyLogs(localArr, remoteArr, localTomb, remoteTomb){
   const consider = (l) => {
     if(!l || typeof l !== 'object' || l.id == null) return;
     const prev = byId.get(l.id);
-    if(!prev || _studyLogVersion(l) > _studyLogVersion(prev)) byId.set(l.id, l);
+    byId.set(l.id, prev ? _pickNewer(prev, l, _studyLogVersion) : l);
   };
   (localArr || []).forEach(consider);
   (remoteArr || []).forEach(consider);
@@ -8748,7 +8763,7 @@ function _tomorrowPeekData(){
   });
   const todos = TODOS.filter(x=>!x.done && !x.longterm && x.date===tm)
     .sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
-  const longterm = TODOS.filter(x=>!x.done && x.longterm)
+  const longterm = TODOS.filter(x=>!x.done && x.longterm && _todoStarted(x, tm))
     .sort((a,b)=>(a.deadline||'9999').localeCompare(b.deadline||'9999'));
   return {tm, reviews, plans, todos, longterm};
 }
@@ -12451,11 +12466,28 @@ function _todoDateFromMode(mode){
   }
   return td();
 }
-// 長期タスクの「いつまでに終わらせたいか」の目安日（クイック選択 or 個別指定）
-function _todoLongtermNoDeadline(){
-  const b=document.querySelector('#todo-longterm-quick-seg .seg-btn.on');
-  return !!(b && b.dataset.days==='none');
+/* ── 長期タスクの「いつから始める？」（ガントチャートの起点にもなる） ── */
+function _todoStartShown(){ return _todoDateMode==='longterm'; }
+function _todoStartValue(){
+  if(!_todoStartShown()) return null;
+  const b=document.querySelector('#todo-start-seg .seg-btn.on');
+  if(!b || b.dataset.val==='today') return td();
+  const v=document.getElementById('todo-start-inp')?.value||'';
+  return v||null;
 }
+function _todoCreatedDay(x){
+  if(!x || !x.createdAt) return null;
+  const d=new Date(x.createdAt);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+// 開始日が未来の長期タスクは、開始日になるまで「今日」タブに出さない
+function _todoStarted(x, day){ return !x.startDate || x.startDate <= (day||td()); }
+// 期限のクイック選択（3日・1週間・2週間）は「開始日から」数える
+function _todoDeadlineBase(){ const s=_todoStartValue(); return (s && s>td()) ? s : td(); }
+
+// 長期タスクの「いつまでに終わらせたいか」（クイック選択 or 個別指定）
+// 期限は日付で必ず指定する（「期限なし」は選べない）
+function _todoLongtermNoDeadline(){ return false; }
 function _todoLongtermDeadlineValue(){
   if(_todoLongtermNoDeadline()) return null;
   const inp=document.getElementById('todo-longterm-deadline-inp');
@@ -12467,68 +12499,74 @@ function _updateTodoSegNote(){
   const note = document.getElementById('todo-seg-note');
   if(!note) return;
   if(_todoDateMode==='longterm'){
-    if(_todoLongtermNoDeadline()){ note.textContent='期限を決めずに、終わるまで毎日「今日」タブに表示されます'; return; }
+    const st=_todoStartValue();
+    if(!st){ note.textContent='開始日を選んでください'; return; }
+    const from = st>td() ? `${fmtShortText(st)}から` : '今日から';
     const dl = _todoLongtermDeadlineValue();
-    note.textContent = dl
-      ? `今日から毎日「今日」タブに表示され、${fmtShortText(dl)}が目安の期限になります（期限を過ぎても「遅延」とは表示されません）`
-      : '目安の期限を選んでください';
+    note.textContent = !dl ? '期限を選んでください'
+      : (st>dl ? '開始日が期限より後になっています'
+        : `${from}毎日「今日」タブに表示され、${fmtShortText(dl)}が目安の期限になります（期限を過ぎても「遅延」とは表示されません）`);
     return;
   }
   const dateStr = _todoDateFromMode(_todoDateMode);
   note.textContent = dateStr ? `${fmtShortText(dateStr)}の「今日」タブに表示されます` : '日付を選択してください';
 }
 
+function _todoShowPicker(inp){
+  setTimeout(()=>{
+    inp.focus();
+    if(typeof inp.showPicker==='function'){ try{ inp.showPicker(); }catch(_){} }
+  },50);
+}
+// 種類の切り替え（ToDo ⇔ 長期タスク）。ToDo側の「今日／日付指定」の選択は覚えておく
+let _todoDaySel='today';
+function selectTodoKind(kind, silent){
+  document.querySelectorAll('#todo-kind-seg .seg-btn').forEach(b=>b.classList.toggle('on',b.dataset.kind===kind));
+  const isLt = kind==='longterm';
+  _todoDateMode = isLt ? 'longterm' : _todoDaySel;
+  const dayWrap=document.getElementById('todo-day-wrap'); if(dayWrap) dayWrap.style.display = isLt ? 'none' : 'block';
+  const ltWrap=document.getElementById('todo-longterm-wrap'); if(ltWrap) ltWrap.style.display = isLt ? 'block' : 'none';
+  if(!silent) haptic();
+  _updateTodoSegNote();
+}
+// ToDoの「今日／日付指定」
 function selectTodoDateSeg(btn){
   document.querySelectorAll('#todo-date-seg .seg-btn').forEach(b=>b.classList.toggle('on',b===btn));
-  _todoDateMode = btn.dataset.val;
+  _todoDaySel = btn.dataset.val==='custom' ? 'custom' : 'today';
+  _todoDateMode = _todoDaySel;
   const customInp=document.getElementById('todo-date-custom-inp');
   if(customInp){
-    customInp.style.display = _todoDateMode==='custom' ? 'block' : 'none';
-    if(_todoDateMode==='custom'){
-      setTimeout(()=>{
-        customInp.focus();
-        if(typeof customInp.showPicker==='function'){
-          try{ customInp.showPicker(); }catch(_){}
-        }
-      },50);
-    }
-  }
-  const ltWrap=document.getElementById('todo-longterm-wrap');
-  if(ltWrap) ltWrap.style.display = _todoDateMode==='longterm' ? 'block' : 'none';
-  if(_todoDateMode==='longterm'){
-    // 長期タスクに切り替えた直後、クイック選択が何も選ばれていなければ「1週間後」を初期値にする
-    const seg=document.getElementById('todo-longterm-quick-seg');
-    if(seg && !seg.querySelector('.seg-btn.on')){
-      const wk=seg.querySelector(isWorkMode()?'[data-days="none"]':'[data-days="7"]');
-      if(wk) selectTodoLongtermQuick(wk);
+    customInp.style.display = _todoDaySel==='custom' ? 'block' : 'none';
+    if(_todoDaySel==='custom'){
+      customInp.min=td();
+      if(!customInp.value || customInp.value<td()) customInp.value=addD(td(),1);
+      _todoShowPicker(customInp);
     }
   }
   haptic();
   _updateTodoSegNote();
 }
-// 長期タスクの期限クイック選択（3日後／1週間後／2週間後／日付指定）
-function selectTodoLongtermQuick(btn){
-  document.querySelectorAll('#todo-longterm-quick-seg .seg-btn').forEach(b=>b.classList.toggle('on',b===btn));
-  const deadlineInp=document.getElementById('todo-longterm-deadline-inp');
-  const days=btn.dataset.days;
-  if(days==='none'){
-    if(deadlineInp){ deadlineInp.style.display='none'; deadlineInp.value=''; }
-  } else if(days===''){
-    if(deadlineInp){
-      deadlineInp.style.display='block'; deadlineInp.min=td();
-      if(!deadlineInp.value) deadlineInp.value=addD(td(),7);
-      setTimeout(()=>{
-        deadlineInp.focus();
-        if(typeof deadlineInp.showPicker==='function'){ try{ deadlineInp.showPicker(); }catch(_){} }
-      },50);
+// 長期タスクの「いつから始める？」（今日／日付指定）
+function selectTodoStartSeg(btn, silent){
+  document.querySelectorAll('#todo-start-seg .seg-btn').forEach(b=>b.classList.toggle('on',b===btn));
+  const inp=document.getElementById('todo-start-inp');
+  if(inp){
+    const custom = btn.dataset.val==='custom';
+    inp.style.display = custom ? 'block' : 'none';
+    if(custom){
+      if(!inp.value) inp.value=addD(td(),1);
+      if(!silent) _todoShowPicker(inp);
     }
-  } else {
-    if(deadlineInp){ deadlineInp.style.display='none'; deadlineInp.value=addD(td(),parseInt(days,10)); }
   }
-  haptic();
+  onTodoStartInput(true);
+  if(!silent) haptic();
+}
+// 開始日が変わったら、期限の選べる範囲（開始日以降）を合わせる
+function onTodoStartInput(){
+  const dlInp=document.getElementById('todo-longterm-deadline-inp');
+  if(dlInp) dlInp.min=_todoDeadlineBase();
   _updateTodoSegNote();
 }
-
 function toggleTagTodo(id){
   _todoDraftTags = _todoDraftTags.includes(id) ? _todoDraftTags.filter(x=>x!==id) : [..._todoDraftTags,id];
   renderTodoTagSel();
@@ -12576,21 +12614,35 @@ function renderTodoTagSel(){
     </div>`;
 }
 
+// シートの日付まわりを、指定した状態にまとめてセットする
+function _todoSetupSheet(o){
+  // o: {kind, daySel, dayVal, startVal, deadline, noDeadline}
+  _todoDaySel = o.daySel || 'today';
+  document.querySelectorAll('#todo-date-seg .seg-btn').forEach(b=>b.classList.toggle('on',b.dataset.val===_todoDaySel));
+  const customInp=document.getElementById('todo-date-custom-inp');
+  if(customInp){ customInp.min=td(); customInp.value=o.dayVal||''; customInp.style.display = _todoDaySel==='custom' ? 'block' : 'none'; }
+  // 開始日
+  const st=o.startVal||td();
+  const stCustom = st!==td();
+  const stInp=document.getElementById('todo-start-inp');
+  if(stInp){ stInp.value = stCustom ? st : ''; stInp.style.display = stCustom ? 'block' : 'none'; }
+  document.querySelectorAll('#todo-start-seg .seg-btn').forEach(b=>b.classList.toggle('on',b.dataset.val===(stCustom?'custom':'today')));
+  // 種類（期限の範囲に開始日を使うため、先に種類を反映する）
+  selectTodoKind(o.kind, true);
+  // 期限（日付のみ）。期限なしで登録されていた既存タスクは空欄にして、選んでもらう
+  const dlInp=document.getElementById('todo-longterm-deadline-inp');
+  if(dlInp){ dlInp.min=_todoDeadlineBase(); dlInp.value = o.noDeadline ? '' : (o.deadline||addD(_todoDeadlineBase(),7)); }
+  _updateTodoSegNote();
+}
+
 function openTodoAddSheet(presetTagId){
   const wm=isWorkMode();
   _todoEditId=null;
-  _todoDateMode= wm ? 'longterm' : 'today';
   _todoDraftTags= (presetTagId && TAGS.some(t=>t.id===presetTagId)) ? [presetTagId] : [];
   _todoTagAddOpen=false;
-  document.querySelectorAll('#todo-date-seg .seg-btn').forEach(b=>b.classList.toggle('on',b.dataset.val===_todoDateMode));
   document.getElementById('todo-inp').value='';
-  const customInp=document.getElementById('todo-date-custom-inp');
-  if(customInp){ customInp.value=''; customInp.min=td(); customInp.style.display='none'; }
-  const ltWrap=document.getElementById('todo-longterm-wrap'); if(ltWrap) ltWrap.style.display= wm ? 'block' : 'none';
-  const ltDeadlineInp=document.getElementById('todo-longterm-deadline-inp');
-  if(ltDeadlineInp){ ltDeadlineInp.value= wm ? '' : addD(td(),7); ltDeadlineInp.min=td(); ltDeadlineInp.style.display='none'; }
-  const _ltDef = wm ? 'none' : '7';
-  document.querySelectorAll('#todo-longterm-quick-seg .seg-btn').forEach(b=>b.classList.toggle('on',b.dataset.days===_ltDef));
+  // 仕事モードは長期タスク（期限なし）、通常モードは今日のToDoを既定にする
+  _todoSetupSheet({kind: wm?'longterm':'todo', daySel:'today', startVal:td(), noDeadline:false, deadline:addD(td(),7)});
   renderTodoTagSel();
   const ttl=document.getElementById('todo-sheet-ttl'); if(ttl) ttl.textContent='ToDoを追加する';
   const delBtn=document.getElementById('todo-sheet-del'); if(delBtn) delBtn.style.display='none';
@@ -12602,12 +12654,9 @@ function openTodoAddSheet(presetTagId){
   setTimeout(()=>{
     const inp=document.getElementById('todo-inp');
     // preventScroll: iOSがフォーカス時に自動でページを上スクロールするのを止める。
-    // これを止めずに下の補正だけで対処すると、自動スクロール→補正の二段階で
-    // 画面が「ガクッ」と二重に動いて見えてしまう。
     inp.focus({preventScroll:true});
     setTimeout(()=>{
       if(!document.getElementById('todo-sheet')?.classList.contains('on')) return;
-      // 念のための保険（preventScroll非対応ブラウザ向け）。基本的には動かないはず。
       if(window.scrollY!==0) window.scrollTo(0,0);
       inp.scrollIntoView({block:'nearest',behavior:'instant'});
     },120);
@@ -12615,44 +12664,21 @@ function openTodoAddSheet(presetTagId){
   haptic();
 }
 
-// 既存ToDoを編集する（予定タブのToDo一覧から起動。日付・タグ・内容を変更できる）
+// 既存ToDoを編集する（予定タブのToDo一覧から起動。種類・日付・タグ・内容を変更できる）
 function openTodoEditSheet(id){
   const x=TODOS.find(t=>t.id===id); if(!x) return;
   _todoEditId=id;
   _todoDraftTags=[...(x.tags||[])];
   _todoTagAddOpen=false;
   document.getElementById('todo-inp').value=x.text;
-
-  const tomorrow=addD(td(),1);
-  const mode = x.longterm ? 'longterm' : (x.date===td() ? 'today' : (x.date===tomorrow ? 'tomorrow' : 'custom'));
-  _todoDateMode=mode;
-  document.querySelectorAll('#todo-date-seg .seg-btn').forEach(b=>b.classList.toggle('on',b.dataset.val===mode));
-  const customInp=document.getElementById('todo-date-custom-inp');
-  if(customInp){
-    customInp.min=td();
-    customInp.value = x.date || td();
-    customInp.style.display = mode==='custom' ? 'block' : 'none';
-  }
-  const ltWrap=document.getElementById('todo-longterm-wrap');
-  const ltDeadlineInp=document.getElementById('todo-longterm-deadline-inp');
-  if(ltWrap) ltWrap.style.display = mode==='longterm' ? 'block' : 'none';
-  if(mode==='longterm' && !x.deadline){
-    document.querySelectorAll('#todo-longterm-quick-seg .seg-btn').forEach(b=>b.classList.toggle('on',b.dataset.days==='none'));
-    if(ltDeadlineInp){ ltDeadlineInp.min=td(); ltDeadlineInp.value=''; ltDeadlineInp.style.display='none'; }
-  } else if(mode==='longterm'){
-    const deadline = x.deadline || addD(td(),7);
-    const daysAway = diff(deadline);
-    const presetBtn = document.querySelector(`#todo-longterm-quick-seg [data-days="${daysAway}"]`);
-    document.querySelectorAll('#todo-longterm-quick-seg .seg-btn').forEach(b=>b.classList.toggle('on',b===presetBtn));
-    if(ltDeadlineInp){
-      ltDeadlineInp.min=td();
-      ltDeadlineInp.value=deadline;
-      ltDeadlineInp.style.display = presetBtn ? 'none' : 'block';
-    }
-    if(!presetBtn){
-      const customBtn=document.querySelector('#todo-longterm-quick-seg [data-days=""]');
-      if(customBtn) customBtn.classList.add('on');
-    }
+  if(x.longterm){
+    _todoSetupSheet({kind:'longterm', daySel:'today',
+      startVal: x.startDate || _todoCreatedDay(x) || td(),
+      noDeadline: !x.deadline, deadline: x.deadline||null});
+  } else {
+    const isToday = x.date===td();
+    _todoSetupSheet({kind:'todo', daySel: isToday?'today':'custom', dayVal: x.date||td(),
+      startVal: _todoCreatedDay(x) || td(), noDeadline:false, deadline:addD(td(),7)});
   }
   renderTodoTagSel();
   const ttl=document.getElementById('todo-sheet-ttl'); if(ttl) ttl.textContent='ToDoを編集する';
@@ -12715,6 +12741,16 @@ function addTodo(){
   }
   // input要素のmin属性はUIの目安に過ぎず、手入力等で回避され得るため保存時にも再検証する
   if(date<td()) date=td();
+  const startShown=_todoStartShown();
+  const startDate=_todoStartValue();
+  if(startShown && !startDate){ toast(IC.alert,'開始日を選んでください'); haptic('medium'); return; }
+  if(startDate){
+    const endForCheck = isLongterm ? deadline : date;
+    if(endForCheck && startDate>endForCheck){
+      toast(IC.alert, isLongterm ? '開始日は期限より前の日付にしてください' : '開始日はToDoの日付より前にしてください');
+      haptic('medium'); return;
+    }
+  }
   if(_todoEditId){
     const x=TODOS.find(t=>t.id===_todoEditId);
     if(!x){ closeTodoAddSheet(); return; }
@@ -12724,6 +12760,8 @@ function addTodo(){
     else x.date = (rawDate && rawDate===x.date) ? x.date : date;
     if(isLongterm){ x.longterm=true; if(deadline) x.deadline=deadline; else delete x.deadline; }
     else { delete x.longterm; delete x.deadline; }
+    // 開始日は長期タスクだけが持つ（ToDoに戻したときは消して、ガントチャートで矛盾しないようにする）
+    if(startShown && startDate) x.startDate=startDate; else delete x.startDate;
     saveTodos();
     closeTodoAddSheet();
     render();
@@ -12733,6 +12771,7 @@ function addTodo(){
   }
   const task={id:Date.now().toString(), text, date, done:false, half:false, elapsedMs:0, timerStart:null, tags:[..._todoDraftTags], createdAt:Date.now()};
   if(isLongterm){ task.longterm=true; if(deadline) task.deadline=deadline; }
+  if(startDate) task.startDate=startDate;
   TODOS.unshift(task);
   saveTodos();
   inp.value='';
@@ -12864,6 +12903,7 @@ function _tbItems(list, duePlan){
   TODOS.forEach(x=>{
     if(x.done) return;
     if(!x.longterm && !(x.date && x.date<=t)) return;
+    if(x.longterm && !_todoStarted(x, t)) return;
     let meta='', cls='';
     if(x.longterm){
       if(x.deadline){
@@ -13057,7 +13097,7 @@ function renderTodoSectionHtml(compact, tagId){
 // 今日タブの一番下（前倒し提案よりさらに後ろ）にまとめて出す。緊急度の高いものを
 // 先に目に入れてもらい、長期タスクは「余裕があれば」の位置に自然に下げる狙い。
 function renderLongtermTodoSectionHtml(compact, tagId){
-  let list = TODOS.filter(x=>x.longterm && !x.done)
+  let list = TODOS.filter(x=>x.longterm && !x.done && _todoStarted(x))
     .sort((a,b)=>(a.deadline||'9999').localeCompare(b.deadline||'9999')||(a.createdAt||0)-(b.createdAt||0));
   if(tagId) list = list.filter(x=>(x.tags||[]).includes(tagId));
   if(!list.length) return '';
@@ -13117,6 +13157,7 @@ function todoFilterListHtml(){
 
 function todoAllRowHtml(x){
   const dateLbl = x.longterm ? (x.deadline ? `${fmtShortText(x.deadline)}まで` : '期限なし') : (x.date ? fmtShortText(x.date) : '');
+  const dateLblFull = (x.startDate && !x.done) ? `${fmtShortText(x.startDate)}〜 ${dateLbl}` : dateLbl;
   const tagsHtml = (x.tags&&x.tags.length) ? `<div class="card-tags-row" style="margin-top:3px">${x.tags.map(tid=>tagHtml(tid)).join('')}</div>` : '';
   const leadBtn = x.done
     ? `<button class="todo-all-check on" onclick="toggleTodo('${x.id}')" aria-label="未完了に戻す">${IC.check}</button>`
@@ -13127,7 +13168,7 @@ function todoAllRowHtml(x){
     ${leadBtn}
     <div class="todo-all-body">
       <div class="todo-all-name${x.done?' done':''}">${esc(x.text)}${(x.longterm&&!x.done)?'<span class="todo-half-tag longterm">長期</span>':''}${(x.half&&!x.done)?'<span class="todo-half-tag">途中まで</span>':''}</div>
-      ${dateLbl?`<div class="todo-all-date">${dateLbl}</div>`:''}
+      ${dateLblFull?`<div class="todo-all-date">${dateLblFull}</div>`:''}
       ${tagsHtml}
     </div>
     <button class="btn-edit" onclick="openTodoEditSheet('${x.id}')" aria-label="編集">${IC.pencil}</button>
@@ -14205,30 +14246,38 @@ if('serviceWorker' in navigator && !window.__IS_EMBEDDED){
   <div class="sheet-body">
     <div class="sheet-ttl" id="todo-sheet-ttl">ToDoを追加する</div>
     <input class="sheet-inp" id="todo-inp" type="text" placeholder="やること（例：宿題を提出する）" maxlength="60" autocomplete="off" autocorrect="off">
+    <!-- 種類：ToDo（その日にやる）／長期タスク（開始日〜期限の期間で取り組む） -->
     <div class="date-label">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
-      いつのToDoにする？
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      どちらにする？
     </div>
-    <div class="seg" id="todo-date-seg">
-      <button class="seg-btn on" data-val="today" onclick="selectTodoDateSeg(this)">今日</button>
-      <button class="seg-btn" data-val="tomorrow" onclick="selectTodoDateSeg(this)">明日</button>
-      <button class="seg-btn" data-val="custom" onclick="selectTodoDateSeg(this)">日付指定</button>
-      <button class="seg-btn" data-val="longterm" onclick="selectTodoDateSeg(this)">長期</button>
+    <div class="seg" id="todo-kind-seg">
+      <button class="seg-btn on" data-kind="todo" onclick="selectTodoKind('todo')">ToDo</button>
+      <button class="seg-btn" data-kind="longterm" onclick="selectTodoKind('longterm')">長期タスク</button>
     </div>
-    <input type="date" id="todo-date-custom-inp" style="display:none;margin-top:10px;width:100%;background:var(--fill);border:1.5px solid var(--sep);border-radius:12px;padding:12px 14px;font-family:inherit;font-size:16px;color:var(--lbl);outline:none" oninput="_updateTodoSegNote()">
-    <div id="todo-longterm-wrap" style="display:none;margin-top:10px">
-      <div class="date-label" style="margin-top:0">
+    <div id="todo-day-wrap">
+      <div class="date-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>いつやる？</div>
+      <div class="seg" id="todo-date-seg">
+        <button class="seg-btn on" data-val="today" onclick="selectTodoDateSeg(this)">今日</button>
+        <button class="seg-btn" data-val="custom" onclick="selectTodoDateSeg(this)">日付指定</button>
+      </div>
+      <input type="date" id="todo-date-custom-inp" style="display:none;margin-top:10px;width:100%;background:var(--fill);border:1.5px solid var(--sep);border-radius:12px;padding:12px 14px;font-family:inherit;font-size:16px;color:var(--lbl);outline:none" oninput="_updateTodoSegNote()">
+    </div>
+    <div id="todo-longterm-wrap" style="display:none">
+      <div class="date-label">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+        いつから始める？
+      </div>
+      <div class="seg" id="todo-start-seg">
+        <button class="seg-btn on" data-val="today" onclick="selectTodoStartSeg(this)">今日</button>
+        <button class="seg-btn" data-val="custom" onclick="selectTodoStartSeg(this)">日付指定</button>
+      </div>
+      <input type="date" id="todo-start-inp" style="display:none;margin-top:10px;width:100%;background:var(--fill);border:1.5px solid var(--sep);border-radius:12px;padding:12px 14px;font-family:inherit;font-size:16px;color:var(--lbl);outline:none" oninput="onTodoStartInput()">
+      <div class="date-label">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>
-        いつまでに終わらせたい？
+        いつまでに終わらせる？
       </div>
-      <div class="seg" id="todo-longterm-quick-seg">
-        <button class="seg-btn" data-days="none" onclick="selectTodoLongtermQuick(this)">期限なし</button>
-        <button class="seg-btn" data-days="3" onclick="selectTodoLongtermQuick(this)">3日</button>
-        <button class="seg-btn on" data-days="7" onclick="selectTodoLongtermQuick(this)">1週間</button>
-        <button class="seg-btn" data-days="14" onclick="selectTodoLongtermQuick(this)">2週間</button>
-        <button class="seg-btn" data-days="" onclick="selectTodoLongtermQuick(this)">日付</button>
-      </div>
-      <input type="date" id="todo-longterm-deadline-inp" style="display:none;margin-top:10px;width:100%;background:var(--fill);border:1.5px solid var(--sep);border-radius:12px;padding:12px 14px;font-family:inherit;font-size:16px;color:var(--lbl);outline:none" oninput="_updateTodoSegNote()">
+      <input type="date" id="todo-longterm-deadline-inp" style="margin-top:0;width:100%;background:var(--fill);border:1.5px solid var(--sep);border-radius:12px;padding:12px 14px;font-family:inherit;font-size:16px;color:var(--lbl);outline:none" oninput="_updateTodoSegNote()">
     </div>
     <div class="todo-seg-note" id="todo-seg-note"></div>
     <div id="todo-tag-sel-wrap"></div>
@@ -14438,12 +14487,22 @@ const FSYNC_ENABLED = !!(FSYNC_CONFIG.apiKey && FSYNC_CONFIG.apiKey !== "YOUR_AP
 
 const FSYNC = (() => {
   const CODE_KEY = 'fukushu-sync-code';
+  const BASE_KEY = 'fukushu-sync-base-v1'; // 設定類（丸ごと1つの値）の「最後に同期した値」
+  const DOC_LIMIT = 1000000;               // Firestoreの1文書の上限(約1MiB)より少し手前で止める
   let db = null, docRef = null, ready = false, applyingRemote = false, pushTimer = null;
   let inApply = false, pendingPush = false; // 受信処理中の保存は送らないが、直後の利用者の操作は後で必ず送る
   let unsubscribe = null, listenToken = 0; // 現在の購読（コード切替・解除時に必ず止める）
   let pulled = false; // ★重要: クラウドから一度もデータを受信していない間はpush(上書き)を禁止する
                        //   これが無いと、まだ何も受信していない「空の状態」の端末が
                        //   先に書き込んでしまい、他端末の実データを消してしまう事故が起きる
+  // ★安全対策（2026-11 追加）: 書き込みは「サーバーの今の版が、こちらが最後に取り込んだ版と
+  //   同じとき」だけ行う（トランザクションで確認してから書く）。違っていたら書かずに、
+  //   先にサーバーの内容を取り込んでマージしてから送り直す。
+  //   以前は確認なしで丸ごと上書きしていたため、2台がほぼ同時に操作すると、片方の変更が
+  //   いったんサーバーから消える（その端末が開き直すまで他端末に届かない）ことがあった。
+  let lastSeenKey = null;      // 最後に取り込んだ／書き込んだサーバー文書の版（updatedAt）
+  let pushing = false, pushAgain = false;
+  let failCount = 0, staleCount = 0, retryTimer = null, sizeWarned = false;
 
   function getCode(){ try{ return localStorage.getItem(CODE_KEY) || ''; }catch(_){ return ''; } }
   function setCode(c){ try{ if(c) localStorage.setItem(CODE_KEY, c); else localStorage.removeItem(CODE_KEY); }catch(_){} }
@@ -14451,6 +14510,31 @@ const FSYNC = (() => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 0/O, 1/I など紛らわしい文字は除外
     let s=''; for(let i=0;i<6;i++) s += chars[Math.floor(Math.random()*chars.length)];
     return s;
+  }
+  const keyOf = d => d ? String(d.updatedAt || 0) : 'none';
+
+  /* ── 設定類（アイコン・復習間隔・連続日数）の3方向マージ用 ──
+     これらは配列ではなく「丸ごと1つの値」なので、id単位マージができない。
+     「最後に同期した値(base)」から、こちらが変えていればこちらを残し、
+     変えていなければ相手の値を採用する。 */
+  let base = (()=>{ try{ return JSON.parse(localStorage.getItem(BASE_KEY)) || null; }catch(_){ return null; } })();
+  function saveBase(){ try{ localStorage.setItem(BASE_KEY, JSON.stringify(base)); }catch(_){} }
+  const iconSig = v => v ? `${v.length}:${v.slice(0,40)}:${v.slice(-40)}` : '';
+  function localStreakJson(){ try{ return JSON.stringify(JSON.parse(localStorage.getItem('fukushu-streak-v1') || 'null')); }catch(_){ return 'null'; } }
+  function localDevJson(){ try{ return JSON.stringify(typeof DEV_SETTINGS!=='undefined' ? DEV_SETTINGS : null); }catch(_){ return 'null'; } }
+  function localChanged(k, cur){ return !!(base && base[k] !== undefined && base[k] !== cur); }
+  function setBase(k, v){ base = base || {}; base[k] = v; saveBase(); }
+
+  /* ── 各配列の「版の一覧」（id@updatedAt）。マージ結果がサーバーと違えば送り直す ── */
+  function sigOf(arr, verFn){
+    // 版に加えて中身のハッシュも含める（同じ版で中身が違う場合も送り直してそろえる）
+    return (arr||[]).filter(o=>o && o.id!=null).map(o=>o.id+'@'+verFn(o)+'#'+_hashStr(_canonJson(o))).sort().join('|');
+  }
+  const verObj = o => (o.updatedAt || o.createdAt || 0);
+  function tombAhead(localTomb, remoteTomb){
+    const rt = remoteTomb || {};
+    for(const id in (localTomb||{})){ if(!(rt[id] >= localTomb[id])) return true; }
+    return false;
   }
 
   function buildPayload(){
@@ -14478,7 +14562,22 @@ const FSYNC = (() => {
     };
     // Firestoreは値に undefined が含まれると書き込み全体を拒否するため、
     // JSON化→再パースして undefined プロパティを確実に除去してから渡す
-    try{ return JSON.parse(JSON.stringify(raw)); }catch(e){ console.error('FSYNC buildPayload失敗', e); return raw; }
+    let out;
+    try{ out = JSON.parse(JSON.stringify(raw)); }catch(e){ console.error('FSYNC buildPayload失敗', e); return null; }
+    // ★文書サイズの上限対策：上限を超えると書き込み全体が失敗し、同期が止まってしまう。
+    //   まずアイコンを外して（他端末のアイコンは消さない扱いで）送り、それでも大きければ送らずに知らせる。
+    const bytes = o => { try{ return new Blob([JSON.stringify(o)]).size; }catch(_){ return 0; } };
+    if(bytes(out) > DOC_LIMIT && out.appIcon){ out.appIcon = null; out.appIconSkipped = true; }
+    if(bytes(out) > DOC_LIMIT){
+      if(!sizeWarned && typeof toast==='function' && typeof IC!=='undefined'){
+        toast(IC.alert, 'データが大きすぎて同期できません。バックアップを保存してください');
+      }
+      sizeWarned = true;
+      console.error('FSYNC: 文書サイズが上限を超えるため送信を中止しました', bytes(out));
+      return null;
+    }
+    sizeWarned = false;
+    return out;
   }
 
   function applyPayload(data){
@@ -14488,88 +14587,83 @@ const FSYNC = (() => {
     let _needsReconverge = false;
     try{
       if(Array.isArray(data.units)){
-        // ★本修正の核心：完了タスクが復活する/計画タスクが消えるバグの原因だった
-        //   「丸ごと上書き」をやめ、勉強記録と同じ id単位マージ＋tombstone方式にする。
-        //   これにより、リモートがまだ受信していないローカルの完了状態や新規タスクが
-        //   相手の古いデータで消されなくなる。削除は tombstone 経由で伝播させる。
+        // id単位マージ＋tombstone方式（丸ごと上書きしない）
         _unitSync.mergeTomb(data.unitTombstones || {});
-        const beforeIds = U.map(u=>u.id).join('|');
         U = _mergeArrayById(U, data.units, _unitSync.getTomb());
-        _unitSync.resyncPrev(U); // マージ結果を新しい基準にする（受信自体を「変更」として二重カウントしない）
+        _unitSync.resyncPrev(U);
         safeSetItem(KEY, JSON.stringify(U));
-        const remoteIds = data.units.map(u=>u&&u.id).join('|');
-        const afterIds = U.map(u=>u.id).join('|');
-        if(afterIds !== remoteIds || afterIds !== beforeIds) _needsReconverge = true;
+        // ★idの増減だけでなく「中身の版」まで比べる。こちらの方が新しい中身を持っているのに
+        //   送り返さないと、その変更が他の端末へ届かないまま残ってしまうため。
+        if(sigOf(U, verObj) !== sigOf(data.units, verObj) || tombAhead(_unitSync.getTomb(), data.unitTombstones)) _needsReconverge = true;
       }
       if(Array.isArray(data.tags)){
-        // タグも units 等と同じ理由で id単位マージに変更（片方の端末で追加/削除した
-        // タグが、もう片方の古いタグ一覧で消えたり復活したりしないようにする）
         _tagSync.mergeTomb(data.tagTombstones || {});
         TAGS = sortTagsByLayout(_mergeArrayById(TAGS, data.tags, _tagSync.getTomb()));
         _tagSync.resyncPrev(TAGS);
         safeSetItem(TAG_KEY, JSON.stringify(TAGS));
+        if(sigOf(TAGS, verObj) !== sigOf(data.tags, verObj) || tombAhead(_tagSync.getTomb(), data.tagTombstones)) _needsReconverge = true;
       }
       if(Array.isArray(data.categories)){
         _catSync.mergeTomb(data.categoryTombstones || {});
         CATEGORIES = _mergeArrayById(CATEGORIES, data.categories, _catSync.getTomb());
         _catSync.resyncPrev(CATEGORIES);
         safeSetItem(CAT_KEY, JSON.stringify(CATEGORIES));
+        if(sigOf(CATEGORIES, verObj) !== sigOf(data.categories, verObj) || tombAhead(_catSync.getTomb(), data.categoryTombstones)) _needsReconverge = true;
       }
       if(Array.isArray(data.studyLogs)){
-        // ★勉強時間が消えるバグの修正：リモートで丸ごと上書きせず、id単位で合算する。
-        //   これにより、リモートがまだ受信していないローカルの記録が消えなくなる。
-        //   削除は tombstone 経由で伝播させる。
-        const beforeIds = STUDY_LOGS.map(l=>l.id).join('|');
         const merged = _mergeStudyLogs(STUDY_LOGS, data.studyLogs,
                                        STUDY_TOMBSTONES, data.studyTombstones || {});
         STUDY_LOGS = merged.logs;
         STUDY_TOMBSTONES = merged.tomb;
         safeSetItem(STUDY_KEY, JSON.stringify(STUDY_LOGS));
         saveStudyTombstones();
-        // マージ結果がリモートのそのままの姿と違う（ローカル固有の記録や削除がある）場合は、
-        // 収束のためこちらから改めて全体をpushし直す必要がある。
-        const remoteIds = data.studyLogs.map(l=>l&&l.id).join('|');
-        const afterIds = STUDY_LOGS.map(l=>l.id).join('|');
-        if(afterIds !== remoteIds || afterIds !== beforeIds) _needsReconverge = true;
+        if(sigOf(STUDY_LOGS, _studyLogVersion) !== sigOf(data.studyLogs, _studyLogVersion) || tombAhead(STUDY_TOMBSTONES, data.studyTombstones)) _needsReconverge = true;
       }
       if(Array.isArray(data.todos) && typeof TODOS!=='undefined'){
-        // units と同じ理由で id単位マージに変更（TODOが消える/復活するのを防ぐ）
         _todoSync.mergeTomb(data.todoTombstones || {});
-        const beforeIds = TODOS.map(t=>t.id).join('|');
         TODOS = _mergeArrayById(TODOS, data.todos, _todoSync.getTomb());
         _todoSync.resyncPrev(TODOS);
         safeSetItem(TODO_KEY, JSON.stringify(TODOS));
-        const remoteIds = data.todos.map(t=>t&&t.id).join('|');
-        const afterIds = TODOS.map(t=>t.id).join('|');
-        if(afterIds !== remoteIds || afterIds !== beforeIds) _needsReconverge = true;
+        if(sigOf(TODOS, verObj) !== sigOf(data.todos, verObj) || tombAhead(_todoSync.getTomb(), data.todoTombstones)) _needsReconverge = true;
       }
       if(Array.isArray(data.plan) && typeof PLAN!=='undefined'){
-        // ★「計画タスクが5件のはずが4件になる」バグの原因もこれと同じ丸ごと上書き。
-        //   id単位マージに変更し、片方にしかないタスクが消えないようにする。
         _planSync.mergeTomb(data.planTombstones || {});
-        const beforeIds = PLAN.map(p=>p.id).join('|');
         PLAN = _mergeArrayById(PLAN, data.plan, _planSync.getTomb());
         _planSync.resyncPrev(PLAN);
         safeSetItem(PLAN_KEY, JSON.stringify(PLAN));
-        const remoteIds = data.plan.map(p=>p&&p.id).join('|');
-        const afterIds = PLAN.map(p=>p.id).join('|');
-        if(afterIds !== remoteIds || afterIds !== beforeIds) _needsReconverge = true;
+        if(sigOf(PLAN, verObj) !== sigOf(data.plan, verObj) || tombAhead(_planSync.getTomb(), data.planTombstones)) _needsReconverge = true;
       }
       if(Array.isArray(data.planRules) && typeof PLAN_RULES!=='undefined'){
         _planRuleSync.mergeTomb(data.planRuleTombstones || {});
         PLAN_RULES = _mergeArrayById(PLAN_RULES, data.planRules, _planRuleSync.getTomb());
         _planRuleSync.resyncPrev(PLAN_RULES);
         safeSetItem(PLAN_RULE_KEY, JSON.stringify(PLAN_RULES));
+        if(sigOf(PLAN_RULES, verObj) !== sigOf(data.planRules, verObj) || tombAhead(_planRuleSync.getTomb(), data.planRuleTombstones)) _needsReconverge = true;
       }
+      // ── 設定類：3方向マージ（こちらで変更して未送信なら、こちらを残して送り直す） ──
       if(!data.appIconSkipped && typeof data.appIcon !== 'undefined' && typeof APP_ICON!=='undefined' && typeof saveAppIcon==='function'){
-        if(data.appIcon !== APP_ICON) saveAppIcon(data.appIcon);
+        const rSig = iconSig(data.appIcon), lSig = iconSig(APP_ICON);
+        if(rSig !== lSig){
+          if(localChanged('appIcon', lSig)) _needsReconverge = true;
+          else { saveAppIcon(data.appIcon); setBase('appIcon', rSig); }
+        } else setBase('appIcon', rSig);
       }
       if(data.devSettings && typeof data.devSettings==='object' && typeof DEV_SETTINGS!=='undefined'){
-        DEV_SETTINGS = { global: Array.isArray(data.devSettings.global) && data.devSettings.global.length===MAX_STEP ? data.devSettings.global : null,
-                          byTag: (data.devSettings.byTag && typeof data.devSettings.byTag==='object') ? data.devSettings.byTag : {} };
-        saveDevSettings();
+        const next = { global: Array.isArray(data.devSettings.global) && data.devSettings.global.length===MAX_STEP ? data.devSettings.global : null,
+                       byTag: (data.devSettings.byTag && typeof data.devSettings.byTag==='object') ? data.devSettings.byTag : {} };
+        const rJson = JSON.stringify(next), lJson = localDevJson();
+        if(rJson !== lJson){
+          if(localChanged('devSettings', lJson)) _needsReconverge = true;
+          else { DEV_SETTINGS = next; saveDevSettings(); setBase('devSettings', localDevJson()); }
+        } else setBase('devSettings', lJson);
       }
-      if(data.streak) safeSetItem('fukushu-streak-v1', JSON.stringify(data.streak));
+      if(data.streak){
+        const rJson = JSON.stringify(data.streak), lJson = localStreakJson();
+        if(rJson !== lJson){
+          if(localChanged('streak', lJson)) _needsReconverge = true;
+          else { safeSetItem('fukushu-streak-v1', rJson); setBase('streak', localStreakJson()); }
+        } else setBase('streak', lJson);
+      }
       if(typeof render === 'function') render();
       if(typeof renderSettings === 'function') renderSettings();
       if(typeof renderSheetTagSel === 'function') renderSheetTagSel();
@@ -14581,9 +14675,9 @@ const FSYNC = (() => {
       setTimeout(()=>{
         applyingRemote = false;
         if(pendingPush){ pendingPush = false; _needsReconverge = true; }
-        // units/todos/plan/studyLogs のいずれかのマージでローカル固有の差分（追加・削除）が
-        // 残っていた場合は、全端末を同じ集合へ収束させるためこちらの結果を1回だけ送り返す。
-        // 収束後はマージ差分が消える(_needsReconverge=false)ためpushループにはならない。
+        // マージ結果がサーバーの内容と違う（こちらにしか無い追加・削除・新しい中身がある）場合は、
+        // 全端末を同じ内容へそろえるため、こちらの結果を送り返す。
+        // そろった後は差分が無くなるので、送り合いが続くことはない。
         if(_needsReconverge) schedulePush();
       }, 400);
     }
@@ -14594,46 +14688,99 @@ const FSYNC = (() => {
     if(!ready || !docRef) return;
     if(!pulled){ console.warn('FSYNC: クラウドからの初回受信が完了していないためpushを保留します'); return; }
     clearTimeout(pushTimer);
-    pushTimer = setTimeout(()=>{
-      if(!docRef || !pulled) return; // 待っている間に連携が解除・切り替えされた
-      docRef.set(buildPayload()).catch(e=>{
-        console.error('FSYNC push失敗', e);
-        if(typeof toast==='function' && typeof IC!=='undefined') toast(IC.alert, '同期に失敗しました');
-      });
-    }, 1500);
+    pushTimer = setTimeout(()=>{ pushTimer = null; pushNow(); }, 1500);
   }
+  function retryLater(ms){
+    clearTimeout(retryTimer);
+    retryTimer = setTimeout(()=>{ retryTimer = null; schedulePush(); }, ms);
+  }
+
+  // サーバーの版を確かめてから書く（確かめた版が古ければ書かずに取り込み直す）
+  async function pushNow(){
+    if(!docRef || !pulled || !db) return;
+    if(applyingRemote){ pendingPush = true; return; }
+    if(pushing){ pushAgain = true; return; }
+    pushing = true;
+    const ref = docRef, myToken = listenToken, expected = lastSeenKey;
+    try{
+      const payload = buildPayload();
+      if(!payload) return; // サイズ超過など。ローカルのデータはそのまま残る
+      let stale = null, staleSeen = false;
+      await withTimeout(db.runTransaction(async tx => {
+        stale = null; staleSeen = false; // トランザクションは再実行されることがあるので毎回初期化
+        const snap = await tx.get(ref);
+        const cur = snap.exists ? snap.data() : null;
+        if(keyOf(cur) !== expected){ stale = cur; staleSeen = true; return; }
+        tx.set(ref, payload);
+      }), 20000, 'tx');
+      if(myToken !== listenToken || ref !== docRef) return; // 待っている間にコードが切り替わった
+      if(staleSeen){
+        // 他の端末が先に書いていた：その内容をマージしてから、もう一度送る
+        staleCount++;
+        if(stale){ applyPayload(stale); lastSeenKey = keyOf(stale); }
+        else { lastSeenKey = 'none'; }
+        pushAgain = true;
+        if(staleCount > 6){ pushAgain = false; retryLater(8000); } // 同時編集が続く場合は少し間をあける
+        return;
+      }
+      // 書き込み成功
+      lastSeenKey = keyOf(payload);
+      staleCount = 0;
+      if(failCount > 0 && typeof toast==='function' && typeof IC!=='undefined') toast(IC.checkCircle, '同期が再開しました');
+      failCount = 0;
+      if(!payload.appIconSkipped) setBase('appIcon', iconSig(payload.appIcon));
+      setBase('devSettings', JSON.stringify(payload.devSettings));
+      setBase('streak', JSON.stringify(payload.streak));
+      updateFSyncUI();
+    }catch(e){
+      console.error('FSYNC push失敗', e);
+      failCount++;
+      if(failCount === 1 && typeof toast==='function' && typeof IC!=='undefined') toast(IC.alert, '同期できませんでした。データはこの端末に残っており、自動で再送します');
+      // 電波が戻ったとき・少し時間をおいて自動で再送する（データはこの端末に残っている）
+      retryLater(Math.min(60000, 3000 * Math.pow(2, Math.min(failCount, 5))));
+      updateFSyncUI();
+    }finally{
+      pushing = false;
+      if(pushAgain){ pushAgain = false; schedulePush(); }
+    }
+  }
+  // 画面を閉じる・アプリを切り替える直前に、待機中の変更をすぐ送る
+  function flush(){
+    if(pushTimer){ clearTimeout(pushTimer); pushTimer = null; pushNow(); }
+  }
+  try{
+    document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState === 'hidden') flush(); });
+    window.addEventListener('pagehide', flush);
+    window.addEventListener('online', ()=>{ if(failCount > 0){ clearTimeout(retryTimer); schedulePush(); } });
+  }catch(_){}
 
   function stopListening(){
     listenToken++;
     if(unsubscribe){ try{ unsubscribe(); }catch(_){} unsubscribe = null; }
-    clearTimeout(pushTimer);
+    clearTimeout(pushTimer); pushTimer = null;
+    clearTimeout(retryTimer); retryTimer = null;
+    failCount = 0; staleCount = 0;
   }
   function connectTo(code){
     stopListening(); // 以前のコードの購読を止めないと、そのデータが新しいコード側へ混ざってしまう
     pulled = false;
+    lastSeenKey = null;
     setCode(code);
     docRef = db.collection('fukushuSync').doc(code);
     const myToken = listenToken;
-    // ★重要: Firestoreは既定では「データ本体が変わらず、fromCache等のメタデータだけが
-    //   変化した」場合にコールバックを発火しない（公式ドキュメントに明記されている挙動）。
-    //   つまり { includeMetadataChanges: true } を指定しないと、最初にキャッシュから
-    //   古いデータを受け取った後、サーバーからの「確認が取れました」という通知（データ内容が
-    //   キャッシュと同じ場合）が来ず、pulled が永遠にfalseのまま＝同期が無言で止まる
-    //   事故につながる。これを避けるため明示的に指定する。
+    // includeMetadataChanges: true が無いと、キャッシュ→サーバー確認の通知が来ず
+    // pulled が永遠に false のまま同期が止まることがあるため明示する。
     unsubscribe = docRef.onSnapshot({ includeMetadataChanges: true }, snap=>{
       if(myToken !== listenToken) return; // 切替・解除済みの古い購読からの通知は無視
       if(snap.metadata.hasPendingWrites) return; // 自分自身の書き込みのエコーは無視
-      // ★根本原因の修正：Firestoreはオンライン時でも、まず端末内のローカルキャッシュに
-      //   残っている（他端末の更新をまだ反映していない、古いかもしれない）スナップショットを
-      //   即座に1回返し、その後サーバーと同期が取れた本物のスナップショットを改めて返す。
-      //   これを区別せず「初回受信＝pushして良い」と扱っていたため、
-      //   「古いキャッシュ＋その直後の1操作」でサーバー側の最新データ（他端末の完了状態や
-      //   追加したタスク）を上書きしてしまう事故が起きていた。
-      //   snap.metadata.fromCache でキャッシュ由来かどうかを判定し、
-      //   サーバーで確認が取れたスナップショットを受け取るまでは pulled をtrueにしない
-      //   （＝それまでは schedulePush() が呼ばれても何も送信しない）。
+      // キャッシュ由来（古いかもしれない）スナップショットではpushを許可しない
       const data = snap.data();
-      if(data) applyPayload(data);
+      if(data){
+        applyPayload(data);
+        lastSeenKey = keyOf(data); // 取り込み済みの版として記録（古い場合は書き込み時に確認で弾かれる）
+      } else if(!snap.metadata.fromCache){
+        lastSeenKey = 'none';
+      }
       if(!snap.metadata.fromCache){
         pulled = true; // サーバー確認済み（ドキュメント未存在の確認も含む）なので安全にpush可能
       } else {
@@ -14657,8 +14804,6 @@ const FSYNC = (() => {
     try{
       if(!firebase.apps.length) firebase.initializeApp(FSYNC_CONFIG);
       const auth = firebase.auth();
-      // Notion等の埋め込み(iframe)では、ログイン状態の保存先（IndexedDB等）が使えず
-      // 匿名ログインが失敗・停止することがある。その場合は保存しないモードで再試行する。
       if(window.__IS_EMBEDDED){
         try{ await auth.setPersistence(firebase.auth.Auth.Persistence.NONE); }catch(_){}
       }
@@ -14671,7 +14816,6 @@ const FSYNC = (() => {
       }
       if(!db){
         db = firebase.firestore();
-        // iframeや制限のあるネットワークでも通信が詰まらないよう、必要なら自動でロングポーリングに切り替える
         try{ db.settings({ experimentalAutoDetectLongPolling: true, merge: true }); }catch(_){}
       }
       ready = true; lastError = '';
@@ -14689,7 +14833,6 @@ const FSYNC = (() => {
       return false;
     }
   }
-  // 何度呼んでも初期化は同時に1つだけ走らせ、失敗していたら次の呼び出しで再試行する
   function init(){
     if(ready) return Promise.resolve(true);
     if(!initPromise) initPromise = _doInit().finally(()=>{ initPromise = null; });
@@ -14702,15 +14845,34 @@ const FSYNC = (() => {
 
   async function startNew(){
     if(!(await ensureReady())) return {ok:false, msg: lastError || 'サーバーに接続できませんでした'};
+    const payload = buildPayload();
+    if(!payload) return {ok:false, msg:'データが大きすぎるため連携できません。バックアップを保存してください'};
     try{
-      connectTo(genCode());
-      pulled = true; // 新規発行なので、こちら側のデータをそのまま初期状態としてアップロードして良い
-      await withTimeout(docRef.set(buildPayload()), 15000, 'set');
+      // ★既に使われているコードを引き当てた場合に、他人（や自分の別のデータ）を上書きしないよう、
+      //   「文書がまだ存在しないこと」をトランザクションで確かめてから作る。
+      let code = null;
+      for(let i=0; i<5 && !code; i++){
+        const c = genCode();
+        const ref = db.collection('fukushuSync').doc(c);
+        const created = await withTimeout(db.runTransaction(async tx=>{
+          const s = await tx.get(ref);
+          if(s.exists) return false;
+          tx.set(ref, payload);
+          return true;
+        }), 15000, 'create');
+        if(created) code = c;
+      }
+      if(!code) return {ok:false, msg:'コードの発行に失敗しました。もう一度お試しください'};
+      connectTo(code);
+      lastSeenKey = keyOf(payload);
+      pulled = true; // 自分で作った文書なので、こちらの内容が最新
+      if(!payload.appIconSkipped) setBase('appIcon', iconSig(payload.appIcon));
+      setBase('devSettings', JSON.stringify(payload.devSettings));
+      setBase('streak', JSON.stringify(payload.streak));
       updateFSyncUI();
       return {ok:true};
     }catch(e){
       console.error(e);
-      docRef = null; pulled = false; setCode('');
       updateFSyncUI();
       return {ok:false, msg:'コードの発行に失敗しました。通信環境をご確認ください'};
     }
@@ -14724,7 +14886,9 @@ const FSYNC = (() => {
       const snap = await withTimeout(db.collection('fukushuSync').doc(code).get({source:'server'}), 15000, 'get');
       if(!snap.exists) return {ok:false, msg:'そのコードのデータが見つかりません'};
       connectTo(code);
-      applyPayload(snap.data());
+      const data = snap.data();
+      applyPayload(data);
+      lastSeenKey = keyOf(data);
       pulled = true; // 参加時に明示的に取得済みなのでpushを許可
       return {ok:true};
     }catch(e){
@@ -14735,14 +14899,18 @@ const FSYNC = (() => {
   }
 
   function disconnect(){
+    flush(); // 解除前に、待機中の変更があれば送っておく
     stopListening();
     docRef = null;
     pulled = false;
+    lastSeenKey = null;
     setCode('');
     updateFSyncUI();
   }
 
-  return { init, schedulePush, startNew, joinCode, disconnect, getCode, get ready(){ return ready; }, get connecting(){ return !!initPromise; }, get lastError(){ return lastError; } };
+  return { init, schedulePush, startNew, joinCode, disconnect, getCode, flush,
+           get ready(){ return ready; }, get connecting(){ return !!initPromise; }, get lastError(){ return lastError; },
+           get unsent(){ return failCount > 0 || !!pushTimer || pushing; } };
 })();
 
 // safeSetItem をラップし、対象データが保存されるたびクラウドへも自動的に反映する
