@@ -14513,6 +14513,50 @@ const FSYNC = (() => {
   }
   const keyOf = d => d ? String(d.updatedAt || 0) : 'none';
 
+  /* ── URLの ?code=XXXXXX で連携コードを固定する（Notionへの埋め込み向け） ──
+     ・この端末がまだどこにもつながっていない → そのコードに自動でつなぐ（この端末のデータとまとめる）
+     ・すでに同じコード → そのまま使う
+     ・別のコードにつながっている → 2つのデータが混ざらないよう自動では切り替えず、確認を出す
+     ・URLのコードが見つからない → 何も作らずに知らせる（打ち間違いで新しい空のデータを作らない）
+     ・固定中は、設定画面からコードの発行・入力・解除はできない */
+  const URL_CODE = (()=>{ try{ const q=(new URLSearchParams(location.search).get('code')||'').trim().toUpperCase(); return /^[A-Z0-9]{6}$/.test(q) ? q : ''; }catch(_){ return ''; } })();
+  let urlState = URL_CODE ? 'pending' : 'none'; // none | pending | joining | ok | conflict | notfound | error | ignored
+  const urlActive = () => !!URL_CODE && urlState !== 'ignored';
+  async function handleUrlCode(){
+    if(!urlActive() || urlState==='joining') return;
+    const cur = getCode();
+    if(cur === URL_CODE){ urlState='ok'; if(!docRef) connectTo(cur); updateFSyncUI(); return; }
+    if(cur){
+      urlState='conflict'; updateFSyncUI();
+      if(typeof showUrlCodeBanner==='function') showUrlCodeBanner();
+      return;
+    }
+    urlState='joining'; updateFSyncUI();
+    const r = await joinCode(URL_CODE);
+    urlState = r.ok ? 'ok' : (r.notFound ? 'notfound' : 'error');
+    if(typeof toast==='function' && typeof IC!=='undefined'){
+      if(r.ok) toast(IC.checkCircle, `連携コード ${URL_CODE} につなぎました`);
+      else toast(IC.alert, r.notFound ? `URLの連携コード「${URL_CODE}」のデータが見つかりません` : 'URLの連携コードに接続できませんでした');
+    }
+    updateFSyncUI();
+  }
+  // 確認で「URLのコードに切り替える」を選んだとき（この端末のデータとまとめて切り替える）
+  async function switchToUrl(){
+    if(!URL_CODE) return {ok:false};
+    if(!(await ensureReady())) return {ok:false, msg: lastError};
+    flush();
+    stopListening(); docRef=null; pulled=false; lastSeenKey=null; setCode('');
+    urlState='pending';
+    await handleUrlCode();
+    return {ok: urlState==='ok'};
+  }
+  // 確認で「今のコードのまま使う」を選んだとき（このページを開いている間はURLのコードを使わない）
+  function ignoreUrl(){
+    urlState='ignored';
+    const c=getCode(); if(ready && c && !docRef) connectTo(c);
+    updateFSyncUI();
+  }
+
   /* ── 設定類（アイコン・復習間隔・連続日数）の3方向マージ用 ──
      これらは配列ではなく「丸ごと1つの値」なので、id単位マージができない。
      「最後に同期した値(base)」から、こちらが変えていればこちらを残し、
@@ -14819,8 +14863,12 @@ const FSYNC = (() => {
         try{ db.settings({ experimentalAutoDetectLongPolling: true, merge: true }); }catch(_){}
       }
       ready = true; lastError = '';
-      const code = getCode();
-      if(code && !docRef) connectTo(code);
+      if(urlActive()){
+        setTimeout(handleUrlCode, 0); // 準備完了後に、URLのコードで接続（確認が必要な場合は確認を出す）
+      } else {
+        const code = getCode();
+        if(code && !docRef) connectTo(code);
+      }
       updateFSyncUI();
       return true;
     }catch(e){
@@ -14884,7 +14932,7 @@ const FSYNC = (() => {
     if(!(await ensureReady())) return {ok:false, msg: (lastError || 'サーバーに接続できませんでした') + '。もう一度お試しください'};
     try{
       const snap = await withTimeout(db.collection('fukushuSync').doc(code).get({source:'server'}), 15000, 'get');
-      if(!snap.exists) return {ok:false, msg:'そのコードのデータが見つかりません'};
+      if(!snap.exists) return {ok:false, notFound:true, msg:'そのコードのデータが見つかりません'};
       connectTo(code);
       const data = snap.data();
       applyPayload(data);
@@ -14909,6 +14957,8 @@ const FSYNC = (() => {
   }
 
   return { init, schedulePush, startNew, joinCode, disconnect, getCode, flush,
+           switchToUrl, ignoreUrl, retryUrl: handleUrlCode,
+           get urlCode(){ return URL_CODE; }, get urlState(){ return urlState; }, get urlLocked(){ return urlActive(); },
            get ready(){ return ready; }, get connecting(){ return !!initPromise; }, get lastError(){ return lastError; },
            get unsent(){ return failCount > 0 || !!pushTimer || pushing; } };
 })();
@@ -14987,6 +15037,10 @@ function updateFSyncUI(){
   }
   const code = FSYNC.getCode();
   let html = '';
+  if(FSYNC.urlLocked){
+    el.innerHTML = _fsyncUrlLockedHtml(code);
+    return;
+  }
   if(!FSYNC.ready){
     html += FSYNC.lastError && !FSYNC.connecting
       ? `<div style="display:flex;align-items:center;gap:8px;background:#FFF1F0;color:#C0392B;border-radius:12px;padding:10px 12px;font-size:12.5px;margin-bottom:10px">
@@ -15008,6 +15062,15 @@ function updateFSyncUI(){
         <div class="backup-row-body">
           <div class="backup-row-ttl">コードをコピー</div>
           <div class="backup-row-sub">他の端末でこのコードを入力してください</div>
+        </div>
+      </div>
+      <div class="backup-row" onclick="fsyncCopyEmbedUrl()">
+        <div class="backup-row-icon" style="background:#F5F3FF">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        </div>
+        <div class="backup-row-body">
+          <div class="backup-row-ttl">コード入りのURLをコピー</div>
+          <div class="backup-row-sub">Notionに貼ると、開くだけでこのコードにつながります</div>
         </div>
       </div>
       <div class="backup-row" onclick="fsyncDisconnectConfirm()">
@@ -15059,6 +15122,71 @@ function updateFSyncUI(){
   if(typeof _fsyncJoinArmed!=='undefined' && _fsyncJoinArmed){ const _b=document.getElementById('fsync-join-btn'); if(_b){ _b.textContent='まとめて接続'; _b.style.background='var(--plan)'; } }
 }
 
+// コード入りのURL（Notionに埋め込む用）
+function fsyncEmbedUrl(code){
+  try{ const u=new URL(location.href); u.hash=''; u.searchParams.set('code', code); return u.toString(); }catch(_){ return ''; }
+}
+function fsyncCopyEmbedUrl(){
+  const code=FSYNC.getCode(); if(!code) return;
+  haptic();
+  copyTextSafe(fsyncEmbedUrl(code)).then(ok=>toast(ok?IC.checkCircle:IC.alert, ok?'コード入りのURLをコピーしました':'コピーできませんでした'));
+}
+function _fsyncUrlLockedHtml(code){
+  const uc=esc(FSYNC.urlCode), st=FSYNC.urlState;
+  const box=(bg,color,txt,btns='')=>`<div style="background:${bg};color:${color};border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.6;margin-bottom:10px">${txt}${btns?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">${btns}</div>`:''}</div>`;
+  const btn=(label,fn,primary)=>`<button onclick="${fn}" style="border:none;border-radius:10px;padding:9px 14px;font-family:inherit;font-size:13px;font-weight:700;${primary?'background:var(--plan);color:#fff':'background:var(--card);color:var(--lbl);border:1.5px solid var(--sep)'}">${label}</button>`;
+  let html='';
+  if(st==='conflict'){
+    html+=box('#FFF6DA','#5C4300',`このページのURLは連携コード <b>${uc}</b> 用ですが、この端末は別のコード <b>${esc(code)}</b> につながっています。<br>データが混ざらないよう、まだどちらにも接続していません。`,
+      btn(`${uc} に切り替える`,'fsyncUrlSwitch()',true)+btn(`${esc(code)} のまま使う`,'fsyncUrlIgnore()'));
+    html+=`<div style="font-size:11.5px;color:var(--lbl3);margin:-2px 2px 10px">「切り替える」を選ぶと、この端末のデータは ${uc} のデータとまとめられます（どちらのタスクも消えません）。</div>`;
+  } else if(st==='notfound'){
+    html+=box('#FFF1F0','#C0392B',`URLの連携コード <b>${uc}</b> のデータが見つかりません。URLの打ち間違いがないかご確認ください。<br>（新しいデータは作成していません）`, btn('もう一度試す','FSYNC.retryUrl()',true));
+  } else if(st==='error' || (!FSYNC.ready && FSYNC.lastError && !FSYNC.connecting)){
+    html+=box('#FFF1F0','#C0392B',`連携コード <b>${uc}</b> に接続できませんでした。通信環境をご確認ください。`, btn('もう一度試す', FSYNC.ready?'FSYNC.retryUrl()':'fsyncRetry()',true));
+  } else if(st!=='ok'){
+    html+=box('var(--fill)','var(--lbl2)',`連携コード <b>${uc}</b> に接続しています…`);
+  }
+  html+=`
+    <div style="background:var(--fill);border-radius:14px;padding:16px;text-align:center;margin-bottom:10px">
+      <div style="font-size:12px;color:var(--lbl2);margin-bottom:6px">連携コード（このページのURLで固定）</div>
+      <div style="font-family:'Outfit',monospace;font-size:28px;font-weight:800;letter-spacing:4px;color:var(--plan-d)">${uc}</div>
+    </div>
+    ${lockedNoteHtml()}
+    <div style="font-size:12px;color:var(--lbl3);margin:8px 2px 0;line-height:1.6">固定中は、ここからコードの発行・入力・解除はできません。別のコードを使うときは、URLの <code>?code=</code> を変更してください。</div>`;
+  const _st = FSYNC.ready ? (st==='ok' ? '同期中' : 'サーバー接続済み') : (FSYNC.connecting ? 'サーバーに接続中…' : '未接続');
+  html += `<div style="margin-top:16px;font-size:11px;color:var(--lbl3);text-align:center">状態：${_st} ・ ${APP_VERSION}（${APP_BUILD}）</div>`;
+  return html;
+}
+// 別のコードにつながっている端末で、URLのコード付きで開いたときの確認（画面上部に表示）
+function showUrlCodeBanner(){
+  if(document.getElementById('url-code-banner')) return;
+  const cur=FSYNC.getCode(), uc=FSYNC.urlCode;
+  const d=document.createElement('div');
+  d.id='url-code-banner';
+  d.setAttribute('role','alertdialog');
+  d.style.cssText='position:fixed;left:50%;top:calc(var(--safe-top,0px) + 10px);transform:translateX(-50%);z-index:9999;width:min(460px,calc(100vw - 20px));background:#fff;border:2px solid #FEBE10;border-radius:16px;box-shadow:0 12px 32px rgba(11,42,91,.25);padding:14px 16px;font-size:13.5px;line-height:1.6;color:#0B1A33';
+  d.innerHTML=`<div style="font-weight:800;margin-bottom:4px">連携コードの確認</div>
+    このページのURLは <b>${esc(uc)}</b> 用ですが、この端末は <b>${esc(cur)}</b> につながっています。どちらを使いますか？
+    <div style="font-size:12px;color:rgba(11,26,51,.6);margin-top:4px">「${esc(uc)} に切り替える」と、この端末のデータは ${esc(uc)} のデータとまとめられます（消えるタスクはありません）。</div>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+      <button onclick="fsyncUrlSwitch()" style="flex:1;min-width:140px;border:none;border-radius:10px;padding:10px;background:#0B2A5B;color:#fff;font-family:inherit;font-weight:700;font-size:13.5px">${esc(uc)} に切り替える</button>
+      <button onclick="fsyncUrlIgnore()" style="flex:1;min-width:140px;border:1.5px solid rgba(11,42,91,.15);border-radius:10px;padding:10px;background:#fff;color:#0B1A33;font-family:inherit;font-weight:700;font-size:13.5px">${esc(cur)} のまま使う</button>
+    </div>`;
+  document.body.appendChild(d);
+}
+function _hideUrlCodeBanner(){ const b=document.getElementById('url-code-banner'); if(b) b.remove(); }
+async function fsyncUrlSwitch(){
+  if(_fsyncBusy) return; _fsyncBusy=true;
+  _hideUrlCodeBanner(); haptic('medium');
+  try{ await FSYNC.switchToUrl(); } finally { _fsyncBusy=false; updateFSyncUI(); }
+}
+function fsyncUrlIgnore(){
+  _hideUrlCodeBanner(); haptic();
+  FSYNC.ignoreUrl();
+  toast(IC.checkCircle, `このページでは ${FSYNC.getCode()} のまま使います`);
+}
+
 let _fsyncBusy = false;
 async function fsyncRetry(){
   haptic();
@@ -15068,6 +15196,7 @@ async function fsyncRetry(){
   toast(ok?IC.checkCircle:IC.alert, ok?'サーバーに接続しました':(FSYNC.lastError||'接続できませんでした'));
 }
 async function fsyncStartNew(){
+  if(FSYNC.urlLocked){ _lockedToast(); return; }
   if(_fsyncBusy) return;
   _fsyncBusy = true; haptic();
   const row = document.getElementById('fsync-start-row');
@@ -15096,6 +15225,7 @@ function fsyncCopyCode(){
 // 確認は「同じボタンをもう一度押す」インライン方式にする（画面の他の部分に依存しない）
 let _fsyncDiscArmedAt = 0;
 function fsyncDisconnectConfirm(){
+  if(FSYNC.urlLocked){ _lockedToast(); return; }
   const row = document.querySelector('[onclick="fsyncDisconnectConfirm()"]');
   if(Date.now() - _fsyncDiscArmedAt < 6000){
     _fsyncDiscArmedAt = 0;
@@ -15112,6 +15242,7 @@ function fsyncDisconnectConfirm(){
   setTimeout(()=>{ if(_fsyncDiscArmedAt && Date.now()-_fsyncDiscArmedAt>=6000){ _fsyncDiscArmedAt=0; updateFSyncUI(); } }, 6100);
 }
 async function fsyncJoin(){
+  if(FSYNC.urlLocked){ _lockedToast(); return; }
   const inp = document.getElementById('fsync-code-inp');
   const msg = document.getElementById('fsync-join-msg');
   const code = (inp && inp.value || '').trim();
