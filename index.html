@@ -3357,6 +3357,10 @@ html.pc-dense body::after{
   pointer-events:none;z-index:2147483000
 }
 html.pc-dense:not(.is-desktop-layout){--app-w:100vw}
+/* ?full=1：PCの広い画面でも、アプリの幅を1120pxで止めず画面いっぱいに使う */
+html.full-width:not(.phone-view),html.full-width.is-desktop-layout{--app-w:100vw !important}
+html.full-width:not(.phone-view){background:var(--bg) !important}
+html.full-width:not(.phone-view) body{box-shadow:none !important}
 html.pc-dense .panels,html.pc-dense .nav-inner{max-width:none !important}
 html.pc-dense .nav-inner{padding-top:6px !important;padding-bottom:6px !important}
 html.pc-dense .nav-title{font-size:17px}
@@ -3848,6 +3852,9 @@ try{ var _eq=new URLSearchParams(location.search).get('embed'), _em=false;
   if(_eq==='1') _em=true; else if(_eq==='0') _em=false;
   else { try{ _em = window.self !== window.top; }catch(_){ _em = true; } }
   if(_em) document.documentElement.classList.add('in-embed'); }catch(_){}
+/* 横幅いっぱいに表示（URLの ?full=1）。広い画面のNotionなどで、できるだけ多くを1画面に出すため。
+   スマホ表示（?view=phone）のときは使わない */
+try{ if(new URLSearchParams(location.search).get('full')==='1' && new URLSearchParams(location.search).get('view')!=='phone') document.documentElement.classList.add('full-width'); }catch(_){}
 /* 文字の大きさも描画前に反映（端末の設定 → なければURLの ?text=l / ?text=xl） */
 try{ var _ts=null, _tq=new URLSearchParams(location.search).get('text');
   if(_tq==='n'||_tq==='l'||_tq==='xl') _ts=_tq; // URLで指定されていれば固定（端末の設定より優先）
