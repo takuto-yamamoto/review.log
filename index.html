@@ -3642,6 +3642,8 @@ html.work-mode .float-fab .fab-ic-plus{display:block}
 .tb-name{font-size:14.5px;line-height:1.4;color:var(--lbl);word-break:break-word;overflow-wrap:anywhere}
 .tb-meta{font-size:11px;color:var(--lbl3);margin-top:1px;font-weight:600}
 .tb-meta.over{color:var(--red)}
+.tb-note,.todo-note-line{font-size:11.5px;color:var(--lbl2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.todo-note-line{font-size:12.5px;margin:4px 0 2px}
 .tb-empty{font-size:13px;color:var(--lbl3);padding:6px 2px 8px}
 @media (hover:hover){ .tb-body:hover{background:var(--fill)} .tb-add:hover{background:var(--fill)} }
 html.theme-p5 .tb-group{border-radius:4px;border:1px solid rgba(255,255,255,.16)}
@@ -12648,6 +12650,7 @@ function openTodoAddSheet(presetTagId){
   _todoDraftTags= (presetTagId && TAGS.some(t=>t.id===presetTagId)) ? [presetTagId] : [];
   _todoTagAddOpen=false;
   document.getElementById('todo-inp').value='';
+  { const n=document.getElementById('todo-note-inp'); if(n) n.value=''; }
   // 仕事モードは長期タスク（期限なし）、通常モードは今日のToDoを既定にする
   _todoSetupSheet({kind: wm?'longterm':'todo', daySel:'today', startVal:td(), noDeadline:false, deadline:addD(td(),7)});
   renderTodoTagSel();
@@ -12678,6 +12681,7 @@ function openTodoEditSheet(id){
   _todoDraftTags=[...(x.tags||[])];
   _todoTagAddOpen=false;
   document.getElementById('todo-inp').value=x.text;
+  { const n=document.getElementById('todo-note-inp'); if(n) n.value=x.note||''; }
   if(x.longterm){
     _todoSetupSheet({kind:'longterm', daySel:'today',
       startVal: x.startDate || _todoCreatedDay(x) || td(),
@@ -12748,6 +12752,7 @@ function addTodo(){
   }
   // input要素のmin属性はUIの目安に過ぎず、手入力等で回避され得るため保存時にも再検証する
   if(date<td()) date=td();
+  const noteVal=(document.getElementById('todo-note-inp')?.value||'').trim().slice(0,300);
   const startShown=_todoStartShown();
   const startDate=_todoStartValue();
   if(startShown && !startDate){ toast(IC.alert,'開始日を選んでください'); haptic('medium'); return; }
@@ -12769,6 +12774,7 @@ function addTodo(){
     else { delete x.longterm; delete x.deadline; }
     // 開始日は長期タスクだけが持つ（ToDoに戻したときは消して、ガントチャートで矛盾しないようにする）
     if(startShown && startDate) x.startDate=startDate; else delete x.startDate;
+    if(noteVal) x.note=noteVal; else delete x.note;
     saveTodos();
     closeTodoAddSheet();
     render();
@@ -12779,6 +12785,7 @@ function addTodo(){
   const task={id:Date.now().toString(), text, date, done:false, half:false, elapsedMs:0, timerStart:null, tags:[..._todoDraftTags], createdAt:Date.now()};
   if(isLongterm){ task.longterm=true; if(deadline) task.deadline=deadline; }
   if(startDate) task.startDate=startDate;
+  if(noteVal) task.note=noteVal;
   TODOS.unshift(task);
   saveTodos();
   inp.value='';
@@ -12919,7 +12926,7 @@ function _tbItems(list, duePlan){
       }
     } else if(x.date<t){ meta=`${Math.abs(diff(x.date))}日超過`; cls='over'; }
     if(x.half) meta = meta ? `${meta}・途中まで` : '途中まで';
-    items.push({kind:'todo', id:x.id, name:x.text, tags:x.tags||[], meta, cls,
+    items.push({kind:'todo', id:x.id, name:x.text, note:x.note||'', tags:x.tags||[], meta, cls,
       key:(x.longterm ? '1'+(x.deadline||'9999') : '0'+x.date)+(x.createdAt||'')});
   });
   duePlan.forEach(p=>{
@@ -12948,6 +12955,7 @@ function _tbGroupHtml(tag, items){
       <button class="tb-check" onclick="tbComplete(this,'${it.kind}','${it.id}')" aria-label="${esc(it.name)}を完了"></button>
       <div class="tb-body" onclick="tbOpen('${it.kind}','${it.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" role="button" tabindex="0">
         <div class="tb-name">${esc(it.name)}</div>
+        ${it.note?`<div class="tb-note">${esc(it.note)}</div>`:''}
         ${it.meta?`<div class="tb-meta ${it.cls}">${it.meta}</div>`:''}
       </div>
     </div>`).join('') : `<div class="tb-empty">タスクなし</div>`;
@@ -13068,6 +13076,7 @@ function todoCardHtml(x, compact){
           <button class="btn-del" onclick="deleteTodo('${x.id}')" aria-label="削除">${IC.trash}</button>
         </div>
       </div>
+      ${x.note?`<div class="todo-note-line">${esc(x.note)}</div>`:''}
       ${tagsHtml}
       <div class="card-status-row">
         ${whenChip}
@@ -13176,6 +13185,7 @@ function todoAllRowHtml(x){
     <div class="todo-all-body">
       <div class="todo-all-name${x.done?' done':''}">${esc(x.text)}${(x.longterm&&!x.done)?'<span class="todo-half-tag longterm">長期</span>':''}${(x.half&&!x.done)?'<span class="todo-half-tag">途中まで</span>':''}</div>
       ${dateLblFull?`<div class="todo-all-date">${dateLblFull}</div>`:''}
+      ${x.note?`<div class="todo-note-line" style="margin:1px 0 0">${esc(x.note)}</div>`:''}
       ${tagsHtml}
     </div>
     <button class="btn-edit" onclick="openTodoEditSheet('${x.id}')" aria-label="編集">${IC.pencil}</button>
@@ -14253,6 +14263,9 @@ if('serviceWorker' in navigator && !window.__IS_EMBEDDED){
   <div class="sheet-body">
     <div class="sheet-ttl" id="todo-sheet-ttl">ToDoを追加する</div>
     <input class="sheet-inp" id="todo-inp" type="text" placeholder="やること（例：宿題を提出する）" maxlength="60" autocomplete="off" autocorrect="off">
+    <!-- メモ（任意）：事情・時間帯などをタイトルに詰め込まずに残せる -->
+    <textarea id="todo-note-inp" maxlength="300" rows="2" placeholder="メモ（任意）例：弟の16日面談用・15:00-18:00"
+      style="width:100%;margin:8px 0 2px;background:var(--fill);border:1.5px solid var(--sep);border-radius:12px;padding:10px 14px;font-family:inherit;font-size:15px;line-height:1.5;color:var(--lbl);outline:none;resize:vertical;box-sizing:border-box"></textarea>
     <!-- 種類：ToDo（その日にやる）／長期タスク（開始日〜期限の期間で取り組む） -->
     <div class="date-label">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
@@ -14492,6 +14505,9 @@ const FSYNC_CONFIG = {
 };
 const FSYNC_ENABLED = !!(FSYNC_CONFIG.apiKey && FSYNC_CONFIG.apiKey !== "YOUR_API_KEY" && typeof firebase !== 'undefined');
 
+// muse用に接続したブラウザかどうか（このブラウザでは連携コードをどの画面にも表示しない）
+const MUSE_DEVICE_KEY = 'fukushu-muse-device-v1';
+function isMuseDevice(){ try{ return localStorage.getItem(MUSE_DEVICE_KEY)==='1'; }catch(_){ return false; } }
 const FSYNC = (() => {
   const CODE_KEY = 'fukushu-sync-code';
   const BASE_KEY = 'fukushu-sync-base-v1'; // 設定類（丸ごと1つの値）の「最後に同期した値」
@@ -14527,12 +14543,22 @@ const FSYNC = (() => {
      ・URLのコードが見つからない → 何も作らずに知らせる（打ち間違いで新しい空のデータを作らない）
      ・固定中は、設定画面からコードの発行・入力・解除はできない */
   const URL_CODE = (()=>{ try{ const q=(new URLSearchParams(location.search).get('code')||'').trim().toUpperCase(); return /^[A-Z0-9]{6}$/.test(q) ? q : ''; }catch(_){ return ''; } })();
-  let urlState = URL_CODE ? 'pending' : 'none'; // none | pending | joining | ok | conflict | notfound | error | ignored
+  let urlState = URL_CODE ? 'pending' : 'none'; // none | pending | joining | ok | conflict | notfound | error | ignored | localdata
+  // ★muse.ai用ページ（?muse=1）は「クラウドのデータを見る・操作するだけ」の場所。
+  //   そのブラウザに別のデータが残っていた場合に、それをクラウドへ混ぜてしまわないよう、
+  //   ・まだつながっていないブラウザにデータが残っている → 接続しない
+  //   ・別のコードにつながっている → 切り替えの確認も出さずに接続しない
+  const MUSE_MODE = (()=>{ try{ return new URLSearchParams(location.search).get('muse')==='1'; }catch(_){ return false; } })();
+  function hasLocalData(){
+    try{ return (U||[]).length>0 || (typeof TODOS!=='undefined' && TODOS.length>0) || (typeof PLAN!=='undefined' && PLAN.length>0) || (STUDY_LOGS||[]).length>0; }catch(_){ return true; }
+  }
   const urlActive = () => !!URL_CODE && urlState !== 'ignored';
   async function handleUrlCode(){
     if(!urlActive() || urlState==='joining') return;
     const cur = getCode();
     if(cur === URL_CODE){ urlState='ok'; if(!docRef) connectTo(cur); updateFSyncUI(); return; }
+    if(MUSE_MODE && cur){ urlState='conflict'; updateFSyncUI(); return; }          // 確認を出さず、切り替えもしない
+    if(MUSE_MODE && hasLocalData()){ urlState='localdata'; updateFSyncUI(); return; } // 混ぜない
     if(cur){
       urlState='conflict'; updateFSyncUI();
       if(typeof showUrlCodeBanner==='function') showUrlCodeBanner();
@@ -14541,15 +14567,38 @@ const FSYNC = (() => {
     urlState='joining'; updateFSyncUI();
     const r = await joinCode(URL_CODE);
     urlState = r.ok ? 'ok' : (r.notFound ? 'notfound' : 'error');
+    if(r.ok && MUSE_MODE) markMuseDevice();
     if(typeof toast==='function' && typeof IC!=='undefined'){
       if(r.ok) toast(IC.checkCircle, `連携コード ${URL_CODE} につなぎました`);
       else toast(IC.alert, r.notFound ? `URLの連携コード「${URL_CODE}」のデータが見つかりません` : 'URLの連携コードに接続できませんでした');
     }
     updateFSyncUI();
   }
+  /* ── muse用ブラウザ：画面で一度だけ連携コードを入力して接続する（URLにコードを入れない） ── */
+  function markMuseDevice(){ try{ localStorage.setItem(MUSE_DEVICE_KEY,'1'); }catch(_){} }
+  async function museJoin(code){
+    code = String(code||'').trim().toUpperCase();
+    if(!MUSE_MODE) return {ok:false, msg:'muse用ページではありません'};
+    if(getCode()) return {ok:false, msg:'このブラウザはすでに接続済みです'};
+    if(hasLocalData()) return {ok:false, msg:'このブラウザには別のデータが保存されているため接続できません（データが混ざるのを防ぐため）。何も保存されていないブラウザで開いてください'};
+    const r = await joinCode(code);
+    if(r.ok) markMuseDevice();
+    return r;
+  }
+  // muse用ブラウザの連携を解除し、このブラウザに残ったデータの写しも消す（クラウドのデータは消えない）
+  async function museForget(){
+    if(!isMuseDevice()) return {ok:false, msg:'muse用に接続したブラウザではありません'};
+    flush();
+    const t0=Date.now();
+    while((pushing || pushTimer || failCount>0 || applyingRemote) && Date.now()-t0<15000){ await new Promise(r=>setTimeout(r,300)); }
+    if(pushing || pushTimer || failCount>0) return {ok:false, msg:'まだサーバーに送れていない変更があるため解除できません。通信を確認してからもう一度お試しください'};
+    stopListening(); docRef=null; pulled=false; lastSeenKey=null;
+    try{ localStorage.clear(); }catch(_){}
+    return {ok:true};
+  }
   // 確認で「URLのコードに切り替える」を選んだとき（この端末のデータとまとめて切り替える）
   async function switchToUrl(){
-    if(!URL_CODE) return {ok:false};
+    if(!URL_CODE || MUSE_MODE) return {ok:false};
     if(!(await ensureReady())) return {ok:false, msg: lastError};
     flush();
     stopListening(); docRef=null; pulled=false; lastSeenKey=null; setCode('');
@@ -14964,7 +15013,7 @@ const FSYNC = (() => {
   }
 
   return { init, schedulePush, startNew, joinCode, disconnect, getCode, flush,
-           switchToUrl, ignoreUrl, retryUrl: handleUrlCode,
+           switchToUrl, ignoreUrl, retryUrl: handleUrlCode, museJoin, museForget, get museMode(){ return MUSE_MODE; },
            get urlCode(){ return URL_CODE; }, get urlState(){ return urlState; }, get urlLocked(){ return urlActive(); },
            get ready(){ return ready; }, get connecting(){ return !!initPromise; }, get lastError(){ return lastError; },
            get unsent(){ return failCount > 0 || !!pushTimer || pushing; },
@@ -15058,7 +15107,14 @@ function updateFSyncUI(){
          </div>`
       : `<div style="background:var(--fill);color:var(--lbl2);border-radius:12px;padding:10px 12px;font-size:12.5px;margin-bottom:10px">サーバーに接続しています…</div>`;
   }
-  if(code){
+  if(code && isMuseDevice()){
+    html += `
+      <div style="background:var(--fill);border-radius:14px;padding:16px;text-align:center;margin-bottom:10px">
+        <div style="font-size:12px;color:var(--lbl2);margin-bottom:6px">連携コード（muse用のブラウザのため非表示）</div>
+        <div style="font-family:'Outfit',monospace;font-size:28px;font-weight:800;letter-spacing:4px;color:var(--plan-d)">●●●●●●</div>
+      </div>
+      <div style="font-size:12px;color:var(--lbl3);margin:4px 2px 0;line-height:1.6">このブラウザはmuse用に接続されています。連携の解除は、muse用のページ（?muse=1）から行ってください。</div>`;
+  } else if(code){
     html += `
       <div style="background:var(--fill);border-radius:14px;padding:16px;text-align:center;margin-bottom:10px">
         <div style="font-size:12px;color:var(--lbl2);margin-bottom:6px">連携コード</div>
@@ -15136,12 +15192,12 @@ function fsyncEmbedUrl(code){
   try{ const u=new URL(location.href); u.hash=''; u.searchParams.set('code', code); return u.toString(); }catch(_){ return ''; }
 }
 function fsyncCopyEmbedUrl(){
-  const code=FSYNC.getCode(); if(!code) return;
+  const code=FSYNC.getCode(); if(!code || isMuseDevice()) return;
   haptic();
   copyTextSafe(fsyncEmbedUrl(code)).then(ok=>toast(ok?IC.checkCircle:IC.alert, ok?'コード入りのURLをコピーしました':'コピーできませんでした'));
 }
 function _fsyncUrlLockedHtml(code){
-  const uc=esc(FSYNC.urlCode), st=FSYNC.urlState;
+  const uc=isMuseDevice() ? '●●●●●●' : esc(FSYNC.urlCode), st=FSYNC.urlState;
   const box=(bg,color,txt,btns='')=>`<div style="background:${bg};color:${color};border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.6;margin-bottom:10px">${txt}${btns?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">${btns}</div>`:''}</div>`;
   const btn=(label,fn,primary)=>`<button onclick="${fn}" style="border:none;border-radius:10px;padding:9px 14px;font-family:inherit;font-size:13px;font-weight:700;${primary?'background:var(--plan);color:#fff':'background:var(--card);color:var(--lbl);border:1.5px solid var(--sep)'}">${label}</button>`;
   let html='';
@@ -15205,7 +15261,7 @@ async function fsyncRetry(){
   toast(ok?IC.checkCircle:IC.alert, ok?'サーバーに接続しました':(FSYNC.lastError||'接続できませんでした'));
 }
 async function fsyncStartNew(){
-  if(FSYNC.urlLocked){ _lockedToast(); return; }
+  if(FSYNC.urlLocked || isMuseDevice()){ _lockedToast(); return; }
   if(_fsyncBusy) return;
   _fsyncBusy = true; haptic();
   const row = document.getElementById('fsync-start-row');
@@ -15223,7 +15279,7 @@ async function fsyncStartNew(){
 }
 function fsyncCopyCode(){
   const code = FSYNC.getCode();
-  if(!code) return;
+  if(!code || isMuseDevice()) return;
   haptic();
   copyTextSafe(code).then(ok=>{
     if(ok) toast(IC.checkCircle, 'コードをコピーしました');
@@ -15234,7 +15290,7 @@ function fsyncCopyCode(){
 // 確認は「同じボタンをもう一度押す」インライン方式にする（画面の他の部分に依存しない）
 let _fsyncDiscArmedAt = 0;
 function fsyncDisconnectConfirm(){
-  if(FSYNC.urlLocked){ _lockedToast(); return; }
+  if(FSYNC.urlLocked || isMuseDevice()){ _lockedToast(); return; }
   const row = document.querySelector('[onclick="fsyncDisconnectConfirm()"]');
   if(Date.now() - _fsyncDiscArmedAt < 6000){
     _fsyncDiscArmedAt = 0;
@@ -15783,9 +15839,10 @@ function _finishOnboarding(){
   /* ── 状態 ── */
   function syncState(){
     const code = FSYNC.getCode();
-    if(!code) return {ok:false, label:'連携コード未設定（URLに &code=XXXXXX を付けてください）'};
+    if(!code) return {ok:false, label: FSYNC.urlCode ? '接続中…' : '連携コード未設定（下の欄にコードを入力してください）'};
     if(FSYNC.urlLocked && FSYNC.urlState && !['ok'].includes(FSYNC.urlState)){
-      return {ok:false, label: {conflict:'別のコードにつながっています（画面上部の確認で選んでください）', notfound:'URLの連携コードのデータが見つかりません', error:'サーバーに接続できませんでした', joining:'接続中…', pending:'接続中…'}[FSYNC.urlState] || '接続中…'};
+      return {ok:false, label: {localdata:'このブラウザには別のデータが保存されているため接続していません（データが混ざるのを防ぐため）。muse用には何も保存されていないブラウザ（新しいプロファイルやシークレットではない専用のプロファイル）で開いてください',
+                                conflict:'このブラウザは別の連携コードにつながっているため接続していません。muse用には何も保存されていないブラウザで開いてください', notfound:'URLの連携コードのデータが見つかりません', error:'サーバーに接続できませんでした', joining:'接続中…', pending:'接続中…'}[FSYNC.urlState] || '接続中…'};
     }
     if(!FSYNC.ready) return {ok:false, label:'サーバーに接続中…'};
     if(!FSYNC.pulled) return {ok:false, label:'サーバーから最新データを受信中…'};
@@ -15807,6 +15864,7 @@ function _finishOnboarding(){
       date: x.longterm ? null : (x.date||null),
       startDate: x.longterm ? (x.startDate || _todoCreatedDay(x) || null) : null,
       deadline: x.longterm ? (x.deadline||null) : null,
+      note: x.note || null,
       done: !!x.done, completedAt: iso(x.completedAt), half: !!x.half,
       tags: (x.tags||[]).map(id=>tm.byId.get(id)?.name).filter(Boolean),
       tagIds: (x.tags||[]).filter(id=>tm.byId.has(id)),
@@ -15986,6 +16044,39 @@ function _finishOnboarding(){
       out.plansNote = 'projected:true は曜日・間隔からの見込み（それまでの実施日によって前後する）。計画どうしのルールによる表示の抑制は反映していない';
       out.counts = { todos: out.todos.length, done: out.todos.filter(t=>t.done).length, notDone: out.todos.filter(t=>!t.done).length,
                      reviewsScheduled: out.reviews.length, plans: out.plans.length };
+    } else if(view==='tags'){
+      out.tags = (TAGS||[]).map(t=>{
+        const todos = (TODOS||[]).filter(x=>(x.tags||[]).includes(t.id));
+        return { id:t.id, name:t.name, color:t.color||null,
+                 todosActive: todos.filter(x=>!x.done).length, todosDone: todos.filter(x=>x.done).length };
+      });
+      out.counts = { tags: out.tags.length };
+      out.tagsNote = '書き込みの tags には name か id を指定できる。ここにないタグはエラーになる';
+      delete out.date;
+      return out;
+    } else if(view==='range'){
+      let from = validDate(QS.get('from')||'') ? QS.get('from') : d;
+      let to = validDate(QS.get('to')||'') ? QS.get('to') : addD(from,6);
+      if(_rangeOverride){ if(validDate(_rangeOverride.from||'')) from=_rangeOverride.from; if(validDate(_rangeOverride.to||'')) to=_rangeOverride.to; }
+      if(from>to){ const t=from; from=to; to=t; }
+      let span = Math.round((new Date(to+'T00:00:00')-new Date(from+'T00:00:00'))/86400000)+1;
+      if(span>92){ to=addD(from,91); span=92; }
+      // 期間内に日付があるToDo＋期間と重なる長期タスク
+      const list = all.filter(x=> x.longterm
+          ? ((x.startDate || _todoCreatedDay(x) || '') <= to && (!x.deadline || x.deadline >= from))
+          : (x.date && x.date>=from && x.date<=to)).sort((a,b)=>sortKey(a).localeCompare(sortKey(b)));
+      out.todos = list.map(x=>serTodo(x, today, tm));
+      const byDate = {};
+      for(let i=0;i<span;i++){ byDate[addD(from,i)] = []; }
+      out.todos.forEach(t=>{ if(t.kind==='todo' && byDate[t.date]) byDate[t.date].push(t.id); });
+      out.byDate = byDate;
+      out.longtermInRange = out.todos.filter(t=>t.kind==='longterm').map(t=>t.id);
+      out.from = from; out.to = to;
+      out.counts = { todos: out.todos.length, done: out.todos.filter(t=>t.done).length, notDone: out.todos.filter(t=>!t.done).length,
+                     overdue: out.todos.filter(t=>t.overdue).length, longterm: out.longtermInRange.length };
+      out.rangeNote = '期間は最大92日。from / to を省略すると date（なければ今日）から7日間。byDate は日ごとのToDoのid（長期タスクは longtermInRange）';
+      delete out.date;
+      return out;
     } else if(view==='study'){
       let from = validDate(QS.get('from')||'') ? QS.get('from') : addD(d,-6);
       let to = validDate(QS.get('to')||'') ? QS.get('to') : d;
@@ -16024,7 +16115,8 @@ function _finishOnboarding(){
   function _localDay(ms){ const d=new Date(ms); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 
   /* ══ 書き込み：検証（実行前の「何がどう変わるか」） ══════════════ */
-  const FIELDS = ['text','date','startDate','deadline','tags','kind'];
+  const FIELDS = ['text','date','startDate','deadline','tags','kind','note'];
+  const NOTE_MAX = 300;
   function resolveTags(arr, tm, errs, where){
     if(arr===undefined) return undefined;
     if(!Array.isArray(arr)){ errs.push(`${where}: tags は配列で指定してください`); return undefined; }
@@ -16071,9 +16163,14 @@ function _finishOnboarding(){
     }
     const tags = resolveTags(op.tags, tm, errs, where);
     if(tags!==undefined) next.tags = tags;
+    if(op.note!==undefined){
+      if(op.note===null || op.note===''){ delete next.note; }
+      else if(typeof op.note!=='string') errs.push(`${where}: note は文字列で指定してください（消すときは null）`);
+      else { const n=op.note.trim(); if(n.length>NOTE_MAX) errs.push(`${where}: note は${NOTE_MAX}文字以内にしてください（${n.length}文字）`); if(n) next.note=n; else delete next.note; }
+    }
     return next;
   }
-  const VIEW_KEYS = ['text','longterm','date','startDate','deadline','tags','done'];
+  const VIEW_KEYS = ['text','note','longterm','date','startDate','deadline','tags','done'];
   function pickView(x){ if(!x) return null; const o={}; VIEW_KEYS.forEach(k=>{ if(x[k]!==undefined && x[k]!==null && !(k==='longterm'&&!x[k])) o[k]=x[k]; }); o.tags=(x.tags||[]).slice(); return o; }
   function diffFields(a,b){
     const out=[];
@@ -16128,11 +16225,12 @@ function _finishOnboarding(){
       } else if(kind==='update'){
         if(!cur){ errs.push(`${where}: id（${id}）のToDoが見つかりません`); }
         else {
-          if(!FIELDS.some(k=>op[k]!==undefined)) errs.push(`${where}: 変更する項目（text / date / kind / startDate / deadline / tags）がありません`);
+          if(!FIELDS.some(k=>op[k]!==undefined)) errs.push(`${where}: 変更する項目（text / note / date / kind / startDate / deadline / tags）がありません`);
           const next = buildNext(cur, op, tm, errs, where);
           const merged = Object.assign({}, cur, next);
           if(next.longterm===undefined) delete merged.longterm;
           if(!next.longterm){ delete merged.deadline; delete merged.startDate; }
+          if(op.note===null || op.note==='' || (typeof op.note==='string' && !op.note.trim())) delete merged.note; // メモを消す指定
           const ch = diffFields(cur, merged);
           row.after = pickView(merged); row.changed = ch;
           row.status = ch.length ? 'change' : 'skip'; if(!ch.length) row.note='変更なし';
@@ -16174,11 +16272,13 @@ function _finishOnboarding(){
       if(r.op==='add'){
         const n = r._next;
         const task = {id:r.id, text:n.text, date:n.date, done:false, half:false, elapsedMs:0, timerStart:null, tags:n.tags||[], createdAt:now};
+        if(n.note) task.note=n.note;
         if(n.longterm){ task.longterm=true; task.deadline=n.deadline; task.startDate=n.startDate; }
         TODOS.unshift(task);
       } else if(r.op==='update'){
         const x = TODOS.find(t=>t.id===r.id); const n=r._next;
         x.text=n.text; x.tags=n.tags||[];
+        if(n.note) x.note=n.note; else delete x.note;
         if(n.longterm){ x.longterm=true; x.deadline=n.deadline; x.startDate=n.startDate; x.date=n.date||x.date; }
         else { delete x.longterm; delete x.deadline; delete x.startDate; x.date=n.date; delete x.origDueDate; }
       } else if(r.op==='complete'){
@@ -16239,6 +16339,7 @@ function _finishOnboarding(){
     const parts=[`「${v.text}」`];
     if(v.longterm) parts.push(`長期 ${v.startDate||'?'}〜${v.deadline||'?'}`); else if(v.date) parts.push(v.date);
     if(v.tags && v.tags.length){ const tm=tagMaps(); parts.push('タグ:'+v.tags.map(id=>tm.byId.get(id)?.name||id).join('・')); }
+    if(v.note) parts.push('メモ:'+v.note);
     if(v.done) parts.push('完了');
     return parts.join(' ');
   }
@@ -16253,9 +16354,17 @@ function _finishOnboarding(){
     ex.disabled = !(p.ok && p.summary && p.summary.change>0);
   }
   let view = (QS.get('view')||'today'), onlyMuse = QS.get('source')==='muse';
-  if(!['today','date','all','study'].includes(view)) view='today';
+  if(!['today','date','range','all','study','tags'].includes(view)) view='today';
   let date = validDate(QS.get('date')||'') ? QS.get('date') : null;
+  function refreshConnectUI(){
+    const box=document.getElementById('muse-connect'), ok=document.getElementById('muse-connected');
+    if(!box || !ok) return;
+    const needInput = !FSYNC.getCode() && !FSYNC.urlCode;
+    box.style.display = needInput ? 'block' : 'none';
+    ok.style.display = (FSYNC.getCode() && isMuseDevice()) ? 'block' : 'none';
+  }
   function refreshRead(){
+    refreshConnectUI();
     const st=syncState();
     const stEl=document.getElementById('muse-status');
     if(stEl){ stEl.className='st '+(st.ok?'ok':'ng'); stEl.textContent=st.label; }
@@ -16263,9 +16372,16 @@ function _finishOnboarding(){
     const out=document.getElementById('muse-out');
     if(!out) return;
     const d = date || td();
+    // ★サーバーの最新データを受け取るまでは、中身を一切出さない（このブラウザに残っていた古い・別のデータを見せない）
+    if(!st.ok){
+      out.textContent = JSON.stringify({ready:false, generatedAt:new Date().toISOString(), sync:st, message:'同期が完了するまでデータは表示しません'}, null, 1);
+      out.dataset.ready = '0';
+      return;
+    }
     const data = buildRead(view, d, onlyMuse);
+    data.ready = true;
     out.textContent = JSON.stringify(data, null, 1);
-    out.dataset.ready = st.ok ? '1' : '0';
+    out.dataset.ready = '1';
     const di=document.getElementById('muse-date'); if(di && !di.value) di.value=d;
   }
   function mount(){
@@ -16275,12 +16391,25 @@ function _finishOnboarding(){
       <h1>muse.ai 連携ページ</h1>
       <div>状態：<span id="muse-status" class="st ng">準備中…</span> <button id="muse-refresh" onclick="MUSE.refresh()">再読み込み</button></div>
       <div class="note">このページの内容は、連携コードを知っている人だけが見られるデータです。URLを他の人に送ったり、どこかに貼ったりしないでください。</div>
+      <div id="muse-connect" style="display:none;margin-top:12px;padding:14px;border:2px solid #FEBE10;border-radius:12px;background:#FFFBEF">
+        <b>このブラウザを連携する（最初の1回だけ）</b>
+        <div class="note" style="margin:4px 0 8px">連携コードを入力してください。コードはこのブラウザの中にだけ保存され、URLや画面には表示されません。何もデータが保存されていないブラウザでだけ接続できます。</div>
+        <input id="muse-code" type="password" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="●●●●●●"
+          style="font:16px ui-monospace,Menlo,monospace;letter-spacing:4px;padding:8px 10px;border-radius:8px;border:1.5px solid rgba(11,42,91,.25);width:12em"
+          onkeydown="if(event.key==='Enter')MUSE.connect()">
+        <button id="muse-connect-btn" class="pri" onclick="MUSE.connect()">接続</button>
+        <div id="muse-connect-msg" class="note" style="color:#B42318;margin-top:6px"></div>
+      </div>
+      <div id="muse-connected" style="display:none;margin-top:8px" class="note">このブラウザはmuse用に接続されています（コードは非表示）。
+        <button id="muse-forget" onclick="MUSE.forget()" style="font-size:12px;padding:3px 8px">このブラウザの連携を解除</button></div>
       <h2>読み取り</h2>
       <div>
         <button data-view="today" onclick="MUSE.setView('today')">今日（「今日」タブと同じ）</button>
         <button data-view="date" onclick="MUSE.setView('date')">指定日</button>
         <button data-view="all" onclick="MUSE.setView('all')">全件</button>
+        <button data-view="range" onclick="MUSE.setView('range')">期間（7日）</button>
         <button data-view="study" onclick="MUSE.setView('study')">勉強時間（直近7日）</button>
+        <button data-view="tags" onclick="MUSE.setView('tags')">タグ一覧</button>
         日付 <input type="date" id="muse-date" onchange="MUSE.setDate(this.value)">
         <label><input type="checkbox" id="muse-only" ${onlyMuse?'checked':''} onchange="MUSE.setOnlyMuse(this.checked)"> muse作成のみ</label>
       </div>
@@ -16300,26 +16429,51 @@ function _finishOnboarding(){
   const HELP = `op: "add"        新しいToDo。id は "muse-" ＋ UUID（必須）。同じ id・同じ内容の再送は「変更なし」
      ToDo     : {"op":"add","id":"muse-…","text":"…","date":"YYYY-MM-DD","tags":["タグ名"]}
      長期タスク: {"op":"add","id":"muse-…","text":"…","kind":"longterm","startDate":"YYYY-MM-DD","deadline":"YYYY-MM-DD"}
+     メモ付き : {"op":"add","id":"muse-…","text":"面談の準備","date":"YYYY-MM-DD","note":"弟の16日面談用・15:00-18:00"}
 op: "update"     変える項目だけ書く  {"op":"update","id":"…","date":"YYYY-MM-DD"}
                  種類の変更も可      {"op":"update","id":"…","kind":"longterm","startDate":"…","deadline":"…"}
 op: "complete"   完了にする          {"op":"complete","id":"…"}
 op: "uncomplete" 未完了に戻す        {"op":"uncomplete","id":"…"}
 op: "delete"     削除する            {"op":"delete","id":"…"}
 
+・note（メモ）は300文字以内。update で "note": null を指定すると消せる
 ・text は60文字以内。date / deadline に過去の日付は不可（元から過去の日付はそのまま可）
 ・tags は既存のタグ名か id。存在しないタグはエラー（新しく作らない）
 ・一度に${MAX_OPS}件まで。全件をまとめて検証し、1件でもエラーなら何も実行しない
 ・アプリで作成されたToDo（id が muse- で始まらないもの）も update / complete / delete できる
-・読み取りURL: ?muse=1&code=…&view=today|date|all&date=YYYY-MM-DD&source=muse`;
+・読み取りURL: ?muse=1&view=today|date|range|all|study|tags&date=YYYY-MM-DD&from=…&to=…&source=muse`;
 
   window.MUSE = {
     refresh: refreshRead,
+    async connect(){
+      const inp=document.getElementById('muse-code'), msg=document.getElementById('muse-connect-msg'), btn=document.getElementById('muse-connect-btn');
+      const v=(inp?.value||'').trim().toUpperCase();
+      if(!/^[A-Z0-9]{6}$/.test(v)){ if(msg) msg.textContent='コードは6文字の英数字です'; return; }
+      if(btn) btn.disabled=true; if(msg){ msg.style.color='#5b6577'; msg.textContent='接続しています…'; }
+      const r = await FSYNC.museJoin(v);
+      if(btn) btn.disabled=false;
+      if(inp) inp.value='';
+      if(msg){ msg.style.color = r.ok ? '#146C3A' : '#B42318'; msg.textContent = r.ok ? '接続しました' : (r.msg||'接続できませんでした'); }
+      refreshRead();
+      return {ok:r.ok, msg:r.msg};
+    },
+    async forget(){
+      if(!confirm('このブラウザの連携を解除し、このブラウザに残っているデータの写しを消します。クラウドのデータは消えません。よろしいですか？')) return;
+      const r = await FSYNC.museForget();
+      if(r.ok){ location.replace(location.pathname + '?muse=1'); }
+      else alert(r.msg);
+      return r;
+    },
     setView(v){ view=v; if(v!=='date' && v!=='today') {} refreshRead(); },
     setDate(v){ if(validDate(v)){ date=v; refreshRead(); } },
     setOnlyMuse(b){ onlyMuse=!!b; refreshRead(); },
-    read(opts){ opts=opts||{}; _rangeOverride = (opts.from||opts.to) ? {from:opts.from, to:opts.to} : null;
-      try{ return buildRead(opts.view||view, opts.date||date||td(), opts.onlyMuse!=null?opts.onlyMuse:onlyMuse); } finally { _rangeOverride=null; } },
+    read(opts){ opts=opts||{};
+      const st=syncState(); if(!st.ok) return {ready:false, generatedAt:new Date().toISOString(), sync:st, message:'同期が完了するまでデータは表示しません'};
+      _rangeOverride = (opts.from||opts.to) ? {from:opts.from, to:opts.to} : null;
+      try{ const r=buildRead(opts.view||view, opts.date||date||td(), opts.onlyMuse!=null?opts.onlyMuse:onlyMuse); r.ready=true; return r; } finally { _rangeOverride=null; } },
     confirm(){
+      const st=syncState();
+      if(!st.ok){ const p={ok:false, errors:['同期が完了していないため確認できません：'+st.label], rows:[]}; lastPlan=null; renderPreview(p); return p; }
       const text=document.getElementById('muse-in').value;
       document.getElementById('muse-result').textContent=''; document.getElementById('muse-result').dataset.done='0';
       lastText=text; lastPlan=plan(text); renderPreview(lastPlan); return lastPlan;
