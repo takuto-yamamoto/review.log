@@ -14967,7 +14967,9 @@ const FSYNC = (() => {
            switchToUrl, ignoreUrl, retryUrl: handleUrlCode,
            get urlCode(){ return URL_CODE; }, get urlState(){ return urlState; }, get urlLocked(){ return urlActive(); },
            get ready(){ return ready; }, get connecting(){ return !!initPromise; }, get lastError(){ return lastError; },
-           get unsent(){ return failCount > 0 || !!pushTimer || pushing; } };
+           get unsent(){ return failCount > 0 || !!pushTimer || pushing; },
+           get pulled(){ return pulled; }, get connected(){ return !!docRef; },
+           get applying(){ return applyingRemote; }, get serverVersion(){ return lastSeenKey; } };
 })();
 
 // safeSetItem をラップし、対象データが保存されるたびクラウドへも自動的に反映する
@@ -15172,7 +15174,7 @@ function showUrlCodeBanner(){
   const d=document.createElement('div');
   d.id='url-code-banner';
   d.setAttribute('role','alertdialog');
-  d.style.cssText='position:fixed;left:50%;top:calc(var(--safe-top,0px) + 10px);transform:translateX(-50%);z-index:9999;width:min(460px,calc(100vw - 20px));background:#fff;border:2px solid #FEBE10;border-radius:16px;box-shadow:0 12px 32px rgba(11,42,91,.25);padding:14px 16px;font-size:13.5px;line-height:1.6;color:#0B1A33';
+  d.style.cssText='position:fixed;left:50%;top:calc(var(--safe-top,0px) + 10px);transform:translateX(-50%);z-index:2147483646;width:min(460px,calc(100vw - 20px));background:#fff;border:2px solid #FEBE10;border-radius:16px;box-shadow:0 12px 32px rgba(11,42,91,.25);padding:14px 16px;font-size:13.5px;line-height:1.6;color:#0B1A33';
   d.innerHTML=`<div style="font-weight:800;margin-bottom:4px">連携コードの確認</div>
     このページのURLは <b>${esc(uc)}</b> 用ですが、この端末は <b>${esc(cur)}</b> につながっています。どちらを使いますか？
     <div style="font-size:12px;color:rgba(11,26,51,.6);margin-top:4px">「${esc(uc)} に切り替える」と、この端末のデータは ${esc(uc)} のデータとまとめられます（消えるタスクはありません）。</div>
@@ -15755,6 +15757,592 @@ function _finishOnboarding(){
     // Delay slightly so app renders first
     setTimeout(startOnboarding, 600);
   }
+})();
+</script>
+<script>
+/* ════════════════════════════════════════════════════════════
+   muse.ai 連携ページ（URLに ?muse=1 を付けて開く）
+   ・読む：ToDoをJSONで表示する。view=today は「今日」タブと同じ中身
+   ・書く：JSONで操作を渡し「確認」→「実行」で反映する（全件まとめて／1件でも不正なら何もしない）
+   ・書き込みは通常の保存と同じ経路（saveTodos → 同期の安全な書き込み）を通るので、
+     他の端末と同時に操作しても変更は消えない
+   ・ToDo以外（復習・勉強記録・計画・設定）には一切触れない
+════════════════════════════════════════════════════════════ */
+(function(){
+  let QS; try{ QS=new URLSearchParams(location.search); }catch(_){ return; }
+  if(QS.get('muse')!=='1') return;
+
+  const MAX_OPS = 100;
+  const ID_RE = /^muse-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+  const validDate = s => typeof s==='string' && DATE_RE.test(s) && !isNaN(new Date(s+'T00:00:00')) && ymdOk(s);
+  function ymdOk(s){ const [y,m,d]=s.split('-').map(Number); const dt=new Date(y,m-1,d); return dt.getFullYear()===y && dt.getMonth()===m-1 && dt.getDate()===d; }
+  const iso = ms => ms ? new Date(ms).toISOString() : null;
+  const escH = v => String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  /* ── 状態 ── */
+  function syncState(){
+    const code = FSYNC.getCode();
+    if(!code) return {ok:false, label:'連携コード未設定（URLに &code=XXXXXX を付けてください）'};
+    if(FSYNC.urlLocked && FSYNC.urlState && !['ok'].includes(FSYNC.urlState)){
+      return {ok:false, label: {conflict:'別のコードにつながっています（画面上部の確認で選んでください）', notfound:'URLの連携コードのデータが見つかりません', error:'サーバーに接続できませんでした', joining:'接続中…', pending:'接続中…'}[FSYNC.urlState] || '接続中…'};
+    }
+    if(!FSYNC.ready) return {ok:false, label:'サーバーに接続中…'};
+    if(!FSYNC.pulled) return {ok:false, label:'サーバーから最新データを受信中…'};
+    if(FSYNC.applying) return {ok:false, label:'受信したデータを反映中…'};
+    if(FSYNC.unsent) return {ok:true, pending:true, label:'同期済み（この端末の変更を送信中）'};
+    return {ok:true, label:'同期済み（サーバーの最新データ）'};
+  }
+
+  /* ══ 読み取り ══════════════════════════════════════════ */
+  function tagMaps(){
+    const byId=new Map(), byName=new Map();
+    (TAGS||[]).forEach(t=>{ byId.set(t.id,t); byName.set(t.name,t); });
+    return {byId, byName};
+  }
+  function serTodo(x, d, tm){
+    return {
+      id: x.id, text: x.text,
+      kind: x.longterm ? 'longterm' : 'todo',
+      date: x.longterm ? null : (x.date||null),
+      startDate: x.longterm ? (x.startDate || _todoCreatedDay(x) || null) : null,
+      deadline: x.longterm ? (x.deadline||null) : null,
+      done: !!x.done, completedAt: iso(x.completedAt), half: !!x.half,
+      tags: (x.tags||[]).map(id=>tm.byId.get(id)?.name).filter(Boolean),
+      tagIds: (x.tags||[]).filter(id=>tm.byId.has(id)),
+      overdue: !x.done && !x.longterm && !!x.date && x.date < d,
+      pastDeadline: !x.done && !!x.longterm && !!x.deadline && x.deadline < d,
+      source: String(x.id).startsWith('muse-') ? 'muse' : 'app',
+      timeSpentMinutes: Math.round(((x.elapsedMs||0) + (x.timerStart ? Date.now()-x.timerStart : 0))/60000),
+      timerRunning: !!x.timerStart,
+      createdAt: iso(x.createdAt), updatedAt: iso(x.updatedAt),
+    };
+  }
+  const sortKey = x => (x.longterm ? '1'+(x.deadline||'9999') : '0'+(x.date||''))+String(x.createdAt||'');
+  function serPlan(p){
+    return {
+      id: p.id + (p.__scheduleItemIdx!=null ? '::'+p.__scheduleItemIdx : ''),
+      name: planDisplayName(p), type: p.type,
+      due: p.type==='goal' ? (p.deadline||null) : (p.nextDate||null),
+      overdue: p.type==='goal' ? planGoalIsOverdue(p) : !!(p.nextDate && p.nextDate < td()),
+      progress: p.type==='goal' ? {done:p.doneCount||0, total:p.totalCount||0} : undefined,
+      tags: (p.tags||[]).map(id=>(TAGS||[]).find(t=>t.id===id)?.name).filter(Boolean),
+    };
+  }
+  // 復習カード（読み取り専用。muse.aiからは書き換えない）
+  function serUnit(u, d, tm){
+    return {
+      id: u.id, name: u.name,
+      reviewNumber: (u.step||0) + 1,           // 次が何回目の復習か
+      totalReviews: (typeof MAX_STEP!=='undefined' ? MAX_STEP : null),
+      nextDate: u.nextDate || null,
+      overdue: !u.done && !!u.nextDate && u.nextDate < d,
+      overdueDays: (!u.done && u.nextDate && u.nextDate < d) ? Math.round((new Date(d+'T00:00:00')-new Date(u.nextDate+'T00:00:00'))/86400000) : 0,
+      learnedDate: u.addedDate || null,
+      done: !!u.done,
+      completedAt: iso(u.completedAt),
+      intervals: Array.isArray(u.ints) ? u.ints.slice() : null,
+      // この先の復習日の見込み（予定どおりに毎回こなした場合。実際は復習した日によって前後する）
+      upcomingProjected: u.done ? [] : projectReviews(u),
+      tags: (u.tags||[]).map(id=>tm.byId.get(id)?.name).filter(Boolean),
+    };
+  }
+  function projectReviews(u){
+    const ints = Array.isArray(u.ints) ? u.ints : null;
+    const total = (typeof MAX_STEP!=='undefined') ? MAX_STEP : 0;
+    if(!u.nextDate || !ints) return [];
+    const out=[{reviewNumber:(u.step||0)+1, date:u.nextDate}];
+    let d=u.nextDate;
+    for(let st=(u.step||0)+1; st<total && st<ints.length; st++){ d=addD(d, ints[st]); out.push({reviewNumber:st+1, date:d}); }
+    return out;
+  }
+  /* ── 計画タスク（読み取り専用） ── */
+  const PLAN_TYPE_JA = {daily:'毎日', weekday:'曜日指定', interval:'間隔', goal:'目標', schedule:'日程指定'};
+  function serPlanFull(p, d){
+    const tm = tagMaps();
+    const o = {
+      id: p.id, name: p.name, currentName: (()=>{ try{ return planDisplayName(p); }catch(_){ return p.name; } })(),
+      type: p.type, typeLabel: PLAN_TYPE_JA[p.type]||p.type,
+      tags: (p.tags||[]).map(id=>tm.byId.get(id)?.name).filter(Boolean),
+      startDate: p.startDate || p.createdDate || null, endDate: p.endDate || null,
+      done: !!p.done, nextDate: p.nextDate || null, lastDoneDate: p.lastDoneDate || null,
+      snoozedUntil: (p.snoozeUntil && p.snoozeUntil>td()) ? p.snoozeUntil : null,
+      overdue: (()=>{ try{ return p.type==='goal' ? planGoalIsOverdue(p) : (planIsOverdue(p)); }catch(_){ return false; } })(),
+    };
+    if(p.type==='weekday') o.weekdays = (p.weekdays||[]).slice().sort().map(w=>WD_LABELS[w]);
+    if(p.type==='interval') o.intervalDays = p.intervalDays || null;
+    if(p.type==='goal'){
+      o.goal = { done: p.doneCount||0, total: p.totalCount||0, deadline: p.deadline||null, pace: planGoalPaceMode(p)==='self' ? '自分のペース' : '均等ペース' };
+      try{ const st=_planGoalTodayStatus(p); o.goal.todayTarget = st.target; o.goal.todayDone = st.todayCount; }catch(_){}
+    }
+    if(p.type==='schedule') o.schedule = (p.schedule||[]).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''))
+      .map(x=>({date:x.date||null, label:(x.label||'').trim()||null, done:!!x.done, doneDate:x.doneDate||null}));
+    if(p.type==='daily') o.doneToday = p.lastDoneDate===td();
+    o.occurrencesDone = p.type==='goal' ? (p.doneCount||0) : (p.occurrenceCount||0);
+    return o;
+  }
+  // 指定日に予定されている計画（記録された日付＋曜日・間隔からの見込み）。ルールによる表示の抑制は反映しない
+  function plansOnDate(d){
+    const out=[];
+    const inPeriod = p => (!(p.startDate||p.createdDate) || (p.startDate||p.createdDate)<=d) && (!p.endDate || d<=p.endDate);
+    const wd = new Date(d+'T00:00:00').getDay();
+    (PLAN||[]).forEach(p=>{
+      if(p.done) return;
+      const base = serPlanFull(p, d);
+      if(p.type==='schedule'){
+        (p.schedule||[]).forEach(x=>{ if(x.date===d) out.push(Object.assign({}, base, {on:d, item:{label:(x.label||'').trim()||null, done:!!x.done}, projected:false})); });
+        return;
+      }
+      if(p.type==='goal'){ if(p.deadline===d) out.push(Object.assign({}, base, {on:d, reason:'目標の締切', projected:false})); return; }
+      if(!inPeriod(p)) return;
+      if(p.type==='daily'){ if(d>=td()) out.push(Object.assign({}, base, {on:d, projected: d!==td()})); return; }
+      if(!p.nextDate) return;
+      if(p.nextDate===d){ out.push(Object.assign({}, base, {on:d, projected:false})); return; }
+      if(d>p.nextDate){
+        if(p.type==='weekday' && (p.weekdays||[]).includes(wd)) out.push(Object.assign({}, base, {on:d, projected:true}));
+        if(p.type==='interval' && p.intervalDays>0){
+          const n=Math.round((new Date(d+'T00:00:00')-new Date(p.nextDate+'T00:00:00'))/86400000);
+          if(n % p.intervalDays === 0) out.push(Object.assign({}, base, {on:d, projected:true}));
+        }
+      }
+    });
+    return out;
+  }
+  /* ── 勉強時間の記録（読み取り専用） ── */
+  function serLog(l, tm){
+    const unit = l.unitId ? (U||[]).find(u=>u.id===l.unitId) : null;
+    const plan = l.planId ? (PLAN||[]).find(p=>p.id===l.planId) : null;
+    return {
+      id: l.id, date: l.date || null, minutes: l.minutes||0,
+      title: l.title || (unit && unit.name) || (plan && plan.name) || null,
+      kind: l.unitId ? 'review' : (l.planId ? 'plan' : 'other'),
+      unitId: l.unitId||null, unitName: unit ? unit.name : null,
+      planId: l.planId||null, planName: plan ? plan.name : null,
+      tags: (l.tagIds||[]).map(id=>tm.byId.get(id)?.name).filter(Boolean),
+      note: l.note || null,
+      recordedAt: iso(l.createdAt),
+    };
+  }
+  function studySummary(logs){
+    const total = logs.reduce((a,l)=>a+(l.minutes||0),0);
+    const byTag = {}, byDate = {};
+    logs.forEach(l=>{
+      byDate[l.date] = (byDate[l.date]||0) + (l.minutes||0);
+      (l.tags.length ? l.tags : ['（タグなし）']).forEach(t=>{ byTag[t]=(byTag[t]||0)+(l.minutes||0); });
+    });
+    return { totalMinutes: total, records: logs.length, byTag, byDate };
+  }
+  function logsBetween(from, to, tm){
+    return (STUDY_LOGS||[]).filter(l=>l && l.date && l.date>=from && l.date<=to)
+      .sort((a,b)=>(a.date||'').localeCompare(b.date||'') || (a.createdAt||0)-(b.createdAt||0))
+      .map(l=>serLog(l, tm));
+  }
+  function buildRead(view, d, onlyMuse){
+    const tm = tagMaps(), today = td();
+    const all = (TODOS||[]).filter(x=>!onlyMuse || String(x.id).startsWith('muse-'));
+    const out = { app:'復習マネージャー', format:'muse-read-v1', generatedAt:new Date().toISOString(),
+                  today, view, date:d, onlyMuse:!!onlyMuse, sync:syncState() };
+    if(view==='today'){
+      // 「今日」タブと同じ条件：未完了で、日付が今日以前のToDo（期限切れを含む）＋開始済みの長期タスク
+      const list = all.filter(x=>!x.done && (x.longterm ? _todoStarted(x, d) : (x.date && x.date<=d)))
+                      .sort((a,b)=>sortKey(a).localeCompare(sortKey(b)));
+      const doneOnDay = all.filter(x=>x.done && x.completedAt && _localDay(x.completedAt)===d);
+      out.todos = list.map(x=>serTodo(x,d,tm));
+      out.completedOnDate = doneOnDay.map(x=>serTodo(x,d,tm));
+      if(d===today){
+        let plans=[]; try{ plans = (typeof getDuePlanList==='function' ? getDuePlanList() : []); }catch(e){ plans=[]; }
+        out.plans = onlyMuse ? [] : plans.map(p=>Object.assign(serPlan(p), {detail: serPlanFull(PLAN.find(x=>x.id===p.id)||p, d)}));
+        out.plansNote = '「今日」タブと同じ計画タスク（今日の分のみ取得可能）';
+      } else {
+        out.plans = null;
+        out.plansNote = '計画タスクは今日の分のみ取得できます（指定日が今日ではないため省略）';
+      }
+      // 「今日」タブと同じ条件：完了していない単元のうち、次の復習日がその日以前（遅れている分を含む）
+      out.reviews = onlyMuse ? [] : (U||[]).filter(u=>!u.done && u.nextDate && u.nextDate<=d)
+        .sort((a,b)=>a.nextDate.localeCompare(b.nextDate)).map(u=>serUnit(u,d,tm));
+      out.study = onlyMuse ? null : (()=>{ const logs=logsBetween(d,d,tm); const sm=studySummary(logs); return {date:d, totalMinutes:sm.totalMinutes, byTag:sm.byTag, logs}; })();
+      out.reviewsNote = isWorkMode() ? 'この端末は仕事モードのため「今日」タブには復習が表示されませんが、データとしては含めています' : '「今日」タブと同じ復習（読み取り専用）';
+      out.counts = {
+        reviews: out.reviews.length,
+        reviewsOverdue: out.reviews.filter(r=>r.overdue).length,
+        studyMinutes: out.study ? out.study.totalMinutes : null,
+        todos: out.todos.length,
+        todosDueOnDate: out.todos.filter(t=>t.kind==='todo' && t.date===d).length,
+        overdue: out.todos.filter(t=>t.overdue).length,
+        longtermActive: out.todos.filter(t=>t.kind==='longterm').length,
+        longtermPastDeadline: out.todos.filter(t=>t.pastDeadline).length,
+        plans: Array.isArray(out.plans) ? out.plans.length : null,
+        completedOnDate: out.completedOnDate.length,
+      };
+    } else if(view==='date'){
+      // その日が日付のToDo＋その日が期間に入る長期タスク
+      const list = all.filter(x=> x.longterm
+          ? ((x.startDate || _todoCreatedDay(x) || '') <= d && (!x.deadline || x.deadline >= d))
+          : x.date===d).sort((a,b)=>sortKey(a).localeCompare(sortKey(b)));
+      out.todos = list.map(x=>serTodo(x,d,tm));
+      out.reviews = onlyMuse ? [] : (U||[]).filter(u=>!u.done && u.nextDate===d).map(u=>serUnit(u,d,tm));
+      out.plans = onlyMuse ? [] : plansOnDate(d);
+      out.study = onlyMuse ? null : (()=>{ const logs=logsBetween(d,d,tm); const sm=studySummary(logs); return {date:d, totalMinutes:sm.totalMinutes, byTag:sm.byTag, logs}; })();
+      out.plansNote = 'projected:true は曜日・間隔からの見込み（それまでの実施日によって前後する）。計画どうしのルールによる表示の抑制は反映していない';
+      out.counts = { todos: out.todos.length, done: out.todos.filter(t=>t.done).length, notDone: out.todos.filter(t=>!t.done).length,
+                     reviewsScheduled: out.reviews.length, plans: out.plans.length };
+    } else if(view==='study'){
+      let from = validDate(QS.get('from')||'') ? QS.get('from') : addD(d,-6);
+      let to = validDate(QS.get('to')||'') ? QS.get('to') : d;
+      if(_rangeOverride){ if(validDate(_rangeOverride.from||'')) from=_rangeOverride.from; if(validDate(_rangeOverride.to||'')) to=_rangeOverride.to; }
+      if(from>to){ const t=from; from=to; to=t; }
+      const span = Math.round((new Date(to+'T00:00:00')-new Date(from+'T00:00:00'))/86400000)+1;
+      if(span>366){ from = addD(to,-365); }
+      const logs = logsBetween(from, to, tm), sm = studySummary(logs);
+      out.study = { from, to, totalMinutes: sm.totalMinutes, records: sm.records, byTag: sm.byTag, byDate: sm.byDate, logs };
+      out.studyNote = '期間は最大366日。from / to を省略すると直近7日間';
+      delete out.date;
+      return out;
+    } else {
+      const list = all.slice().sort((a,b)=>((!!a.done)-(!!b.done)) || sortKey(a).localeCompare(sortKey(b)));
+      out.todos = list.map(x=>serTodo(x,d,tm));
+      out.reviews = onlyMuse ? [] : (U||[]).filter(u=>!u.done).sort((a,b)=>(a.nextDate||'').localeCompare(b.nextDate||'')).map(u=>serUnit(u,d,tm));
+      out.reviewsCompleted = onlyMuse ? [] : (U||[]).filter(u=>u.done).sort((a,b)=>(b.completedAt||0)-(a.completedAt||0)).map(u=>serUnit(u,d,tm));
+      if(!onlyMuse){
+        const from30 = addD(d, -29);
+        const recent = logsBetween(from30, d, tm), sm = studySummary(recent);
+        const allMin = (STUDY_LOGS||[]).reduce((a,l)=>a+(l.minutes||0),0);
+        out.study = { allTimeMinutes: allMin, allTimeRecords: (STUDY_LOGS||[]).length,
+                      last30Days: { from: from30, to: d, totalMinutes: sm.totalMinutes, byTag: sm.byTag, byDate: sm.byDate },
+                      note: '記録の一覧は view=study&from=YYYY-MM-DD&to=YYYY-MM-DD で取得' };
+      }
+      out.plans = onlyMuse ? [] : (PLAN||[]).slice().sort((a,b)=>((!!a.done)-(!!b.done)) || (a.nextDate||a.deadline||'').localeCompare(b.nextDate||b.deadline||'')).map(p=>serPlanFull(p,d));
+      out.counts = { todos: out.todos.length, done: out.todos.filter(t=>t.done).length, notDone: out.todos.filter(t=>!t.done).length,
+                     overdue: out.todos.filter(t=>t.overdue).length, muse: out.todos.filter(t=>t.source==='muse').length,
+                     reviewsActive: out.reviews.length, reviewsOverdue: out.reviews.filter(r=>r.overdue).length,
+                     reviewsCompleted: (U||[]).filter(u=>u.done).length,
+                     plans: (PLAN||[]).length, plansActive: (PLAN||[]).filter(p=>!p.done).length, plansOverdue: (out.plans||[]).filter(p=>!p.done && p.overdue).length };
+    }
+    out.tags = (TAGS||[]).map(t=>({id:t.id, name:t.name}));
+    return out;
+  }
+  function _localDay(ms){ const d=new Date(ms); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+
+  /* ══ 書き込み：検証（実行前の「何がどう変わるか」） ══════════════ */
+  const FIELDS = ['text','date','startDate','deadline','tags','kind'];
+  function resolveTags(arr, tm, errs, where){
+    if(arr===undefined) return undefined;
+    if(!Array.isArray(arr)){ errs.push(`${where}: tags は配列で指定してください`); return undefined; }
+    const ids=[];
+    for(const v of arr){
+      const t = tm.byId.get(v) || tm.byName.get(String(v).trim());
+      if(!t){ errs.push(`${where}: タグ「${v}」は存在しません（新しいタグは作成しません）`); continue; }
+      if(!ids.includes(t.id)) ids.push(t.id);
+    }
+    return ids;
+  }
+  // 1件のToDoの「操作後の姿」を作る（元の値は変えない）
+  function buildNext(base, op, tm, errs, where){
+    const today = td();
+    const next = base ? JSON.parse(JSON.stringify(base)) : {};
+    if(op.text!==undefined){
+      const t = String(op.text).trim();
+      if(!t) errs.push(`${where}: text が空です`);
+      else if(t.length>60) errs.push(`${where}: text は60文字以内にしてください（${t.length}文字）`);
+      next.text = t;
+    }
+    let kind = op.kind!==undefined ? op.kind : (base ? (base.longterm?'longterm':'todo') : 'todo');
+    if(!['todo','longterm'].includes(kind)){ errs.push(`${where}: kind は "todo" か "longterm" です`); kind='todo'; }
+    for(const k of ['date','startDate','deadline']){
+      if(op[k]!==undefined && op[k]!==null && !validDate(op[k])) errs.push(`${where}: ${k} は YYYY-MM-DD 形式の正しい日付にしてください（${op[k]}）`);
+    }
+    if(kind==='todo'){
+      delete next.longterm; delete next.deadline; delete next.startDate;
+      const date = op.date!==undefined ? op.date : (base && !base.longterm ? base.date : null);
+      if(!date) errs.push(`${where}: ToDoには date が必要です`);
+      else if(date<today && (!base || date!==base.date)) errs.push(`${where}: date に過去の日付は指定できません（${date}）`);
+      next.date = date;
+      if(op.startDate!==undefined || op.deadline!==undefined) errs.push(`${where}: startDate / deadline は kind:"longterm" のときだけ指定できます`);
+    } else {
+      next.longterm = true;
+      const st = op.startDate!==undefined ? op.startDate : (base && base.longterm ? (base.startDate || _todoCreatedDay(base) || today) : today);
+      const dl = op.deadline!==undefined ? op.deadline : (base && base.longterm ? base.deadline : null);
+      if(!dl) errs.push(`${where}: 長期タスクには deadline（期限）が必要です`);
+      else if(dl<today && (!base || dl!==base.deadline)) errs.push(`${where}: deadline に過去の日付は指定できません（${dl}）`);
+      if(st && dl && st>dl) errs.push(`${where}: startDate（${st}）が deadline（${dl}）より後になっています`);
+      next.startDate = st; next.deadline = dl;
+      next.date = (base && base.date) || today;
+      if(op.date!==undefined) errs.push(`${where}: date は kind:"todo" のときだけ指定できます（長期タスクは startDate / deadline）`);
+    }
+    const tags = resolveTags(op.tags, tm, errs, where);
+    if(tags!==undefined) next.tags = tags;
+    return next;
+  }
+  const VIEW_KEYS = ['text','longterm','date','startDate','deadline','tags','done'];
+  function pickView(x){ if(!x) return null; const o={}; VIEW_KEYS.forEach(k=>{ if(x[k]!==undefined && x[k]!==null && !(k==='longterm'&&!x[k])) o[k]=x[k]; }); o.tags=(x.tags||[]).slice(); return o; }
+  function diffFields(a,b){
+    const out=[];
+    VIEW_KEYS.forEach(k=>{
+      const va = a ? (k==='tags' ? JSON.stringify(a.tags||[]) : (a[k]??null)) : null;
+      const vb = b ? (k==='tags' ? JSON.stringify(b.tags||[]) : (b[k]??null)) : null;
+      const na = (k==='longterm'||k==='done') ? !!va : va, nb = (k==='longterm'||k==='done') ? !!vb : vb;
+      if(String(na)!==String(nb)) out.push(k);
+    });
+    return out;
+  }
+  function parseInput(text){
+    let j; try{ j=JSON.parse(text); }catch(e){ return {error:'JSONとして読めません: '+e.message}; }
+    const ops = Array.isArray(j) ? j : (j && Array.isArray(j.ops) ? j.ops : null);
+    if(!ops) return {error:'操作は配列、または {"ops":[...]} の形で渡してください'};
+    if(!ops.length) return {error:'操作が1件もありません'};
+    if(ops.length>MAX_OPS) return {error:`一度に実行できるのは${MAX_OPS}件までです（${ops.length}件）`};
+    return {ops};
+  }
+  // すべての操作を検証し、変更の一覧を作る。1件でもエラーがあれば実行させない
+  function plan(text){
+    const parsed = parseInput(text);
+    if(parsed.error) return {ok:false, errors:[parsed.error], rows:[]};
+    const tm = tagMaps();
+    const errors=[], rows=[], seen=new Set();
+    const tombs = (typeof _todoSync!=='undefined') ? _todoSync.getTomb() : {};
+    parsed.ops.forEach((op,i)=>{
+      const where = `#${i+1}`;
+      const errs=[];
+      if(!op || typeof op!=='object'){ errors.push(`${where}: 操作がオブジェクトではありません`); return; }
+      const kind = op.op;
+      const id = op.id!=null ? String(op.id) : '';
+      if(!['add','update','complete','uncomplete','delete'].includes(kind)){ errors.push(`${where}: op は add / update / complete / uncomplete / delete のいずれかです（${kind}）`); return; }
+      if(!id){ errors.push(`${where}: id がありません`); return; }
+      if(seen.has(id)){ errors.push(`${where}: 同じ id（${id}）が同じ一括操作の中に2回あります`); return; }
+      seen.add(id);
+      const unknown = Object.keys(op).filter(k=>!['op','id',...FIELDS].includes(k));
+      if(unknown.length) errs.push(`${where}: 使えない項目があります（${unknown.join(', ')}）`);
+      const cur = TODOS.find(x=>x.id===id) || null;
+      const row = {n:i+1, op:kind, id, source: id.startsWith('muse-')?'muse':'app', status:'', before:pickView(cur), after:null, changed:[]};
+      if(kind==='add'){
+        if(!ID_RE.test(id)) errs.push(`${where}: 追加するToDoの id は "muse-" ＋ UUID にしてください（例: muse-123e4567-e89b-12d3-a456-426614174000）`);
+        if(tombs[id] && !cur) errs.push(`${where}: この id のToDoは削除済みです。別の id を使ってください`);
+        if(op.text===undefined) errs.push(`${where}: text がありません`);
+        const next = buildNext(null, op, tm, errs, where);
+        if(cur){
+          // 同じ id がすでにある：中身が同じなら「追加済み」として何もしない（再送しても重複しない）
+          const same = !errs.length && diffFields(cur, Object.assign({}, cur, next)).length===0;
+          if(same){ row.status='skip'; row.note='追加済み（同じ内容）'; row.after=pickView(cur); }
+          else errs.push(`${where}: この id はすでに存在し内容が異なります。変更するときは op:"update" を使ってください`);
+        } else { row.status='change'; row.after=pickView(next); row.changed=['新規']; row._next=next; }
+      } else if(kind==='update'){
+        if(!cur){ errs.push(`${where}: id（${id}）のToDoが見つかりません`); }
+        else {
+          if(!FIELDS.some(k=>op[k]!==undefined)) errs.push(`${where}: 変更する項目（text / date / kind / startDate / deadline / tags）がありません`);
+          const next = buildNext(cur, op, tm, errs, where);
+          const merged = Object.assign({}, cur, next);
+          if(next.longterm===undefined) delete merged.longterm;
+          if(!next.longterm){ delete merged.deadline; delete merged.startDate; }
+          const ch = diffFields(cur, merged);
+          row.after = pickView(merged); row.changed = ch;
+          row.status = ch.length ? 'change' : 'skip'; if(!ch.length) row.note='変更なし';
+          row._next = merged;
+        }
+      } else if(kind==='complete' || kind==='uncomplete'){
+        if(!cur) errs.push(`${where}: id（${id}）のToDoが見つかりません`);
+        else {
+          const want = kind==='complete';
+          if(!!cur.done===want){ row.status='skip'; row.note= want?'すでに完了':'すでに未完了'; row.after=pickView(cur); }
+          else { row.status='change'; row.after=Object.assign(pickView(cur),{done:want}); row.changed=['done']; }
+        }
+        const extra = FIELDS.filter(k=>op[k]!==undefined); if(extra.length) errs.push(`${where}: ${kind} では ${extra.join(', ')} は指定できません`);
+      } else if(kind==='delete'){
+        if(!cur){ row.status='skip'; row.note='すでに存在しない'; }
+        else { row.status='change'; row.after=null; row.changed=['削除']; }
+        const extra = FIELDS.filter(k=>op[k]!==undefined); if(extra.length) errs.push(`${where}: delete では ${extra.join(', ')} は指定できません`);
+      }
+      if(errs.length){ errors.push(...errs); row.status='error'; row.errors=errs; }
+      rows.push(row);
+    });
+    const sig = JSON.stringify(rows.map(r=>[r.op,r.id,r.status,r.before,r.after]));
+    return {ok: !errors.length, errors, rows, sig,
+      summary:{ total: rows.length, change: rows.filter(r=>r.status==='change').length, skip: rows.filter(r=>r.status==='skip').length, error: errors.length }};
+  }
+
+  /* ══ 書き込み：実行 ═════════════════════════════════════ */
+  function execute(text, expectSig){
+    const st = syncState();
+    if(!st.ok) return {ok:false, error:'まだ同期できていないため実行できません：'+st.label};
+    // 確認後にデータが変わっていないか、実行直前にもう一度検証する
+    const p = plan(text);
+    if(!p.ok) return {ok:false, error:'検証エラーがあるため実行しませんでした', errors:p.errors};
+    if(p.sig!==expectSig) return {ok:false, error:'確認の後にデータが変わりました。もう一度「確認」してから実行してください', changedSinceConfirm:true};
+    const now = Date.now(), applied=[];
+    let bumped=false;
+    p.rows.forEach(r=>{
+      if(r.status!=='change') return;
+      if(r.op==='add'){
+        const n = r._next;
+        const task = {id:r.id, text:n.text, date:n.date, done:false, half:false, elapsedMs:0, timerStart:null, tags:n.tags||[], createdAt:now};
+        if(n.longterm){ task.longterm=true; task.deadline=n.deadline; task.startDate=n.startDate; }
+        TODOS.unshift(task);
+      } else if(r.op==='update'){
+        const x = TODOS.find(t=>t.id===r.id); const n=r._next;
+        x.text=n.text; x.tags=n.tags||[];
+        if(n.longterm){ x.longterm=true; x.deadline=n.deadline; x.startDate=n.startDate; x.date=n.date||x.date; }
+        else { delete x.longterm; delete x.deadline; delete x.startDate; x.date=n.date; delete x.origDueDate; }
+      } else if(r.op==='complete'){
+        const x = TODOS.find(t=>t.id===r.id);
+        x.done=true; x.half=false; x.completedAt=now; delete x.origDueDate;
+        if(x.timerStart){ x.elapsedMs=(x.elapsedMs||0)+(now-x.timerStart); x.timerStart=null; }
+        bumped=true;
+      } else if(r.op==='uncomplete'){
+        const x = TODOS.find(t=>t.id===r.id); x.done=false; delete x.completedAt;
+      } else if(r.op==='delete'){
+        TODOS = TODOS.filter(t=>t.id!==r.id);
+      }
+      applied.push({n:r.n, op:r.op, id:r.id});
+    });
+    if(applied.length){
+      if(bumped && typeof bumpStreak==='function'){ try{ bumpStreak(); }catch(_){} }
+      saveTodos();             // 版の更新・削除の記録・クラウドへの送信予約はここで通常どおり行われる
+      try{ render(); }catch(_){}
+      FSYNC.flush();           // 待たずにすぐ送る
+    }
+    return {ok:true, applied: applied.length, skipped: p.rows.filter(r=>r.status==='skip').length, ops: applied};
+  }
+  // 実行後、サーバーへの保存が終わるまで待つ（最大30秒）
+  function waitSaved(ms){
+    const t0=Date.now();
+    return new Promise(res=>{
+      (function tick(){
+        if(!FSYNC.unsent && !FSYNC.applying) return res(true);
+        if(Date.now()-t0>ms) return res(false);
+        setTimeout(tick, 300);
+      })();
+    });
+  }
+
+  /* ══ 画面 ═══════════════════════════════════════════ */
+  let lastPlan=null, lastText='', _rangeOverride=null;
+  function css(){
+    return `#muse{position:fixed;inset:0;z-index:2147483600;background:#fff;color:#0B1A33;overflow:auto;
+      font:14px/1.6 -apple-system,BlinkMacSystemFont,'Hiragino Sans','Yu Gothic UI','Meiryo',sans-serif;padding:16px 18px 60px}
+      #muse h1{font-size:18px;color:#0B2A5B;margin:0 0 4px;border-bottom:3px solid #FEBE10;padding-bottom:6px}
+      #muse h2{font-size:15px;color:#0B2A5B;margin:20px 0 8px}
+      #muse .st{display:inline-block;border-radius:8px;padding:3px 10px;font-weight:700;font-size:13px}
+      #muse .st.ok{background:#E8F7EE;color:#146C3A} #muse .st.ng{background:#FFF1F0;color:#B42318}
+      #muse button{font:inherit;font-weight:700;border-radius:8px;padding:6px 12px;border:1.5px solid rgba(11,42,91,.2);background:#fff;color:#0B2A5B;cursor:pointer;margin:2px}
+      #muse button.on,#muse button.pri{background:#0B2A5B;color:#fff;border-color:#0B2A5B}
+      #muse button:disabled{opacity:.4;cursor:not-allowed}
+      #muse pre{background:#F6F7FA;border:1px solid rgba(11,42,91,.12);border-radius:10px;padding:12px;font:12.5px/1.5 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-all;max-height:none}
+      #muse textarea{width:100%;min-height:160px;font:12.5px/1.5 ui-monospace,Menlo,Consolas,monospace;border:1.5px solid rgba(11,42,91,.2);border-radius:10px;padding:10px;box-sizing:border-box}
+      #muse table{border-collapse:collapse;width:100%;font-size:13px;margin-top:8px}
+      #muse th,#muse td{border:1px solid rgba(11,42,91,.12);padding:5px 7px;text-align:left;vertical-align:top}
+      #muse th{background:#F6F7FA}
+      #muse tr.change td.s{color:#0B2A5B;font-weight:700} #muse tr.skip td{color:#7a8496} #muse tr.error td{background:#FFF6F5;color:#B42318}
+      #muse .note{font-size:12px;color:#5b6577}
+      #muse input[type=date]{font:inherit;padding:4px 6px;border-radius:8px;border:1.5px solid rgba(11,42,91,.2)}`;
+  }
+  function vText(v){
+    if(!v) return '（なし）';
+    const parts=[`「${v.text}」`];
+    if(v.longterm) parts.push(`長期 ${v.startDate||'?'}〜${v.deadline||'?'}`); else if(v.date) parts.push(v.date);
+    if(v.tags && v.tags.length){ const tm=tagMaps(); parts.push('タグ:'+v.tags.map(id=>tm.byId.get(id)?.name||id).join('・')); }
+    if(v.done) parts.push('完了');
+    return parts.join(' ');
+  }
+  function renderPreview(p){
+    const el=document.getElementById('muse-preview');
+    const ex=document.getElementById('muse-exec');
+    const head = `<div><b>${p.summary?`${p.summary.total}件中：変更 ${p.summary.change}件・変更なし ${p.summary.skip}件・エラー ${p.summary.error}件`:''}</b></div>`;
+    const errs = p.errors.length ? `<pre style="background:#FFF6F5;color:#B42318">${escH(p.errors.join('\n'))}</pre>` : '';
+    const rows = p.rows.map(r=>`<tr class="${r.status}"><td>${r.n}</td><td class="s">${{change:'変更',skip:'変更なし',error:'エラー'}[r.status]||''}</td><td>${r.op}</td><td>${escH(r.id)}${r.source==='app'?'<br><span class="note">アプリで作成</span>':''}</td><td>${escH(vText(r.before))}</td><td>${escH(r.op==='delete'?'（削除）':vText(r.after))}</td><td>${escH((r.changed||[]).join(', ')||r.note||'')}</td></tr>`).join('');
+    el.innerHTML = head + errs + (p.rows.length?`<table><tr><th>#</th><th>判定</th><th>操作</th><th>id</th><th>変更前</th><th>変更後</th><th>変わる項目</th></tr>${rows}</table>`:'')
+      + `<pre id="muse-preview-json" data-ok="${p.ok?1:0}">${escH(JSON.stringify({ok:p.ok, summary:p.summary, errors:p.errors, rows:p.rows.map(({_next,...r})=>r)}, null, 1))}</pre>`;
+    ex.disabled = !(p.ok && p.summary && p.summary.change>0);
+  }
+  let view = (QS.get('view')||'today'), onlyMuse = QS.get('source')==='muse';
+  if(!['today','date','all','study'].includes(view)) view='today';
+  let date = validDate(QS.get('date')||'') ? QS.get('date') : null;
+  function refreshRead(){
+    const st=syncState();
+    const stEl=document.getElementById('muse-status');
+    if(stEl){ stEl.className='st '+(st.ok?'ok':'ng'); stEl.textContent=st.label; }
+    document.querySelectorAll('#muse [data-view]').forEach(b=>b.classList.toggle('on', b.dataset.view===view));
+    const out=document.getElementById('muse-out');
+    if(!out) return;
+    const d = date || td();
+    const data = buildRead(view, d, onlyMuse);
+    out.textContent = JSON.stringify(data, null, 1);
+    out.dataset.ready = st.ok ? '1' : '0';
+    const di=document.getElementById('muse-date'); if(di && !di.value) di.value=d;
+  }
+  function mount(){
+    const st=document.createElement('style'); st.textContent=css(); document.head.appendChild(st);
+    const box=document.createElement('div'); box.id='muse';
+    box.innerHTML = `
+      <h1>muse.ai 連携ページ</h1>
+      <div>状態：<span id="muse-status" class="st ng">準備中…</span> <button id="muse-refresh" onclick="MUSE.refresh()">再読み込み</button></div>
+      <div class="note">このページの内容は、連携コードを知っている人だけが見られるデータです。URLを他の人に送ったり、どこかに貼ったりしないでください。</div>
+      <h2>読み取り</h2>
+      <div>
+        <button data-view="today" onclick="MUSE.setView('today')">今日（「今日」タブと同じ）</button>
+        <button data-view="date" onclick="MUSE.setView('date')">指定日</button>
+        <button data-view="all" onclick="MUSE.setView('all')">全件</button>
+        <button data-view="study" onclick="MUSE.setView('study')">勉強時間（直近7日）</button>
+        日付 <input type="date" id="muse-date" onchange="MUSE.setDate(this.value)">
+        <label><input type="checkbox" id="muse-only" ${onlyMuse?'checked':''} onchange="MUSE.setOnlyMuse(this.checked)"> muse作成のみ</label>
+      </div>
+      <pre id="muse-out" data-ready="0">読み込み中…</pre>
+      <h2>書き込み（ToDoのみ）</h2>
+      <div class="note">操作のJSON（配列、または {"ops":[...]}）を入れて「確認」→ 内容を確かめて「実行」。1件でもエラーがあれば何も実行しません。</div>
+      <textarea id="muse-in" spellcheck="false" placeholder='[{"op":"add","id":"muse-<UUID>","text":"簿記 第1章","date":"${td()}","tags":["簿記"]}]'></textarea>
+      <div><button id="muse-confirm" class="pri" onclick="MUSE.confirm()">確認</button> <button id="muse-exec" class="pri" disabled onclick="MUSE.run()">実行</button></div>
+      <div id="muse-preview"></div>
+      <pre id="muse-result" data-done="0"></pre>
+      <h2>操作の書き方</h2>
+      <pre>${escH(HELP)}</pre>`;
+    document.body.appendChild(box);
+    refreshRead();
+    setInterval(refreshRead, 2000);
+  }
+  const HELP = `op: "add"        新しいToDo。id は "muse-" ＋ UUID（必須）。同じ id・同じ内容の再送は「変更なし」
+     ToDo     : {"op":"add","id":"muse-…","text":"…","date":"YYYY-MM-DD","tags":["タグ名"]}
+     長期タスク: {"op":"add","id":"muse-…","text":"…","kind":"longterm","startDate":"YYYY-MM-DD","deadline":"YYYY-MM-DD"}
+op: "update"     変える項目だけ書く  {"op":"update","id":"…","date":"YYYY-MM-DD"}
+                 種類の変更も可      {"op":"update","id":"…","kind":"longterm","startDate":"…","deadline":"…"}
+op: "complete"   完了にする          {"op":"complete","id":"…"}
+op: "uncomplete" 未完了に戻す        {"op":"uncomplete","id":"…"}
+op: "delete"     削除する            {"op":"delete","id":"…"}
+
+・text は60文字以内。date / deadline に過去の日付は不可（元から過去の日付はそのまま可）
+・tags は既存のタグ名か id。存在しないタグはエラー（新しく作らない）
+・一度に${MAX_OPS}件まで。全件をまとめて検証し、1件でもエラーなら何も実行しない
+・アプリで作成されたToDo（id が muse- で始まらないもの）も update / complete / delete できる
+・読み取りURL: ?muse=1&code=…&view=today|date|all&date=YYYY-MM-DD&source=muse`;
+
+  window.MUSE = {
+    refresh: refreshRead,
+    setView(v){ view=v; if(v!=='date' && v!=='today') {} refreshRead(); },
+    setDate(v){ if(validDate(v)){ date=v; refreshRead(); } },
+    setOnlyMuse(b){ onlyMuse=!!b; refreshRead(); },
+    read(opts){ opts=opts||{}; _rangeOverride = (opts.from||opts.to) ? {from:opts.from, to:opts.to} : null;
+      try{ return buildRead(opts.view||view, opts.date||date||td(), opts.onlyMuse!=null?opts.onlyMuse:onlyMuse); } finally { _rangeOverride=null; } },
+    confirm(){
+      const text=document.getElementById('muse-in').value;
+      document.getElementById('muse-result').textContent=''; document.getElementById('muse-result').dataset.done='0';
+      lastText=text; lastPlan=plan(text); renderPreview(lastPlan); return lastPlan;
+    },
+    async run(){
+      const res=document.getElementById('muse-result');
+      const text=document.getElementById('muse-in').value;
+      if(!lastPlan || text!==lastText){ res.textContent=JSON.stringify({ok:false,error:'入力が確認の後に変わりました。もう一度「確認」してください'},null,1); return; }
+      document.getElementById('muse-exec').disabled=true;
+      const r=execute(text, lastPlan.sig);
+      if(r.ok && r.applied){
+        res.textContent=JSON.stringify(Object.assign({}, r, {saved:'サーバーへ保存中…'}),null,1);
+        const saved = await waitSaved(30000);
+        r.saved = saved ? 'サーバーに保存済み' : '保存を確認できませんでした（この端末には保存済み。通信が戻ると自動で再送されます）';
+        r.serverSaved = saved;
+      } else if(r.ok){ r.saved='変更がなかったため保存は不要'; r.serverSaved=true; }
+      res.textContent=JSON.stringify(r,null,1);
+      res.dataset.done='1';
+      lastPlan=null; refreshRead();
+      return r;
+    },
+  };
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', mount); else mount();
 })();
 </script>
 </body>
