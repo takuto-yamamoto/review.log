@@ -3336,24 +3336,24 @@ html.theme-rm .undo-btn{color:var(--rm-gold-hi)}
    ══════════════════════════════════════════════════════════════ */
 html.theme-mu{
   /* 変数名は流用元に合わせている：navy=文字用の黒、royal=赤、purple=金（帯） */
-  --mu-navy:#161616; --mu-royal:#DA291C; --mu-red-d:#A51B12; --mu-gold:#FBE122; --mu-gold-hi:#FFE95C; --mu-gold-d:#7A6800; --mu-gold-bg:#FFF9D9; --mu-purple:#FBE122;
-  --bg:#F5F4F4; --card:#FFFFFF;
-  --blue:#DA291C; --blue-d:#A51B12; --blue-bg:#FDECEA; --blue-bd:rgba(218,41,28,.22);
+  --mu-navy:#1C1414; --mu-royal:#C4161C; --mu-red-d:#8E0E14; --mu-red-deep:#5C0A0E; --mu-gold:#D4A73A; --mu-gold-hi:#EECB6E; --mu-gold-d:#7A5A12; --mu-gold-bg:#FBF3E1; --mu-purple:#D4A73A;
+  --bg:#F6F3F1; --card:#FFFFFF;
+  --blue:#C4161C; --blue-d:#8E0E14; --blue-bg:#F8EAEA; --blue-bd:rgba(196,22,28,.22);
   --red:#D7263D;
-  --plan:#A88400; --plan-d:#6E5600; --plan-bg:#FFF9D9; --plan-bd:rgba(168,132,0,.25);
-  --orange:#DA291C; --orange-d:#A51B12; --orange-bg:#FDECEA; --orange-bd:rgba(218,41,28,.22);
-  --amber:#FBE122; --amber-d:#7A6800; --teal-d:#161616;
-  --lbl:#161616; --lbl2:rgba(22,22,22,.68); --lbl3:rgba(22,22,22,.42); --icon-muted:rgba(22,22,22,.6);
-  --sep:rgba(22,22,22,.11); --fill:rgba(22,22,22,.055);
-  --shadow:0 1px 2px rgba(22,22,22,.06),0 10px 24px -10px rgba(22,22,22,.18);
-  --shadow-sm:0 1px 1.5px rgba(22,22,22,.05),0 4px 12px -4px rgba(22,22,22,.12);
-  --shadow-lg:0 8px 16px -4px rgba(22,22,22,.12),0 24px 48px -12px rgba(22,22,22,.26);
-  --card-bd:1px solid rgba(22,22,22,.1);
-  background:#F5F4F4;
+  --plan:#A47A1E; --plan-d:#6B4F12; --plan-bg:#FBF3E1; --plan-bd:rgba(164,122,30,.25);
+  --orange:#C4161C; --orange-d:#8E0E14; --orange-bg:#F8EAEA; --orange-bd:rgba(196,22,28,.22);
+  --amber:#D4A73A; --amber-d:#7A5A12; --teal-d:#1C1414;
+  --lbl:#1C1414; --lbl2:rgba(28,20,20,.68); --lbl3:rgba(28,20,20,.42); --icon-muted:rgba(28,20,20,.6);
+  --sep:rgba(28,20,20,.11); --fill:rgba(28,20,20,.055);
+  --shadow:0 1px 2px rgba(28,20,20,.06),0 10px 24px -10px rgba(28,20,20,.18);
+  --shadow-sm:0 1px 1.5px rgba(28,20,20,.05),0 4px 12px -4px rgba(28,20,20,.12);
+  --shadow-lg:0 8px 16px -4px rgba(28,20,20,.12),0 24px 48px -12px rgba(28,20,20,.26);
+  --card-bd:1px solid rgba(28,20,20,.1);
+  background:#F6F3F1;
 }
 html.theme-mu body{background:var(--bg)}
-@media (min-width:520px){ html.theme-mu{ background:#E8E5E5; } }
-html.theme-mu.is-desktop-layout{ background:#E8E5E5; }
+@media (min-width:520px){ html.theme-mu{ background:#EAE4E1; } }
+html.theme-mu.is-desktop-layout{ background:#EAE4E1; }
 
 /* ── ナビ・タブ ── */
 html.theme-mu .navbar{background:rgba(255,255,255,.96);border-bottom:2px solid var(--mu-gold)}
@@ -3361,7 +3361,7 @@ html.theme-mu .nav-title,
 html.theme-mu .sidebar-brand-name{color:var(--mu-navy);font-weight:800;letter-spacing:.2px}
 html.theme-mu .tab-bar{background:rgba(255,255,255,.98);border-top:2px solid var(--mu-gold)}
 html.theme-mu .tab-btn.on{color:var(--mu-navy)}
-html.theme-mu .tab-btn::before{background:rgba(251,225,34,.22);box-shadow:inset 0 -2px 0 var(--mu-gold)}
+html.theme-mu .tab-btn::before{background:rgba(212,167,58,.22);box-shadow:inset 0 -2px 0 var(--mu-gold)}
 html.theme-mu .tab-btn.on .tab-lbl{font-weight:800}
 
 /* ── 見出し・ヒーロー（白いユニフォーム：白地＋金と紺の縁取り＋紫の斜め帯） ── */
@@ -3372,9 +3372,9 @@ html.theme-mu .settings-hero,
 html.theme-mu .hero[style*="#1740B0"],
 html.theme-mu .hero[style*="#4C1D95"]{
   background:#fff !important;
-  border:1px solid rgba(251,225,34,.55);
+  border:1px solid rgba(212,167,58,.55);
   /* 下端に「紺の細線＋金のライン」：ユニフォームの襟・袖の縁取りのイメージ */
-  box-shadow:inset 0 -3px 0 var(--mu-gold),inset 0 -5px 0 var(--mu-navy),0 8px 22px -10px rgba(22,22,22,.22) !important;
+  box-shadow:inset 0 -3px 0 var(--mu-gold),inset 0 -5px 0 var(--mu-navy),0 8px 22px -10px rgba(28,20,20,.22) !important;
   padding-right:76px;
 }
 /* 紫（モラード）の斜め帯と、それに沿う金の細線 */
@@ -3414,7 +3414,7 @@ html.theme-mu .hero.all-done{
 html.theme-mu .hero.all-done::before{background:#fff;opacity:.45}
 html.theme-mu .hero.all-done::after{background:var(--mu-navy);opacity:.6}
 html.theme-mu .hero.all-done .hero-msg{color:var(--mu-navy)}
-html.theme-mu .hero.all-done .hero-sub{color:rgba(22,22,22,.78)}
+html.theme-mu .hero.all-done .hero-sub{color:rgba(28,20,20,.78)}
 html.theme-mu .all-done-icon-wrap{border-color:#fff;background:rgba(255,255,255,.35)}
 html.theme-mu .hero-streak-line{background:var(--mu-navy);color:#fff}
 
@@ -3433,7 +3433,7 @@ html.theme-mu .card.due{border-left-color:var(--mu-royal)}
 html.theme-mu .card.todo{border-left-color:var(--mu-gold)}
 html.theme-mu .todo-half-tag{color:var(--mu-gold-d);background:var(--mu-gold-bg)}
 html.theme-mu .card-when-chip.due{background:var(--mu-royal);border-color:var(--mu-royal);color:#fff}
-@keyframes flashMU{0%{background:var(--card)}25%{background:#FFF9D9}70%{background:#FFF9D9}100%{background:var(--card)}}
+@keyframes flashMU{0%{background:var(--card)}25%{background:#FBF3E1}70%{background:#FBF3E1}100%{background:var(--card)}}
 html.theme-mu .card.flash{animation:flashMU .4s ease}
 
 /* ── ボタン（紺地に白文字、金の下線） ── */
@@ -3457,7 +3457,7 @@ html.theme-mu [style*="#0EA874"]{
   background:var(--mu-gold) !important;color:var(--mu-navy) !important;
   box-shadow:inset 0 -3px 0 var(--mu-navy),0 4px 14px -4px rgba(201,143,0,.45) !important;
 }
-html.theme-mu .float-fab{background:var(--mu-navy);box-shadow:0 0 0 3px var(--mu-gold),0 8px 24px rgba(22,22,22,.4)}
+html.theme-mu .float-fab{background:var(--mu-navy);box-shadow:0 0 0 3px var(--mu-gold),0 8px 24px rgba(28,20,20,.4)}
 html.theme-mu .tagf-chip.all.active{background:var(--mu-navy);border-color:var(--mu-navy)}
 html.theme-mu .tagf-chip.todo-chip.active{background:var(--mu-gold);border-color:var(--mu-gold);color:var(--mu-navy)}
 html.theme-mu .settings-switch.on{background:var(--mu-royal)}
@@ -3490,10 +3490,10 @@ html.theme-mu .plan-rule-type-card-check{background:var(--mu-purple);border-colo
 html.theme-mu .plan-rule-preview-txt{color:var(--mu-purple)}
 
 /* ── カレンダー ── */
-html.theme-mu .cal-cell.heat-1{background:rgba(218,41,28,.07)}
-html.theme-mu .cal-cell.heat-2{background:rgba(218,41,28,.14)}
-html.theme-mu .cal-cell.heat-3{background:rgba(218,41,28,.24)}
-html.theme-mu .cal-cell.heat-4{background:rgba(218,41,28,.36)}
+html.theme-mu .cal-cell.heat-1{background:rgba(196,22,28,.07)}
+html.theme-mu .cal-cell.heat-2{background:rgba(196,22,28,.14)}
+html.theme-mu .cal-cell.heat-3{background:rgba(196,22,28,.24)}
+html.theme-mu .cal-cell.heat-4{background:rgba(196,22,28,.36)}
 html.theme-mu .cal-cell.today .cal-num{background:var(--mu-navy);color:#fff;box-shadow:0 0 0 2px var(--mu-gold)}
 html.theme-mu .cal-spread-icon{background:var(--mu-navy)}
 
@@ -3509,7 +3509,7 @@ html.theme-mu .navbar{border-bottom:3px solid var(--mu-royal);box-shadow:0 2px 0
 html.theme-mu .tab-bar{border-top:3px solid var(--mu-royal);box-shadow:0 -2px 0 var(--mu-gold)}
 html.theme-mu .nav-title,html.theme-mu .sidebar-brand-name{color:var(--mu-royal)}
 html.theme-mu .tab-btn.on{color:var(--mu-royal)}
-html.theme-mu .tab-btn::before{background:rgba(218,41,28,.1);box-shadow:inset 0 -2px 0 var(--mu-gold)}
+html.theme-mu .tab-btn::before{background:rgba(196,22,28,.1);box-shadow:inset 0 -2px 0 var(--mu-gold)}
 html.theme-mu .sec{color:var(--mu-red-d)}
 /* ヒーロー：赤いユニフォーム（赤地に白文字、金の斜め帯と白の細線） */
 html.theme-mu .hero:not(.all-done):not(.today-peek-hero):not([style*="background"]),
@@ -3517,9 +3517,9 @@ html.theme-mu .achiev-hero,
 html.theme-mu .settings-hero,
 html.theme-mu .hero[style*="#1740B0"],
 html.theme-mu .hero[style*="#4C1D95"]{
-  background:linear-gradient(135deg,#E8352A 0%,#DA291C 55%,#B81F14 100%) !important;
+  background:linear-gradient(135deg,#CF1F24 0%,#B3141A 50%,#7E0C12 100%) !important;
   border:none;
-  box-shadow:inset 0 -3px 0 var(--mu-gold),0 8px 22px -10px rgba(218,41,28,.45) !important;
+  box-shadow:inset 0 -3px 0 var(--mu-gold),0 8px 22px -10px rgba(196,22,28,.45) !important;
 }
 html.theme-mu .hero::before,html.theme-mu .achiev-hero::before,html.theme-mu .settings-hero::before{background:var(--mu-gold)}
 html.theme-mu .hero::after,html.theme-mu .settings-hero::after{background:#fff}
@@ -3530,21 +3530,21 @@ html.theme-mu .hero[style*="#1740B0"] [style*="rgba(255,255,255,.7)"]{color:rgba
 html.theme-mu .hero[style*="#1740B0"] [style*="rgba(255,255,255,.2)"]{background:rgba(255,255,255,.2) !important;color:#fff !important}
 /* 全部終えた日：金のヒーロー（トロフィーを掲げた瞬間）に赤い帯 */
 html.theme-mu .hero.all-done{
-  background:linear-gradient(135deg,#D9B200 0%,#FBE122 55%,#FFEF7A 100%) !important;
-  box-shadow:inset 0 -4px 0 var(--mu-royal),0 8px 22px -8px rgba(200,160,0,.5) !important;
+  background:linear-gradient(135deg,#B08425 0%,#D4A73A 50%,#E9C76E 100%) !important;
+  box-shadow:inset 0 -4px 0 var(--mu-royal),0 8px 22px -8px rgba(164,122,30,.5) !important;
 }
 html.theme-mu .hero.all-done::before{background:var(--mu-royal);opacity:.9}
 html.theme-mu .hero.all-done::after{background:#fff;opacity:.9}
-html.theme-mu .hero.all-done .hero-msg{color:var(--mu-red-d)}
-html.theme-mu .hero.all-done .hero-sub{color:rgba(120,20,12,.8)}
+html.theme-mu .hero.all-done .hero-msg{color:var(--mu-red-deep)}
+html.theme-mu .hero.all-done .hero-sub{color:rgba(92,10,14,.82)}
 html.theme-mu .all-done-icon-wrap{border-color:#fff;background:rgba(255,255,255,.35)}
 html.theme-mu .hero-streak-line{background:var(--mu-royal);color:#fff}
 /* 明日ビュー：深い赤の夜空に金 */
 html.theme-mu .hero.today-peek-hero{
-  background:linear-gradient(135deg,#4A0B06 0%,#7E140C 60%,#A51B12 100%) !important;
-  box-shadow:inset 0 -4px 0 var(--mu-gold),0 8px 22px -8px rgba(120,20,12,.5) !important;
+  background:linear-gradient(135deg,#1E0A0B 0%,#4A0A0E 55%,#7E0C12 100%) !important;
+  box-shadow:inset 0 -4px 0 var(--mu-gold),0 8px 22px -8px rgba(60,8,10,.55) !important;
 }
-html.theme-mu .hero.today-peek-hero::before{background:rgba(251,225,34,.25)}
+html.theme-mu .hero.today-peek-hero::before{background:rgba(212,167,58,.25)}
 html.theme-mu .today-peek-eyebrow{color:var(--mu-gold)}
 /* カード */
 html.theme-mu .card.due{border-left-color:var(--mu-royal)}
@@ -3558,9 +3558,9 @@ html.theme-mu .btn-plan-ok,html.theme-mu .edit-save[style*="--plan"]{
   background:var(--plan) !important;color:#fff !important;box-shadow:inset 0 -3px 0 var(--mu-royal) !important;
 }
 html.theme-mu [style*="#0EA874"]{
-  background:var(--mu-gold) !important;color:var(--mu-red-d) !important;box-shadow:inset 0 -3px 0 var(--mu-royal),0 4px 14px -4px rgba(200,160,0,.45) !important;
+  background:var(--mu-gold) !important;color:var(--mu-red-d) !important;box-shadow:inset 0 -3px 0 var(--mu-royal),0 4px 14px -4px rgba(164,122,30,.45) !important;
 }
-html.theme-mu .float-fab{background:var(--mu-royal);box-shadow:0 0 0 3px var(--mu-gold),0 8px 24px rgba(218,41,28,.4)}
+html.theme-mu .float-fab{background:var(--mu-royal);box-shadow:0 0 0 3px var(--mu-gold),0 8px 24px rgba(196,22,28,.4)}
 html.theme-mu .tagf-chip.all.active{background:var(--mu-royal);border-color:var(--mu-royal)}
 html.theme-mu .tagf-chip.todo-chip.active{background:var(--mu-gold);border-color:var(--mu-gold);color:var(--mu-red-d)}
 html.theme-mu .settings-switch.on{background:var(--mu-royal)}
@@ -3597,7 +3597,7 @@ html.pc-dense .float-fab{display:none !important}
 html.pc-dense{background:transparent !important;--pc-frame:rgba(15,15,20,.2)}
 html.pc-dense.theme-rm{--pc-frame:rgba(11,42,91,.28)}
 html.pc-dense.theme-p5{--pc-frame:rgba(184,52,59,.6)}
-html.pc-dense.theme-mu{--pc-frame:rgba(218,41,28,.35)}
+html.pc-dense.theme-mu{--pc-frame:rgba(196,22,28,.3)}
 html.pc-dense body{
   border-radius:14px;overflow:hidden;clip-path:inset(0 round 14px);
   box-shadow:none !important
@@ -3955,7 +3955,7 @@ html.is-desktop-layout.ui-l .sidebar-brand-name{font-size:16.5px} html.is-deskto
   html.phone-view body{box-shadow:0 1px 0 rgba(0,0,0,.04),0 30px 70px -30px rgba(15,15,20,.35),0 0 0 1px rgba(0,0,0,.07)}
   html.phone-view.theme-p5{background:#050505}
   html.phone-view.theme-rm{background:#DCD8CC}
-  html.phone-view.theme-mu{background:#E2DDDC}
+  html.phone-view.theme-mu{background:#E4DCD8}
 }
 /* ══ 埋め込み表示（html.in-embed） ═══════════════════════════
    Notionの埋め込みでは、マウスを乗せると右上にNotionのツールバー（コメント・表示切替など）が
@@ -12651,7 +12651,7 @@ const THEMES = {
   default:{ label:'標準',             meta:'#F2F2F7', sw:['#2563EB','#F2F4F9'] },
   p5:     { label:'レッド＆ブラック', meta:'#131215', sw:['#B8343B','#131215'] },
   rm:     { label:'ホワイト＆ゴールド', meta:'#FFFFFF', sw:['#0B2A5B','#FFFFFF','#D4A62A'] },
-  mu:     { label:'レッド＆ホワイト', meta:'#FFFFFF', sw:['#DA291C','#FFFFFF','#FBE122'] },
+  mu:     { label:'レッド＆ホワイト', meta:'#FFFFFF', sw:['#C4161C','#FFFFFF','#D4A73A'] },
 };
 function getTheme(){
   // 未設定の人はレッド＆ホワイトを既定にする。選んだ人はその選択を尊重する
